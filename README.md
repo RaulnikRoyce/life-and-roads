@@ -130,4 +130,4 @@ Não há campo de placa, chassi ou RENAVAM. O schema da ficha é `.strict()`: ca
 
 ## Licença
 
-MIT. Ver [LICENSE](LICENSE).
+Proprietária. Todos os direitos reservados. Ver [LICENSE](LICENSE).
