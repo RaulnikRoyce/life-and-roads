@@ -1,6 +1,9 @@
 import 'dart:math' as math;
 
-/// Flex: gasolina e álcool têm km/l diferentes.
+/// Flex: gasolina e álcool têm km/l distintos. Fórmulas da aba Viagem.
+///
+/// Consumo no posto: `(km painel − km ficha) / litros`.
+/// Custo da rota: `km / km/l * preço`. R$/km: `litros * preço / km rodados`.
 enum Combustivel { gasolina, alcool }
 
 String rotuloCombustivel(Combustivel c) =>

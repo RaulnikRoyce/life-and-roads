@@ -1,6 +1,5 @@
-import 'dart:convert';
-
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:life_and_roads/core/database/caderneta_banco.dart';
+import 'package:life_and_roads/core/database/caderneta_database.dart';
 
 /// Um serviço na oficina: km do painel + o que pagou. Neste aparelho.
 class RegistroServico {
@@ -52,26 +51,34 @@ class HistoricoServico {
   static const max = 20;
 
   static Future<List<RegistroServico>> carregar() async {
-    final prefs = await SharedPreferences.getInstance();
-    final bruto = prefs.getString(chave);
-    if (bruto == null || bruto.isEmpty) return [];
-    try {
-      final lista = jsonDecode(bruto);
-      if (lista is! List) return [];
-      return lista.map(RegistroServico.deJson).whereType<RegistroServico>().toList();
-    } on FormatException {
-      return [];
-    }
+    final linhas = await CadernetaBanco.instancia.listarServicos();
+    return [
+      for (final l in linhas)
+        RegistroServico(
+          em: l.em,
+          tipo: l.tipo,
+          kmPainel: l.kmPainel,
+          reais: l.reais,
+        ),
+    ];
   }
 
-  static Future<List<RegistroServico>> acrescentar(RegistroServico registro) async {
-    final atual = await carregar();
-    final juntos = [registro, ...atual].take(max).toList();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      chave,
-      jsonEncode([for (final r in juntos) r.paraJson()]),
+  static Future<List<RegistroServico>> acrescentar(
+    RegistroServico registro,
+  ) async {
+    await inserirLinha(registro);
+    await CadernetaBanco.instancia.podarMaisAntigos('servicos', max);
+    return carregar();
+  }
+
+  static Future<void> inserirLinha(RegistroServico r) {
+    return CadernetaBanco.instancia.inserirServico(
+      ServicosCompanion.insert(
+        em: r.em,
+        tipo: r.tipo,
+        kmPainel: r.kmPainel,
+        reais: r.reais,
+      ),
     );
-    return juntos;
   }
 }

@@ -1,0 +1,281 @@
+openapi: 3.0.3
+info:
+  title: life.and.roads API
+  version: 1.1.0
+  description: >
+    Cofre opcional da caderneta. Uma moto por conta.
+    Sem placa, chassi, RENAVAM, foto, pins ou histórico de posto.
+servers:
+  - url: http://localhost:3001
+paths:
+  /health:
+    get:
+      summary: Liveness (processo no ar)
+      responses:
+        '200':
+          description: ok
+  /ready:
+    get:
+      summary: Readiness (MySQL responde)
+      responses:
+        '200':
+          description: banco ok
+        '503':
+          description: banco indisponível
+  /monitor/evento:
+    post:
+      summary: Crash do app (mensagem curta, sem PII)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [tipo, mensagem]
+              properties:
+                tipo:
+                  type: string
+                  enum: [flutter_error, flutter_zone]
+                mensagem:
+                  type: string
+                  maxLength: 500
+                ambiente:
+                  type: string
+                  enum: [development, staging, production]
+      responses:
+        '200':
+          description: registrado no log
+  /auth/registrar:
+    post:
+      summary: Cria a conta
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Credenciais'
+      responses:
+        '201':
+          description: conta criada
+        '409':
+          description: e-mail já cadastrado
+  /auth/login:
+    post:
+      summary: Access curto + refresh revogável
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Credenciais'
+      responses:
+        '200':
+          description: token (access) e refreshToken
+  /auth/refresh:
+    post:
+      summary: Troca o refresh por um par novo (rotação)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        '200':
+          description: novo par
+        '401':
+          description: refresh inválido ou reutilizado
+  /auth/sair:
+    post:
+      summary: Revoga o refresh (e os demais da conta se autenticado)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        '200':
+          description: sessão encerrada
+  /auth/senha:
+    post:
+      summary: Troca a senha e revoga todos os refresh
+      description: >
+        Confere senhaAtual, grava bcrypt da nova, revoga as sessões
+        e devolve um par novo para este aparelho. Access antigo
+        dos outros aparelhos expira sozinho (~15 min).
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrocaSenha'
+      responses:
+        '200':
+          description: senha alterada; token e refreshToken novos
+        '400':
+          description: payload extra, senha curta ou igual à atual
+        '401':
+          description: token ausente ou senha atual incorreta
+  /auth/conta:
+    delete:
+      summary: Exclui a conta e os dados remotos (CASCADE)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: conta excluída
+  /ficha:
+    get:
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: ficha
+        '404':
+          description: ainda não há ficha
+    put:
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Ficha'
+      responses:
+        '200':
+          description: gravada
+  /manutencao:
+    get:
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: datas
+        '404':
+          description: ainda não há
+    put:
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Manutencao'
+      responses:
+        '200':
+          description: gravada
+  /localizacao:
+    get:
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: último ponto
+        '404':
+          description: ainda não há
+    put:
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Localizacao'
+      responses:
+        '200':
+          description: gravado
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Credenciais:
+      type: object
+      additionalProperties: false
+      required: [email, senha]
+      properties:
+        email:
+          type: string
+        senha:
+          type: string
+          minLength: 8
+          maxLength: 72
+    TrocaSenha:
+      type: object
+      additionalProperties: false
+      required: [senhaAtual, senhaNova]
+      properties:
+        senhaAtual:
+          type: string
+          minLength: 8
+          maxLength: 72
+        senhaNova:
+          type: string
+          minLength: 8
+          maxLength: 72
+    Ficha:
+      type: object
+      additionalProperties: false
+      required: [marca, modelo, kmLitro, kmAtual]
+      properties:
+        marca:
+          type: string
+        modelo:
+          type: string
+        ano:
+          type: integer
+          nullable: true
+        cilindrada:
+          type: integer
+          nullable: true
+        kmLitro:
+          type: number
+        kmLitroAlcool:
+          type: number
+          nullable: true
+        combustivel:
+          type: string
+          enum: [gasolina, alcool]
+        kmAtual:
+          type: number
+        tanqueLitros:
+          type: number
+          nullable: true
+        personalizacoes:
+          type: string
+    Manutencao:
+      type: object
+      additionalProperties: false
+      properties:
+        oleoUltima: { type: string, nullable: true }
+        oleoProxima: { type: string, nullable: true }
+        revisaoUltima: { type: string, nullable: true }
+        pneusUltima: { type: string, nullable: true }
+        pneusProxima: { type: string, nullable: true }
+        ipvaProxima: { type: string, nullable: true }
+        seguroProxima: { type: string, nullable: true }
+        licenciamentoProxima: { type: string, nullable: true }
+    Localizacao:
+      type: object
+      additionalProperties: false
+      required: [latitude, longitude]
+      properties:
+        latitude:
+          type: number
+        longitude:
+          type: number

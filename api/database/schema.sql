@@ -1,3 +1,7 @@
+-- Caderneta remota do life.and.roads.
+-- Uma ficha, uma manutenção e um ponto por usuário.
+-- Sem placa, chassi, RENAVAM, foto ou histórico de rastro.
+
 CREATE DATABASE IF NOT EXISTS life_and_roads
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
@@ -57,4 +61,17 @@ CREATE TABLE IF NOT EXISTS localizacoes (
   atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_local_usuario
     FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+);
+
+-- Refresh tokens revogáveis. Access JWT continua curto e sem rastro.
+CREATE TABLE IF NOT EXISTS sessoes (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  usuario_id INT NOT NULL,
+  token_hash CHAR(64) NOT NULL UNIQUE,
+  expira_em DATETIME NOT NULL,
+  revogada TINYINT(1) NOT NULL DEFAULT 0,
+  criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_sessao_usuario
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+  INDEX idx_sessoes_usuario (usuario_id)
 );

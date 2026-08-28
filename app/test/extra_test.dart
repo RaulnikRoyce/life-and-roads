@@ -1,15 +1,23 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_and_roads/backup.dart';
+import 'package:life_and_roads/core/database/armazem_kv.dart';
 import 'package:life_and_roads/manutencao/extra.dart';
 import 'package:life_and_roads/manutencao/servicos.dart';
 import 'package:life_and_roads/mapa/pins.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'helpers/banco_teste.dart';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  setUp(() {
+  setUp(() async {
     SharedPreferences.setMockInitialValues({});
+    await abrirBancoTeste();
+  });
+
+  tearDown(() async {
+    await fecharBancoTeste();
   });
 
   test('serviço válido grava km e reais', () {
@@ -36,7 +44,7 @@ void main() {
     );
   });
 
-  test('km da última troca e CNH ficam no extra local', () {
+  test('CNH 10 ou 5 anos fica no extra local', () {
     final extra = ManutencaoExtra.deJson({
       'oleoKmUltima': 10000,
       'oleoKmIntervalo': 4000,
@@ -46,16 +54,22 @@ void main() {
     });
     expect(extra.oleoKmUltima, 10000);
     expect(extra.cnhProxima, '2027-03-15');
+    expect(extra.cnhCincoAnos, isFalse);
+    expect(ManutencaoExtra.deJson({'cnhCincoAnos': true}).cnhCincoAnos, isTrue);
     expect(ManutencaoExtra.deJson(null).oleoKmIntervalo, 4000);
   });
 
   test('backup volta a caderneta neste aparelho', () async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('ficha_moto_v1', '{"marca":"Honda","modelo":"CG 160"}');
+    await prefs.setString(
+      'ficha_moto_v1',
+      '{"marca":"Honda","modelo":"CG 160"}',
+    );
     final bruto = await BackupCaderneta.exportar();
     await prefs.remove('ficha_moto_v1');
     expect(await BackupCaderneta.restaurar(bruto), isNull);
-    expect(prefs.getString('ficha_moto_v1'), contains('CG 160'));
+    expect(await ArmazemKv.lerTexto('ficha_moto_v1'), contains('CG 160'));
+    expect(prefs.getString('ficha_moto_v1'), isNull);
     expect(await BackupCaderneta.restaurar('{'), 'Backup inválido.');
   });
 }

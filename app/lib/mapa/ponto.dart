@@ -1,10 +1,11 @@
 import 'dart:convert';
 
 import 'package:latlong2/latlong.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:life_and_roads/core/database/armazem_kv.dart';
+import 'package:life_and_roads/core/database/chaves_kv.dart';
 
 /// Último GPS deste aparelho. A aba Mapa e o destino da viagem leem daqui.
-const chaveUltimoPonto = 'ultimo_ponto_v1';
+const chaveUltimoPonto = ChavesKv.ponto;
 
 const brasilCentro = LatLng(-14.235, -51.9253);
 
@@ -24,13 +25,11 @@ LatLng? pontoDeJson(String? bruto) {
 }
 
 Future<LatLng?> carregarUltimoPonto() async {
-  final prefs = await SharedPreferences.getInstance();
-  return pontoDeJson(prefs.getString(chaveUltimoPonto));
+  return pontoDeJson(await ArmazemKv.lerTexto(chaveUltimoPonto));
 }
 
-Future<void> salvarUltimoPonto(LatLng ponto) async {
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString(
+Future<void> salvarUltimoPonto(LatLng ponto) {
+  return ArmazemKv.gravarTexto(
     chaveUltimoPonto,
     jsonEncode({
       'latitude': ponto.latitude,

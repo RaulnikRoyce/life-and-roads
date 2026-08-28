@@ -1,7 +1,6 @@
-import 'dart:convert';
-
 import 'package:latlong2/latlong.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:life_and_roads/core/database/caderneta_banco.dart';
+import 'package:life_and_roads/core/database/caderneta_database.dart';
 
 /// Posto ou oficina que o piloto marcou. Sem comunidade, sem placa.
 class PinoMapa {
@@ -42,25 +41,27 @@ class PinsMapa {
   static const max = 30;
 
   static Future<List<PinoMapa>> carregar() async {
-    final prefs = await SharedPreferences.getInstance();
-    final bruto = prefs.getString(chave);
-    if (bruto == null || bruto.isEmpty) return [];
-    try {
-      final lista = jsonDecode(bruto);
-      if (lista is! List) return [];
-      return lista.map(PinoMapa.deJson).whereType<PinoMapa>().toList();
-    } on FormatException {
-      return [];
-    }
+    final linhas = await CadernetaBanco.instancia.listarPins();
+    return [
+      for (final l in linhas)
+        PinoMapa(tipo: l.tipo, latitude: l.latitude, longitude: l.longitude),
+    ];
   }
 
   static Future<List<PinoMapa>> salvar(List<PinoMapa> pins) async {
-    final lista = pins.length <= max ? pins.toList() : pins.sublist(pins.length - max);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      chave,
-      jsonEncode([for (final p in lista) p.paraJson()]),
-    );
+    final lista =
+        pins.length <= max ? pins.toList() : pins.sublist(pins.length - max);
+    final db = CadernetaBanco.instancia;
+    await db.apagarPins();
+    for (final p in lista) {
+      await db.inserirPin(
+        PinsCompanion.insert(
+          tipo: p.tipo,
+          latitude: p.latitude,
+          longitude: p.longitude,
+        ),
+      );
+    }
     return lista;
   }
 }

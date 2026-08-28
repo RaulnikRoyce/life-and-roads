@@ -1,35 +1,43 @@
 import 'dart:convert';
 
 import 'package:life_and_roads/api.dart';
+import 'package:life_and_roads/core/backup/lista_backup.dart';
+import 'package:life_and_roads/core/database/armazem_kv.dart';
+import 'package:life_and_roads/core/database/caderneta_banco.dart';
+import 'package:life_and_roads/core/database/chaves_kv.dart';
+import 'package:life_and_roads/core/sync/ficha_sync_store.dart';
+import 'package:life_and_roads/features/manutencao/data/manutencao_sync_store.dart';
 import 'package:life_and_roads/ficha/foto.dart';
-import 'package:life_and_roads/manutencao/extra.dart';
 import 'package:life_and_roads/manutencao/servicos.dart';
 import 'package:life_and_roads/mapa/pins.dart';
-import 'package:life_and_roads/mapa/ponto.dart';
+import 'package:life_and_roads/viagem/calculo.dart';
 import 'package:life_and_roads/viagem/historico.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Cópia da caderneta neste aparelho. Sem placa. Quem não quer login usa isto.
+/// Exportação e restauração local da caderneta (JSON).
+///
+/// v1: listas como string nas chaves do SharedPreferences.
+/// v2: listas estruturadas (SQLite). A restauração aceita as duas.
 class BackupCaderneta {
-  static const versao = 1;
-  static const chavePrecoGasolina = 'preco_litro_v1';
-  static const chavePrecoAlcool = 'preco_alcool_v1';
-  static const chaveManutencao = 'manutencao_v1';
+  static const versao = 2;
 
   static Future<String> exportar() async {
-    final prefs = await SharedPreferences.getInstance();
+    final foto = await FotoMoto.carregar();
+    final abastecimentos = await HistoricoAbastecimento.carregar();
+    final servicos = await HistoricoServico.carregar();
+    final pins = await PinsMapa.carregar();
     final mapa = <String, dynamic>{
       'v': versao,
-      'ficha': prefs.getString(ApiCaderneta.chaveFicha),
-      'foto': prefs.getString(FotoMoto.chave),
-      'manutencao': prefs.getString(chaveManutencao),
-      'manutencaoKm': prefs.getString(ManutencaoExtra.chave),
-      'servicos': prefs.getString(HistoricoServico.chave),
-      'abastecimentos': prefs.getString(HistoricoAbastecimento.chave),
-      'pins': prefs.getString(PinsMapa.chave),
-      'ultimoPonto': prefs.getString(chaveUltimoPonto),
-      'precoGasolina': prefs.getString(chavePrecoGasolina),
-      'precoAlcool': prefs.getString(chavePrecoAlcool),
+      'ficha': await ArmazemKv.lerTexto(ChavesKv.ficha),
+      'foto': foto == null ? null : base64Encode(foto),
+      'manutencao': await ArmazemKv.lerTexto(ChavesKv.agenda),
+      'manutencaoKm': await ArmazemKv.lerTexto(ChavesKv.extra),
+      'servicos': [for (final s in servicos) s.paraJson()],
+      'abastecimentos': [for (final r in abastecimentos) r.paraJson()],
+      'pins': [for (final p in pins) p.paraJson()],
+      'ultimoPonto': await ArmazemKv.lerTexto(ChavesKv.ponto),
+      'precoGasolina': await ArmazemKv.lerTexto(ChavesKv.precoGasolina),
+      'precoAlcool': await ArmazemKv.lerTexto(ChavesKv.precoAlcool),
     };
     return jsonEncode(mapa);
   }
@@ -43,31 +51,75 @@ class BackupCaderneta {
     }
     if (decodificado is! Map) return 'Backup inválido.';
     final mapa = Map<String, dynamic>.from(decodificado);
-    if (mapa['v'] != versao) return 'Backup de outra versão.';
+    final v = mapa['v'];
+    if (v != 1 && v != 2) return 'Backup de outra versão.';
+
+    await _gravaKv(ChavesKv.ficha, _textoOuMapa(mapa['ficha']));
+    await _gravaFoto(mapa['foto']);
+    await _gravaKv(ChavesKv.agenda, mapa['manutencao']);
+    await _gravaKv(ChavesKv.extra, mapa['manutencaoKm']);
+    await _gravaKv(ChavesKv.ponto, mapa['ultimoPonto']);
+    await _gravaKv(ChavesKv.precoGasolina, mapa['precoGasolina']);
+    await _gravaKv(ChavesKv.precoAlcool, mapa['precoAlcool']);
+
+    final db = CadernetaBanco.instancia;
+    await db.apagarAbastecimentos();
+    await db.apagarServicos();
+    await db.apagarPins();
+    for (final r in listaDeBackup(
+      mapa['abastecimentos'],
+      RegistroAbastecimento.deJson,
+    ).reversed) {
+      await HistoricoAbastecimento.inserirLinha(r);
+    }
+    for (final r in listaDeBackup(
+      mapa['servicos'],
+      RegistroServico.deJson,
+    ).reversed) {
+      await HistoricoServico.inserirLinha(r);
+    }
+    final pins = listaDeBackup(mapa['pins'], PinoMapa.deJson);
+    if (pins.isNotEmpty) await PinsMapa.salvar(pins);
 
     final prefs = await SharedPreferences.getInstance();
-    await _grava(prefs, ApiCaderneta.chaveFicha, mapa['ficha']);
-    await _grava(prefs, FotoMoto.chave, mapa['foto']);
-    await _grava(prefs, chaveManutencao, mapa['manutencao']);
-    await _grava(prefs, ManutencaoExtra.chave, mapa['manutencaoKm']);
-    await _grava(prefs, HistoricoServico.chave, mapa['servicos']);
-    await _grava(prefs, HistoricoAbastecimento.chave, mapa['abastecimentos']);
-    await _grava(prefs, PinsMapa.chave, mapa['pins']);
-    await _grava(prefs, chaveUltimoPonto, mapa['ultimoPonto']);
-    await _grava(prefs, chavePrecoGasolina, mapa['precoGasolina']);
-    await _grava(prefs, chavePrecoAlcool, mapa['precoAlcool']);
+    await prefs.remove(HistoricoAbastecimento.chave);
+    await prefs.remove(HistoricoServico.chave);
+    await prefs.remove(PinsMapa.chave);
+    for (final chave in ChavesKv.textos) {
+      await prefs.remove(chave);
+    }
+    await prefs.remove(FotoMoto.chave);
+
+    final token = prefs.getString(ApiCaderneta.chaveToken);
+    if (token != null && token.isNotEmpty) {
+      await FichaSyncStore().marcarPendente();
+      await ManutencaoSyncStore().marcarPendente();
+    }
     return null;
   }
 
-  static Future<void> _grava(
-    SharedPreferences prefs,
-    String chave,
-    Object? valor,
-  ) async {
+  static Object? _textoOuMapa(Object? valor) {
+    if (valor is Map) return jsonEncode(valor);
+    return valor;
+  }
+
+  static Future<void> _gravaKv(String chave, Object? valor) async {
     if (valor is! String || valor.isEmpty) {
-      await prefs.remove(chave);
+      await ArmazemKv.gravarTexto(chave, null);
       return;
     }
-    await prefs.setString(chave, valor);
+    await ArmazemKv.gravarTexto(chave, valor);
+  }
+
+  static Future<void> _gravaFoto(Object? valor) async {
+    if (valor is! String || valor.isEmpty) {
+      await FotoMoto.apagar();
+      return;
+    }
+    try {
+      await FotoMoto.salvar(base64Decode(valor));
+    } on FormatException {
+      await FotoMoto.apagar();
+    }
   }
 }

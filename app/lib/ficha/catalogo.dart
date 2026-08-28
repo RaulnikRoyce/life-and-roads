@@ -1,8 +1,8 @@
-/// Catálogo local: marca, modelo, tanque, km/l gasolina e álcool.
+/// Catálogo local com marca, modelo, tanque e média (gasolina e álcool).
 ///
-/// Números de uso misto (cidade + estrada), não de laboratório.
-/// O piloto corrige depois da própria média. Sem FIPE e sem placa.
-enum UsoCatalogo { cidade, estrada }
+/// Valores de uso misto (cidade e estrada), fora de bancada.
+/// O piloto ajusta depois da própria média. Sem FIPE e sem placa.
+enum UsoCatalogo { cidade, estrada, esporte }
 
 class ModeloCatalogo {
   const ModeloCatalogo({
@@ -48,6 +48,20 @@ class ModeloCatalogo {
   final int? correnteKm;
 
   String get rotulo => nomeLista ?? '$marca $modelo';
+
+  /// Silhueta local (desenho nosso, sem foto de fabricante).
+  String get assetSilhueta {
+    if (uso == UsoCatalogo.esporte) {
+      return 'assets/catalogo/esporte.png';
+    }
+    if (correnteKm == null && uso == UsoCatalogo.cidade) {
+      return 'assets/catalogo/scooter.png';
+    }
+    if (uso == UsoCatalogo.estrada) {
+      return 'assets/catalogo/estrada.png';
+    }
+    return 'assets/catalogo/cidade.png';
+  }
 }
 
 List<ModeloCatalogo> catalogoFiltrado(UsoCatalogo? uso) {
@@ -65,7 +79,7 @@ const List<ModeloCatalogo> catalogoMotos = [
     flex: false,
     uso: UsoCatalogo.cidade,
     dica:
-        'Só gasolina. Tanque 4,2 L: enche mais vezes, mas passa fácil de 45 km/l. Corrente ~1.000 km.',
+        'Só gasolina. Tanque 4,2 L, enche mais vezes e rende bem no litro. Corrente cerca de 1.000 km.',
     psiDianteiro: 25,
     psiTraseiro: 32,
     correnteKm: 1000,
@@ -106,7 +120,7 @@ const List<ModeloCatalogo> catalogoMotos = [
     uso: UsoCatalogo.cidade,
     nomeLista: 'Honda CG 160 (Fan / Titan / Start)',
     dica:
-        'Flex (Fan, Titan ou Start). Tanque 16,1 L: autonomia longa. Óleo ~4.000 km. Corrente ~1.000 km. Pneu 25/29 PSI.',
+        'Flex (Fan, Titan ou Start). Tanque 16,1 L, autonomia longa. Óleo ~4.000 km. Corrente ~1.000 km. Pneu 25/29 PSI.',
     correnteKm: 1000,
   ),
   ModeloCatalogo(
@@ -117,7 +131,7 @@ const List<ModeloCatalogo> catalogoMotos = [
     tanqueLitros: 8.1,
     flex: false,
     uso: UsoCatalogo.cidade,
-    dica: 'Scooter só a gasolina. Tanque 8,1 L. Sem km/l de álcool neste modelo.',
+    dica: 'Scooter só a gasolina. Tanque 8,1 L. Este modelo não tem álcool no tanque.',
     psiDianteiro: 25,
     psiTraseiro: 32,
   ),
@@ -141,7 +155,7 @@ const List<ModeloCatalogo> catalogoMotos = [
     kmPorLitroAlcool: 22,
     tanqueLitros: 14.1,
     uso: UsoCatalogo.cidade,
-    dica: 'Flex. Cidade e viagem curta. No álcool ~22 km/l. Corrente ~1.000 km.',
+    dica: 'Flex. Cidade e viagem curta. No álcool a média cai. Corrente ~1.000 km.',
     correnteKm: 1000,
   ),
   ModeloCatalogo(
@@ -152,7 +166,7 @@ const List<ModeloCatalogo> catalogoMotos = [
     kmPorLitroAlcool: 32,
     tanqueLitros: 15.4,
     uso: UsoCatalogo.cidade,
-    dica: 'BlueFlex. Tanque 15,4 L: poucas paradas no posto. Corrente ~1.000 km.',
+    dica: 'BlueFlex. Tanque 15,4 L, poucas paradas no posto. Corrente ~1.000 km.',
     correnteKm: 1000,
   ),
   ModeloCatalogo(
@@ -163,7 +177,7 @@ const List<ModeloCatalogo> catalogoMotos = [
     kmPorLitroAlcool: 30,
     tanqueLitros: 15.2,
     uso: UsoCatalogo.cidade,
-    dica: 'BlueFlex, street. Tanque 15,2 L. No álcool ~30 km/l. Corrente ~1.000 km.',
+    dica: 'BlueFlex, street. Tanque 15,2 L. No álcool a média cai. Corrente ~1.000 km.',
     correnteKm: 1000,
   ),
   ModeloCatalogo(
@@ -186,7 +200,7 @@ const List<ModeloCatalogo> catalogoMotos = [
     flex: false,
     uso: UsoCatalogo.cidade,
     nomeLista: 'Yamaha Fazer 250 / FZ25',
-    dica: 'Só gasolina. Tanque 14,2 L. Sem km/l de álcool neste motor. Corrente ~1.000 km.',
+    dica: 'Só gasolina. Tanque 14,2 L. Este motor não usa álcool. Corrente ~1.000 km.',
     correnteKm: 1000,
   ),
   ModeloCatalogo(
@@ -197,7 +211,7 @@ const List<ModeloCatalogo> catalogoMotos = [
     tanqueLitros: 7.1,
     flex: false,
     uso: UsoCatalogo.cidade,
-    dica: 'Scooter só gasolina. Tanque 7,1 L — autonomia menor que o PCX.',
+    dica: 'Scooter só gasolina. Tanque 7,1 L, autonomia menor que o PCX.',
     psiDianteiro: 25,
     psiTraseiro: 32,
   ),
@@ -234,7 +248,7 @@ const List<ModeloCatalogo> catalogoMotos = [
     kmPorLitroAlcool: 28,
     tanqueLitros: 12,
     uso: UsoCatalogo.estrada,
-    dica: 'Flex, trail. Tanque interno 12 L. No álcool cai para ~28 km/l. Pneu 22/29 PSI. Corrente ~1.000 km.',
+    dica: 'Flex, trail. Tanque interno 12 L. No álcool a média cai. Pneu 22/29 PSI. Corrente ~1.000 km.',
     psiDianteiro: 22,
     correnteKm: 1000,
   ),
@@ -272,7 +286,7 @@ const List<ModeloCatalogo> catalogoMotos = [
     tanqueLitros: 13.8,
     uso: UsoCatalogo.estrada,
     dica:
-        'Flex, sucessor da XRE 300. Tanque 13,8 L — uns 400 km na gasolina. Pneu 22/29 PSI.',
+        'Flex, sucessor da XRE 300. Tanque 13,8 L, uns 400 km na gasolina. Pneu 22/29 PSI.',
     psiDianteiro: 22,
     correnteKm: 1000,
   ),
@@ -313,7 +327,7 @@ const List<ModeloCatalogo> catalogoMotos = [
     flex: false,
     uso: UsoCatalogo.estrada,
     dica:
-        'Crossover, só gasolina. Tanque 14,1 L — o resto é porta-capacete. Óleo ~6.000 km.',
+        'Crossover, só gasolina. Tanque 14,1 L, o resto é porta-capacete. Óleo ~6.000 km.',
     psiDianteiro: 29,
     psiTraseiro: 36,
     oleoKm: 6000,
@@ -353,7 +367,7 @@ const List<ModeloCatalogo> catalogoMotos = [
     kmPorLitroAlcool: 30,
     tanqueLitros: 12,
     uso: UsoCatalogo.estrada,
-    dica: 'BlueFlex, trail. Tanque 12 L. No álcool ~30 km/l. Pneu 22/29 PSI.',
+    dica: 'BlueFlex, trail. Tanque 12 L. No álcool a média cai. Pneu 22/29 PSI.',
     psiDianteiro: 22,
     correnteKm: 1000,
   ),
@@ -432,7 +446,7 @@ const List<ModeloCatalogo> catalogoMotos = [
     tanqueLitros: 15,
     flex: false,
     uso: UsoCatalogo.estrada,
-    dica: 'Custom, só gasolina. Tanque 15 L — mais autonomia que a Classic. Óleo ~6.000 km.',
+    dica: 'Custom, só gasolina. Tanque 15 L, mais autonomia que a Classic. Óleo ~6.000 km.',
     psiDianteiro: 25,
     psiTraseiro: 32,
     oleoKm: 6000,
@@ -446,7 +460,7 @@ const List<ModeloCatalogo> catalogoMotos = [
     tanqueLitros: 17,
     flex: false,
     uso: UsoCatalogo.estrada,
-    dica: 'Trail, só gasolina. Tanque 17 L. Uso misto ~26 km/l. Pneu 22/29 PSI. Óleo ~6.000 km.',
+    dica: 'Trail, só gasolina. Tanque 17 L. Uso misto. Pneu 22/29 PSI. Óleo ~6.000 km.',
     psiDianteiro: 22,
     oleoKm: 6000,
     correnteKm: 1000,
@@ -486,7 +500,7 @@ const List<ModeloCatalogo> catalogoMotos = [
     tanqueLitros: 20,
     flex: false,
     uso: UsoCatalogo.estrada,
-    dica: 'Big trail, só gasolina. Tanque 20 L. Uso misto ~20 km/l. Óleo ~6.000 km.',
+    dica: 'Big trail, só gasolina. Tanque 20 L. Uso misto. Óleo ~6.000 km.',
     psiDianteiro: 29,
     psiTraseiro: 36,
     oleoKm: 6000,
@@ -640,7 +654,7 @@ const List<ModeloCatalogo> catalogoMotos = [
     flex: false,
     uso: UsoCatalogo.estrada,
     dica:
-        'Boxer clássico, só gasolina. Tanque 20 L. Cardã: sem corrente. Óleo ~10.000 km.',
+        'Boxer clássico, só gasolina. Tanque 20 L. Cardã, sem corrente. Óleo ~10.000 km.',
     psiDianteiro: 36,
     psiTraseiro: 42,
     oleoKm: 10000,
@@ -654,7 +668,7 @@ const List<ModeloCatalogo> catalogoMotos = [
     flex: false,
     uso: UsoCatalogo.estrada,
     dica:
-        'A GS do motoclube, só gasolina. Tanque 20 L. Cardã: sem corrente. Óleo ~10.000 km.',
+        'A GS do motoclube, só gasolina. Tanque 20 L. Cardã, sem corrente. Óleo ~10.000 km.',
     psiDianteiro: 36,
     psiTraseiro: 42,
     oleoKm: 10000,
@@ -668,7 +682,7 @@ const List<ModeloCatalogo> catalogoMotos = [
     flex: false,
     uso: UsoCatalogo.estrada,
     dica:
-        'Expedição, só gasolina. Tanque 30 L. Cardã: sem corrente. Óleo ~10.000 km.',
+        'Expedição, só gasolina. Tanque 30 L. Cardã, sem corrente. Óleo ~10.000 km.',
     psiDianteiro: 36,
     psiTraseiro: 42,
     oleoKm: 10000,
@@ -682,9 +696,94 @@ const List<ModeloCatalogo> catalogoMotos = [
     flex: false,
     uso: UsoCatalogo.estrada,
     dica:
-        'Boxer atual, só gasolina. Tanque 19 L. Cardã: sem corrente. Óleo ~10.000 km.',
+        'Boxer atual, só gasolina. Tanque 19 L. Cardã, sem corrente. Óleo ~10.000 km.',
     psiDianteiro: 36,
     psiTraseiro: 42,
     oleoKm: 10000,
+  ),
+  ModeloCatalogo(
+    marca: 'Honda',
+    modelo: 'CBR 500R',
+    cilindradaCc: 471,
+    kmPorLitro: 25,
+    tanqueLitros: 17.1,
+    flex: false,
+    uso: UsoCatalogo.esporte,
+    dica: 'Esportiva, só gasolina. Tanque 17,1 L. Corrente ~1.000 km.',
+    psiDianteiro: 29,
+    psiTraseiro: 32,
+    oleoKm: 6000,
+    correnteKm: 1000,
+  ),
+  ModeloCatalogo(
+    marca: 'Honda',
+    modelo: 'CB 500F',
+    cilindradaCc: 471,
+    kmPorLitro: 26,
+    tanqueLitros: 16.7,
+    flex: false,
+    uso: UsoCatalogo.esporte,
+    dica: 'Naked média, só gasolina. Tanque 16,7 L. Corrente ~1.000 km.',
+    psiDianteiro: 29,
+    psiTraseiro: 32,
+    oleoKm: 6000,
+    correnteKm: 1000,
+  ),
+  ModeloCatalogo(
+    marca: 'Yamaha',
+    modelo: 'R3',
+    cilindradaCc: 321,
+    kmPorLitro: 25,
+    tanqueLitros: 14,
+    flex: false,
+    uso: UsoCatalogo.esporte,
+    nomeLista: 'Yamaha YZF-R3',
+    dica: 'Esportiva leve, só gasolina. Tanque 14 L. Corrente ~1.000 km.',
+    psiDianteiro: 29,
+    psiTraseiro: 32,
+    oleoKm: 6000,
+    correnteKm: 1000,
+  ),
+  ModeloCatalogo(
+    marca: 'Yamaha',
+    modelo: 'MT-03',
+    cilindradaCc: 321,
+    kmPorLitro: 26,
+    tanqueLitros: 14,
+    flex: false,
+    uso: UsoCatalogo.esporte,
+    dica: 'Naked leve, só gasolina. Tanque 14 L. Corrente ~1.000 km.',
+    psiDianteiro: 29,
+    psiTraseiro: 32,
+    oleoKm: 6000,
+    correnteKm: 1000,
+  ),
+  ModeloCatalogo(
+    marca: 'Kawasaki',
+    modelo: 'Ninja 400',
+    cilindradaCc: 399,
+    kmPorLitro: 24,
+    tanqueLitros: 14,
+    flex: false,
+    uso: UsoCatalogo.esporte,
+    dica: 'Esportiva, só gasolina. Tanque 14 L. Corrente ~1.000 km.',
+    psiDianteiro: 29,
+    psiTraseiro: 32,
+    oleoKm: 6000,
+    correnteKm: 1000,
+  ),
+  ModeloCatalogo(
+    marca: 'KTM',
+    modelo: 'Duke 390',
+    cilindradaCc: 399,
+    kmPorLitro: 25,
+    tanqueLitros: 15,
+    flex: false,
+    uso: UsoCatalogo.esporte,
+    dica: 'Naked, só gasolina. Tanque 15 L. Corrente ~1.000 km.',
+    psiDianteiro: 29,
+    psiTraseiro: 32,
+    oleoKm: 6000,
+    correnteKm: 1000,
   ),
 ];

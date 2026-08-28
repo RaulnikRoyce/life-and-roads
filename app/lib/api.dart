@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:life_and_roads/core/config/ambiente.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class FalhaApi implements Exception {
@@ -11,18 +12,15 @@ class FalhaApi implements Exception {
   String toString() => mensagem;
 }
 
-/// Cliente da API life.and.roads (porta 3001). O Beco fica no 3000.
+/// Cliente HTTP da API life.and.roads (porta 3001).
 class ApiCaderneta {
-  static const padrao = String.fromEnvironment(
-    'API_BASE',
-    defaultValue: 'http://localhost:3001',
-  );
+  static String get padrao => Ambiente.apiPadrao;
   static const chaveToken = 'token_life_and_roads';
-  static const chaveFicha = 'ficha_moto_v1';
+  static const chaveRefresh = 'refresh_life_and_roads';
   static const chaveBase = 'api_base_v1';
   static const _timeout = Duration(seconds: 8);
 
-  static String _base = padrao;
+  static String _base = Ambiente.apiPadrao;
   static String get base => _base;
 
   static String _semBarra(String url) {
@@ -32,6 +30,10 @@ class ApiCaderneta {
   }
 
   static Future<void> carregarBase() async {
+    if (!Ambiente.exibeCampoServidor) {
+      _base = padrao;
+      return;
+    }
     final prefs = await SharedPreferences.getInstance();
     final salvo = prefs.getString(chaveBase);
     if (salvo == null || salvo.trim().isEmpty) {
@@ -42,6 +44,10 @@ class ApiCaderneta {
   }
 
   static Future<void> definirBase(String url) async {
+    if (!Ambiente.exibeCampoServidor) {
+      _base = padrao;
+      return;
+    }
     final limpo = _semBarra(url);
     _base = limpo.isEmpty ? padrao : limpo;
     final prefs = await SharedPreferences.getInstance();
@@ -119,30 +125,93 @@ class ApiCaderneta {
     return _corpo(r);
   }
 
+  static Future<http.Response> _comAuth(
+    String token,
+    Future<http.Response> Function(String token) enviar,
+  ) async {
+    final r = await enviar(token).timeout(_timeout);
+    if (r.statusCode != 401) return r;
+    final novo = await renovarAccess();
+    if (novo == null) return r;
+    return enviar(novo).timeout(_timeout);
+  }
+
+  static Future<String?> renovarAccess() async {
+    final prefs = await SharedPreferences.getInstance();
+    final refresh = prefs.getString(chaveRefresh);
+    if (refresh == null || refresh.isEmpty) return null;
+    try {
+      final r = await http
+          .post(
+            Uri.parse('$base/auth/refresh'),
+            headers: _cabecalhos(),
+            body: jsonEncode({'refreshToken': refresh}),
+          )
+          .timeout(_timeout);
+      if (r.statusCode != 200) {
+        await prefs.remove(chaveToken);
+        await prefs.remove(chaveRefresh);
+        return null;
+      }
+      final corpo = _corpo(r);
+      final token = '${corpo['token'] ?? ''}';
+      final novoRefresh = '${corpo['refreshToken'] ?? refresh}';
+      if (token.isEmpty) return null;
+      await prefs.setString(chaveToken, token);
+      await prefs.setString(chaveRefresh, novoRefresh);
+      return token;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<void> encerrarSessaoRemota() async {
+    final prefs = await SharedPreferences.getInstance();
+    final refresh = prefs.getString(chaveRefresh);
+    if (refresh == null || refresh.isEmpty) return;
+    try {
+      await http
+          .post(
+            Uri.parse('$base/auth/sair'),
+            headers: _cabecalhos(),
+            body: jsonEncode({'refreshToken': refresh}),
+          )
+          .timeout(_timeout);
+    } catch (_) {
+      // local já apaga a sessão
+    }
+  }
+
   static Future<Map<String, dynamic>?> buscarFicha(String token) async {
-    final r = await http
-        .get(Uri.parse('$base/ficha'), headers: _cabecalhos(token: token))
-        .timeout(_timeout);
+    final r = await _comAuth(
+      token,
+      (t) => http.get(Uri.parse('$base/ficha'), headers: _cabecalhos(token: t)),
+    );
     if (r.statusCode == 404) return null;
     if (r.statusCode != 200) throw _erro(r);
     return _corpo(r);
   }
 
   static Future<void> salvarFicha(String token, Map<String, dynamic> ficha) async {
-    final r = await http
-        .put(
-          Uri.parse('$base/ficha'),
-          headers: _cabecalhos(token: token),
-          body: jsonEncode(ficha),
-        )
-        .timeout(_timeout);
+    final r = await _comAuth(
+      token,
+      (t) => http.put(
+        Uri.parse('$base/ficha'),
+        headers: _cabecalhos(token: t),
+        body: jsonEncode(ficha),
+      ),
+    );
     if (r.statusCode != 200) throw _erro(r);
   }
 
   static Future<Map<String, dynamic>?> buscarManutencao(String token) async {
-    final r = await http
-        .get(Uri.parse('$base/manutencao'), headers: _cabecalhos(token: token))
-        .timeout(_timeout);
+    final r = await _comAuth(
+      token,
+      (t) => http.get(
+        Uri.parse('$base/manutencao'),
+        headers: _cabecalhos(token: t),
+      ),
+    );
     if (r.statusCode == 404) return null;
     if (r.statusCode != 200) throw _erro(r);
     return _corpo(r);
@@ -152,20 +221,25 @@ class ApiCaderneta {
     String token,
     Map<String, dynamic> manutencao,
   ) async {
-    final r = await http
-        .put(
-          Uri.parse('$base/manutencao'),
-          headers: _cabecalhos(token: token),
-          body: jsonEncode(manutencao),
-        )
-        .timeout(_timeout);
+    final r = await _comAuth(
+      token,
+      (t) => http.put(
+        Uri.parse('$base/manutencao'),
+        headers: _cabecalhos(token: t),
+        body: jsonEncode(manutencao),
+      ),
+    );
     if (r.statusCode != 200) throw _erro(r);
   }
 
   static Future<Map<String, dynamic>?> buscarLocalizacao(String token) async {
-    final r = await http
-        .get(Uri.parse('$base/localizacao'), headers: _cabecalhos(token: token))
-        .timeout(_timeout);
+    final r = await _comAuth(
+      token,
+      (t) => http.get(
+        Uri.parse('$base/localizacao'),
+        headers: _cabecalhos(token: t),
+      ),
+    );
     if (r.statusCode == 404) return null;
     if (r.statusCode != 200) throw _erro(r);
     return _corpo(r);
@@ -176,16 +250,69 @@ class ApiCaderneta {
     required double latitude,
     required double longitude,
   }) async {
-    final r = await http
-        .put(
-          Uri.parse('$base/localizacao'),
-          headers: _cabecalhos(token: token),
-          body: jsonEncode({
-            'latitude': latitude,
-            'longitude': longitude,
-          }),
-        )
-        .timeout(_timeout);
+    final r = await _comAuth(
+      token,
+      (t) => http.put(
+        Uri.parse('$base/localizacao'),
+        headers: _cabecalhos(token: t),
+        body: jsonEncode({
+          'latitude': latitude,
+          'longitude': longitude,
+        }),
+      ),
+    );
     if (r.statusCode != 200) throw _erro(r);
+  }
+
+  static Future<void> excluirConta(String token) async {
+    final r = await _comAuth(
+      token,
+      (t) => http.delete(
+        Uri.parse('$base/auth/conta'),
+        headers: _cabecalhos(token: t),
+      ),
+    );
+    if (r.statusCode != 200) throw _erro(r);
+  }
+
+  static Future<Map<String, dynamic>> trocarSenha({
+    required String token,
+    required String senhaAtual,
+    required String senhaNova,
+  }) async {
+    final r = await _comAuth(
+      token,
+      (t) => http.post(
+        Uri.parse('$base/auth/senha'),
+        headers: _cabecalhos(token: t),
+        body: jsonEncode({
+          'senhaAtual': senhaAtual,
+          'senhaNova': senhaNova,
+        }),
+      ),
+    );
+    if (r.statusCode != 200) throw _erro(r);
+    return _corpo(r);
+  }
+
+  /// Crash do aparelho. Sem ficha nem e-mail. Falha de rede é ignorada.
+  static Future<void> relatarCrash({
+    required String tipo,
+    required String mensagem,
+    required String ambiente,
+  }) async {
+    try {
+      await http
+          .post(
+            Uri.parse('$base/monitor/evento'),
+            headers: _cabecalhos(),
+            body: jsonEncode({
+              'tipo': tipo,
+              'mensagem': mensagem,
+              'ambiente': ambiente,
+            }),
+          )
+          .timeout(_timeout);
+    } catch (_) {}
   }
 }

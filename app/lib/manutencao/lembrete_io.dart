@@ -1,15 +1,28 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:life_and_roads/features/manutencao/domain/aviso_caderneta.dart';
+import 'package:life_and_roads/features/manutencao/domain/usecases/montar_horarios_lembrete.dart';
+import 'package:life_and_roads/manutencao/resultado_lembrete.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
-/// Agenda 9h (Brasília) no dia do vencimento. Só roda no Android/APK.
-Future<void> agendarLembretes({
+const _detalhe = NotificationDetails(
+  android: AndroidNotificationDetails(
+    'manutencao',
+    'Manutenção',
+    channelDescription: 'Lembrete de óleo, pneus e papelada',
+  ),
+);
+
+/// Agenda 9h (Brasília). Data passada vira amanhã; semana se falta mais de 7 dias.
+Future<ResultadoLembrete> agendarLembretes({
   DateTime? oleo,
   DateTime? pneus,
   DateTime? ipva,
   DateTime? seguro,
   DateTime? licenciamento,
   DateTime? cnh,
+  List<AvisoCaderneta> kmAtrasados = const [],
+  bool dispararKmAgora = false,
 }) async {
   try {
     tzdata.initializeTimeZones();
@@ -22,53 +35,51 @@ Future<void> agendarLembretes({
       ),
     );
 
-    await plugin
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
-        ?.requestNotificationsPermission();
+    final android = plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    if (android != null) {
+      final ok = await android.requestNotificationsPermission();
+      if (ok == false) return ResultadoLembrete.permissaoNegada;
+    }
 
     await plugin.cancelAll();
-    await _um(plugin, 1, oleo, 'Óleo da moto', 'Hoje vence a troca de óleo.');
-    await _um(plugin, 2, pneus, 'Pneus da moto', 'Hoje vence a troca de pneus.');
-    await _um(plugin, 3, ipva, 'IPVA', 'Hoje vence o IPVA.');
-    await _um(plugin, 4, seguro, 'Seguro', 'Hoje vence o seguro.');
-    await _um(plugin, 5, licenciamento, 'Licenciamento', 'Hoje vence o licenciamento.');
-    await _um(plugin, 6, cnh, 'CNH', 'Hoje vence a CNH.');
-  } catch (_) {
-    // Teste, web ou permissão negada: o aviso na tela continua valendo.
-  }
-}
-
-Future<void> _um(
-  FlutterLocalNotificationsPlugin plugin,
-  int id,
-  DateTime? dia,
-  String titulo,
-  String corpo,
-) async {
-  if (dia == null) return;
-
-  final quando = tz.TZDateTime(
-    tz.local,
-    dia.year,
-    dia.month,
-    dia.day,
-    9,
-  );
-  if (quando.isBefore(tz.TZDateTime.now(tz.local))) return;
-
-  await plugin.zonedSchedule(
-    id,
-    titulo,
-    corpo,
-    quando,
-    const NotificationDetails(
-      android: AndroidNotificationDetails(
-        'manutencao',
-        'Manutenção',
-        channelDescription: 'Lembrete de óleo, pneus e papelada',
+    final agora = tz.TZDateTime.now(tz.local);
+    final disparos = const MontarHorariosLembrete().executar(
+      agora: DateTime(
+        agora.year,
+        agora.month,
+        agora.day,
+        agora.hour,
+        agora.minute,
+        agora.second,
       ),
-    ),
-    androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-  );
+      oleo: oleo,
+      pneus: pneus,
+      ipva: ipva,
+      seguro: seguro,
+      licenciamento: licenciamento,
+      cnh: cnh,
+    );
+    for (final d in disparos) {
+      await plugin.zonedSchedule(
+        d.id,
+        d.titulo,
+        d.corpo,
+        tz.TZDateTime(tz.local, d.quando.year, d.quando.month, d.quando.day, 9),
+        _detalhe,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      );
+    }
+
+    if (dispararKmAgora) {
+      var idKm = 21;
+      for (final a in kmAtrasados) {
+        await plugin.show(idKm, 'Manutenção', a.texto, _detalhe);
+        idKm++;
+      }
+    }
+    return ResultadoLembrete.ok;
+  } catch (_) {
+    return ResultadoLembrete.indisponivel;
+  }
 }

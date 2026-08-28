@@ -2,9 +2,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:life_and_roads/mapa/ponto.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'helpers/banco_teste.dart';
+
 void main() {
-  setUp(() {
+  setUp(() async {
     SharedPreferences.setMockInitialValues({});
+    await abrirBancoTeste();
+  });
+
+  tearDown(() async {
+    await fecharBancoTeste();
   });
 
   test('JSON inválido não vira ponto', () {

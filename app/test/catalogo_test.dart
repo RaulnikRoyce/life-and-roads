@@ -1,7 +1,9 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_and_roads/ficha/catalogo.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   test('catálogo tem flex com km/l de álcool e gasolina-only sem álcool', () {
     expect(catalogoMotos.length, greaterThanOrEqualTo(20));
 
@@ -80,6 +82,34 @@ void main() {
     expect(ibex.tanqueLitros, 20);
   });
 
+  test('filtro esportiva e silhueta local', () {
+    final esporte = catalogoFiltrado(UsoCatalogo.esporte);
+    expect(esporte, isNotEmpty);
+    expect(esporte.every((m) => m.uso == UsoCatalogo.esporte), isTrue);
+    expect(esporte.any((m) => m.modelo == 'CBR 500R'), isTrue);
+    expect(esporte.any((m) => m.modelo == 'CB 500F'), isTrue);
+    expect(esporte.any((m) => m.modelo == 'R3'), isTrue);
+    expect(esporte.any((m) => m.modelo == 'MT-03'), isTrue);
+    expect(esporte.any((m) => m.modelo == 'Ninja 400'), isTrue);
+    expect(esporte.any((m) => m.modelo == 'Duke 390'), isTrue);
+
+    final cbr = catalogoMotos.firstWhere((m) => m.modelo == 'CBR 500R');
+    expect(cbr.flex, isFalse);
+    expect(cbr.kmPorLitroAlcool, isNull);
+    expect(cbr.assetSilhueta, 'assets/catalogo/esporte.png');
+
+    final elite = catalogoMotos.firstWhere((m) => m.modelo == 'Elite 125');
+    expect(elite.assetSilhueta, 'assets/catalogo/scooter.png');
+
+    final bros = catalogoMotos.firstWhere((m) => m.modelo == 'NXR 160 Bros');
+    expect(bros.assetSilhueta, 'assets/catalogo/estrada.png');
+
+    final cg = catalogoMotos.firstWhere((m) => m.modelo == 'CG 160');
+    expect(cg.flex, isTrue);
+    expect(cg.kmPorLitroAlcool, 35);
+    expect(cg.assetSilhueta, 'assets/catalogo/cidade.png');
+  });
+
   test('BMW GS de motoclube: corrente nas F e cardã nas R', () {
     final g310 = catalogoMotos.firstWhere((m) => m.modelo == 'G 310 GS');
     expect(g310.uso, UsoCatalogo.estrada);
@@ -100,5 +130,17 @@ void main() {
     expect(r1300.cilindradaCc, 1300);
     expect(r1300.correnteKm, isNull);
     expect(r1300.uso, UsoCatalogo.estrada);
+  });
+
+  test('silhuetas originais estão no bundle', () async {
+    for (final p in [
+      'assets/catalogo/cidade.png',
+      'assets/catalogo/estrada.png',
+      'assets/catalogo/esporte.png',
+      'assets/catalogo/scooter.png',
+    ]) {
+      final dados = await rootBundle.load(p);
+      expect(dados.lengthInBytes, greaterThan(100), reason: p);
+    }
   });
 }

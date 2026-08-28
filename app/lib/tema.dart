@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Paleta da logo: preto, cinza das faixas, vinho, branco das letras.
-/// Vinho da UI é um pouco mais claro que o da logo — senão some no asfalto.
+/// Paleta derivada da logomarca: preto, cinza das faixas, vinho e branco.
+/// O vinho da interface é um pouco mais claro que o da marca, para contraste
+/// sobre o fundo escuro.
 class Oficina {
   static const asfalto = Color(0xFF121212);
   static const couro = Color(0xFF2A2A2A);
@@ -16,26 +17,42 @@ class Oficina {
   static const raio = 16.0;
 }
 
-ThemeData temaOficina() {
-  final esquema = const ColorScheme.dark(
-    surface: Oficina.asfalto,
-    onSurface: Oficina.creme,
+ThemeData temaOficina() => _temaOficina(escuro: true);
+
+ThemeData temaOficinaClaro() => _temaOficina(escuro: false);
+
+ThemeData _temaOficina({required bool escuro}) {
+  final fundo = escuro ? Oficina.asfalto : const Color(0xFFF4F0EA);
+  final cartao = escuro ? Oficina.couro : const Color(0xFFE8E2D8);
+  final faixa = escuro ? Oficina.faixa : const Color(0xFFEDE8E0);
+  final texto = escuro ? Oficina.creme : const Color(0xFF1A1A1A);
+  final tinta = escuro ? Oficina.tinta : const Color(0xFF4A4A4A);
+  final mute = escuro ? Oficina.mute : const Color(0xFF6E6E6E);
+  final onPrimary = escuro ? Oficina.creme : Colors.white;
+  final outline = escuro ? const Color(0xFF3A3A3A) : const Color(0xFFD4CEC4);
+  final outlinedSide =
+      escuro ? const Color(0xFF4A3030) : const Color(0xFFC4B8B0);
+
+  final esquema = ColorScheme(
+    brightness: escuro ? Brightness.dark : Brightness.light,
+    surface: fundo,
+    onSurface: texto,
     primary: Oficina.latao,
-    onPrimary: Oficina.creme,
+    onPrimary: onPrimary,
     secondary: Oficina.ferrugem,
-    onSecondary: Oficina.creme,
+    onSecondary: onPrimary,
     error: Oficina.ferrugem,
-    onError: Oficina.creme,
-    outline: Color(0xFF3A3A3A),
-    surfaceContainerHighest: Oficina.couro,
+    onError: onPrimary,
+    outline: outline,
+    surfaceContainerHighest: cartao,
   );
 
-  final texto = TextTheme(
+  final textoTema = TextTheme(
     headlineSmall: GoogleFonts.oswald(
       fontSize: 26,
       fontWeight: FontWeight.w600,
       letterSpacing: 0.4,
-      color: Oficina.creme,
+      color: texto,
     ),
     titleLarge: GoogleFonts.oswald(
       fontSize: 20,
@@ -47,17 +64,17 @@ ThemeData temaOficina() {
       fontSize: 17,
       fontWeight: FontWeight.w600,
       height: 1.25,
-      color: Oficina.creme,
+      color: texto,
     ),
     bodyLarge: GoogleFonts.sourceSans3(
       fontSize: 16,
       height: 1.4,
-      color: Oficina.tinta,
+      color: tinta,
     ),
     bodyMedium: GoogleFonts.sourceSans3(
       fontSize: 14,
       height: 1.45,
-      color: Oficina.tinta,
+      color: tinta,
     ),
     labelLarge: GoogleFonts.oswald(
       fontSize: 12,
@@ -73,14 +90,14 @@ ThemeData temaOficina() {
 
   return ThemeData(
     useMaterial3: true,
-    brightness: Brightness.dark,
+    brightness: escuro ? Brightness.dark : Brightness.light,
     colorScheme: esquema,
-    scaffoldBackgroundColor: Oficina.asfalto,
-    textTheme: texto,
+    scaffoldBackgroundColor: fundo,
+    textTheme: textoTema,
     splashFactory: InkRipple.splashFactory,
     appBarTheme: AppBarTheme(
-      backgroundColor: Oficina.asfalto,
-      foregroundColor: Oficina.creme,
+      backgroundColor: fundo,
+      foregroundColor: texto,
       elevation: 0,
       scrolledUnderElevation: 0,
       centerTitle: false,
@@ -88,11 +105,11 @@ ThemeData temaOficina() {
         fontSize: 20,
         fontWeight: FontWeight.w500,
         letterSpacing: 1.0,
-        color: Oficina.creme,
+        color: texto,
       ),
     ),
     navigationBarTheme: NavigationBarThemeData(
-      backgroundColor: Oficina.faixa,
+      backgroundColor: faixa,
       indicatorColor: Oficina.latao.withValues(alpha: 0.28),
       elevation: 0,
       height: 72,
@@ -101,21 +118,21 @@ ThemeData temaOficina() {
         return GoogleFonts.oswald(
           fontSize: 11,
           letterSpacing: 0.4,
-          color: ativo ? Oficina.latao : Oficina.mute,
+          color: ativo ? Oficina.latao : mute,
         );
       }),
       iconTheme: WidgetStateProperty.resolveWith((states) {
         final ativo = states.contains(WidgetState.selected);
         return IconThemeData(
-          color: ativo ? Oficina.latao : Oficina.mute,
+          color: ativo ? Oficina.latao : mute,
           size: 24,
         );
       }),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: Oficina.couro,
-      labelStyle: const TextStyle(color: Oficina.mute),
+      fillColor: cartao,
+      labelStyle: TextStyle(color: mute),
       floatingLabelStyle: const TextStyle(color: Oficina.latao),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       border: campo,
@@ -128,7 +145,7 @@ ThemeData temaOficina() {
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         backgroundColor: Oficina.latao,
-        foregroundColor: Oficina.creme,
+        foregroundColor: onPrimary,
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
         minimumSize: const Size.fromHeight(52),
         elevation: 0,
@@ -144,8 +161,8 @@ ThemeData temaOficina() {
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        foregroundColor: Oficina.creme,
-        side: const BorderSide(color: Color(0xFF4A3030)),
+        foregroundColor: texto,
+        side: BorderSide(color: outlinedSide),
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
         minimumSize: const Size.fromHeight(52),
         shape: RoundedRectangleBorder(
@@ -160,17 +177,24 @@ ThemeData temaOficina() {
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(foregroundColor: Oficina.latao),
     ),
+    chipTheme: ChipThemeData(
+      backgroundColor: cartao,
+      selectedColor: Oficina.latao.withValues(alpha: 0.2),
+      labelStyle: GoogleFonts.sourceSans3(color: texto, fontSize: 13),
+      side: BorderSide.none,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    ),
     segmentedButtonTheme: SegmentedButtonThemeData(
       style: ButtonStyle(
         visualDensity: VisualDensity.standard,
         tapTargetSize: MaterialTapTargetSize.padded,
         foregroundColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return Oficina.creme;
-          return Oficina.tinta;
+          if (states.contains(WidgetState.selected)) return onPrimary;
+          return tinta;
         }),
         backgroundColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) return Oficina.latao;
-          return Oficina.couro;
+          return cartao;
         }),
         side: WidgetStateProperty.all(BorderSide.none),
         shape: WidgetStateProperty.all(
@@ -179,8 +203,8 @@ ThemeData temaOficina() {
       ),
     ),
     snackBarTheme: SnackBarThemeData(
-      backgroundColor: Oficina.couro,
-      contentTextStyle: GoogleFonts.sourceSans3(color: Oficina.creme),
+      backgroundColor: cartao,
+      contentTextStyle: GoogleFonts.sourceSans3(color: texto),
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
@@ -189,7 +213,7 @@ ThemeData temaOficina() {
     dropdownMenuTheme: DropdownMenuThemeData(
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: Oficina.couro,
+        fillColor: cartao,
         border: campo,
         enabledBorder: campo,
       ),
@@ -198,19 +222,25 @@ ThemeData temaOficina() {
       color: Oficina.latao,
     ),
     datePickerTheme: DatePickerThemeData(
-      backgroundColor: Oficina.couro,
-      headerBackgroundColor: Oficina.asfalto,
+      backgroundColor: cartao,
+      headerBackgroundColor: fundo,
       headerForegroundColor: Oficina.latao,
     ),
+    bottomSheetTheme: BottomSheetThemeData(
+      backgroundColor: cartao,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+    ),
     dividerColor: Colors.transparent,
-    expansionTileTheme: const ExpansionTileThemeData(
+    expansionTileTheme: ExpansionTileThemeData(
       iconColor: Oficina.latao,
-      collapsedIconColor: Oficina.mute,
-      shape: Border(),
-      collapsedShape: Border(),
+      collapsedIconColor: mute,
+      shape: const Border(),
+      collapsedShape: const Border(),
     ),
     dialogTheme: DialogThemeData(
-      backgroundColor: Oficina.couro,
+      backgroundColor: cartao,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(Oficina.raio),
       ),
@@ -274,7 +304,7 @@ class CartaoOficina extends StatelessWidget {
       child: SizedBox(
         width: double.infinity,
         child: ColoredBox(
-          color: Oficina.couro,
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
           child: Stack(
             children: [
               Padding(
@@ -374,7 +404,7 @@ class LinhaData extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Material(
-        color: Oficina.couro,
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
           onTap: onTap,

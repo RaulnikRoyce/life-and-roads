@@ -1,6 +1,7 @@
 import 'dart:convert';
 
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:life_and_roads/core/database/armazem_kv.dart';
+import 'package:life_and_roads/core/database/chaves_kv.dart';
 
 /// Óleo e corrente por km + CNH (só a data). Local, sem placa.
 class ManutencaoExtra {
@@ -10,6 +11,7 @@ class ManutencaoExtra {
     this.correnteKmUltima,
     this.correnteKmIntervalo = 1000,
     this.cnhProxima,
+    this.cnhCincoAnos = false,
   });
 
   final double? oleoKmUltima;
@@ -18,7 +20,32 @@ class ManutencaoExtra {
   final double correnteKmIntervalo;
   final String? cnhProxima;
 
-  static const chave = 'manutencao_km_v1';
+  /// true = renova em 5 anos; false = 10.
+  final bool cnhCincoAnos;
+
+  static const chave = ChavesKv.extra;
+
+  ManutencaoExtra copiarCom({
+    double? oleoKmUltima,
+    bool limparOleoKm = false,
+    double? oleoKmIntervalo,
+    double? correnteKmUltima,
+    bool limparCorrenteKm = false,
+    double? correnteKmIntervalo,
+    String? cnhProxima,
+    bool limparCnh = false,
+    bool? cnhCincoAnos,
+  }) {
+    return ManutencaoExtra(
+      oleoKmUltima: limparOleoKm ? null : (oleoKmUltima ?? this.oleoKmUltima),
+      oleoKmIntervalo: oleoKmIntervalo ?? this.oleoKmIntervalo,
+      correnteKmUltima:
+          limparCorrenteKm ? null : (correnteKmUltima ?? this.correnteKmUltima),
+      correnteKmIntervalo: correnteKmIntervalo ?? this.correnteKmIntervalo,
+      cnhProxima: limparCnh ? null : (cnhProxima ?? this.cnhProxima),
+      cnhCincoAnos: cnhCincoAnos ?? this.cnhCincoAnos,
+    );
+  }
 
   Map<String, dynamic> paraJson() => {
         'oleoKmUltima': oleoKmUltima,
@@ -26,6 +53,7 @@ class ManutencaoExtra {
         'correnteKmUltima': correnteKmUltima,
         'correnteKmIntervalo': correnteKmIntervalo,
         'cnhProxima': cnhProxima,
+        'cnhCincoAnos': cnhCincoAnos,
       };
 
   static ManutencaoExtra deJson(Object? bruto) {
@@ -39,6 +67,7 @@ class ManutencaoExtra {
       cnhProxima: '${mapa['cnhProxima'] ?? ''}'.trim().isEmpty
           ? null
           : '${mapa['cnhProxima']}'.trim(),
+      cnhCincoAnos: mapa['cnhCincoAnos'] == true,
     );
   }
 
@@ -49,8 +78,7 @@ class ManutencaoExtra {
   }
 
   static Future<ManutencaoExtra> carregar() async {
-    final prefs = await SharedPreferences.getInstance();
-    final bruto = prefs.getString(chave);
+    final bruto = await ArmazemKv.lerTexto(chave);
     if (bruto == null) return const ManutencaoExtra();
     try {
       return deJson(jsonDecode(bruto));
@@ -59,8 +87,7 @@ class ManutencaoExtra {
     }
   }
 
-  static Future<void> salvar(ManutencaoExtra extra) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(chave, jsonEncode(extra.paraJson()));
+  static Future<void> salvar(ManutencaoExtra extra) {
+    return ArmazemKv.gravarTexto(chave, jsonEncode(extra.paraJson()));
   }
 }

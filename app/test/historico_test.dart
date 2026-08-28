@@ -3,9 +3,16 @@ import 'package:life_and_roads/viagem/calculo.dart';
 import 'package:life_and_roads/viagem/historico.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'helpers/banco_teste.dart';
+
 void main() {
-  setUp(() {
+  setUp(() async {
     SharedPreferences.setMockInitialValues({});
+    await abrirBancoTeste();
+  });
+
+  tearDown(() async {
+    await fecharBancoTeste();
   });
 
   test('grava o posto neste aparelho e calcula o R\$/km médio', () async {
