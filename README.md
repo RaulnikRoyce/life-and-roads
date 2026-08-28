@@ -19,22 +19,6 @@ Documentos:
 - [Termos de uso](docs/termos.md)
 - [Beta fechado (Play)](docs/beta.md)
 - [OpenAPI](docs/openapi.yaml)
-- [ADR 0001. Camadas na Ficha](docs/adr/0001-camadas-ficha.md)
-- [ADR 0002. SQLite/Drift para históricos e pins](docs/adr/0002-drift-historicos.md)
-- [ADR 0003. API TypeScript, sessão e contrato](docs/adr/0003-api-typescript.md)
-- [ADR 0004. Operação](docs/adr/0004-operacao.md)
-- [ADR 0005. Camadas na Manutenção](docs/adr/0005-camadas-manutencao.md)
-- [ADR 0006. Camadas na Viagem](docs/adr/0006-camadas-viagem.md)
-- [ADR 0007. Camadas no Mapa](docs/adr/0007-camadas-mapa.md)
-- [ADR 0008. KV no Drift e URL de ambiente](docs/adr/0008-kv-drift-url.md)
-- [ADR 0009. Confiabilidade](docs/adr/0009-confiabilidade.md)
-- [ADR 0010. Troca de senha](docs/adr/0010-troca-de-senha.md)
-- [ADR 0011. Release 1.2](docs/adr/0011-release-1-2.md)
-- [ADR 0012. Caderneta visível](docs/adr/0012-caderneta-visivel.md)
-- [ADR 0013. Telas em presentation](docs/adr/0013-higiene-telas.md)
-- [ADR 0014. Viagem em linguagem de posto](docs/adr/0014-viagem-posto.md)
-- [ADR 0015. Óleo, lembrete e sininho](docs/adr/0015-oleo-avisos.md)
-- [ADR 0016. Catálogo Esportiva e silhueta](docs/adr/0016-catalogo-esportiva.md)
 
 ## Objetivos
 
