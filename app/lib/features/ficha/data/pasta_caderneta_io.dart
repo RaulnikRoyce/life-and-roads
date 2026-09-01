@@ -20,7 +20,7 @@ Future<({String? caminho, String? erro})> gravarCadernetaJson(
     await file.writeAsString(json);
     return (caminho: file.path, erro: null);
   } catch (_) {
-    return (caminho: null, erro: 'Não deu para salvar o arquivo.');
+    return (caminho: null, erro: 'Não foi possível salvar o arquivo.');
   }
 }
 

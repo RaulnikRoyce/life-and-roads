@@ -232,12 +232,12 @@ String? textoDicaFlex({
   final g = gas.toStringAsFixed(2).replaceAll('.', ',');
   final a = alcool.toStringAsFixed(2).replaceAll('.', ',');
   if ((gas - alcool).abs() < 0.005) {
-    return 'Tanto faz: uns R\$ $g/km nos dois.';
+    return 'Ambos custam R\$ $g/km.';
   }
   if (alcool < gas) {
-    return 'Hoje vale álcool: R\$ $a/km contra R\$ $g/km na gasolina.';
+    return 'Álcool custa menos hoje, R\$ $a/km, gasolina R\$ $g/km.';
   }
-  return 'Hoje vale gasolina: R\$ $g/km contra R\$ $a/km no álcool.';
+  return 'Gasolina custa menos hoje, R\$ $g/km, álcool R\$ $a/km.';
 }
 
 /// Próxima troca = km da última + intervalo (óleo ~3–6 mil, corrente ~1 mil).

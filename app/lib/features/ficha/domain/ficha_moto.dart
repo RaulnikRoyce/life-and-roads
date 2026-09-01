@@ -88,11 +88,11 @@ class FichaMoto {
       return 'Cilindrada em cc, entre 50 e 2000.';
     }
     if (kmLitro < 5 || kmLitro > 80) {
-      return 'Quanto anda com 1 L de gasolina fica entre 5 e 80.';
+      return 'Consumo com gasolina entre 5 e 80 km por litro.';
     }
     if (kmLitroAlcool != null &&
         (kmLitroAlcool! < 5 || kmLitroAlcool! > 80)) {
-      return 'Quanto anda com 1 L de álcool fica entre 5 e 80.';
+      return 'Consumo com álcool entre 5 e 80 km por litro.';
     }
     if (kmAtual < 0 || kmAtual > 999999) {
       return 'Km no painel agora entre 0 e 999999.';
@@ -154,7 +154,7 @@ class FichaMoto {
 
     final kmL = _decimal(kmLitro);
     if (kmL == null || kmL < 5 || kmL > 80) {
-      return (ficha: null, erro: 'Quanto anda com 1 L de gasolina fica entre 5 e 80.');
+      return (ficha: null, erro: 'Consumo com gasolina entre 5 e 80 km por litro.');
     }
 
     final alcoolT = kmLitroAlcool.trim();
@@ -162,7 +162,7 @@ class FichaMoto {
     if (alcoolT.isNotEmpty) {
       alcoolN = _decimal(alcoolT);
       if (alcoolN == null || alcoolN < 5 || alcoolN > 80) {
-        return (ficha: null, erro: 'Quanto anda com 1 L de álcool fica entre 5 e 80.');
+        return (ficha: null, erro: 'Consumo com álcool entre 5 e 80 km por litro.');
       }
     }
 

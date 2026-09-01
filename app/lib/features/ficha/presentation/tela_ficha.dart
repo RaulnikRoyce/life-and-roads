@@ -681,7 +681,7 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Toque para a foto',
+                            'Adicionar foto',
                             style: Theme.of(context).textTheme.bodyMedium,
                           ),
                         ],
@@ -878,7 +878,7 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
               ? (reenviar
                   ? 'Ficha neste aparelho. Reenvia quando a API voltar.'
                   : 'Ficha sincroniza com o servidor')
-              : 'Só para a ficha não sumir na troca de celular.',
+              : 'Evita perder a ficha ao trocar de celular.',
           style: Theme.of(context).textTheme.bodyMedium,
         ),
         children: [

@@ -162,7 +162,7 @@ class _TelaViagemState extends ConsumerState<TelaViagem> {
           kmLitroAlcool: ka,
         );
         final melhor = vence == Combustivel.alcool ? alcool : gas;
-        final nome = vence == null ? 'Tanto faz' : rotuloCombustivel(vence);
+        final nome = vence == null ? 'Equivalente' : rotuloCombustivel(vence);
         final dica = textoDicaFlex(
           precoGasolina: pg,
           precoAlcool: pa,
@@ -180,7 +180,7 @@ class _TelaViagemState extends ConsumerState<TelaViagem> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Quanto sai cada km',
+                'Custo por km',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: 4),
@@ -196,10 +196,10 @@ class _TelaViagemState extends ConsumerState<TelaViagem> {
                 const SizedBox(height: 8),
                 Text(
                   dica.contains('álcool') && (vence == Combustivel.alcool)
-                      ? 'Hoje o álcool sai mais em conta neste rolê.'
+                      ? 'Hoje o álcool custa menos nesta viagem.'
                       : dica.contains('gasolina') && vence == Combustivel.gasolina
-                          ? 'Hoje a gasolina sai mais em conta neste rolê.'
-                          : 'Tanto faz gasolina ou álcool hoje.',
+                          ? 'Hoje a gasolina custa menos nesta viagem.'
+                          : 'Gasolina e álcool custam parecido hoje.',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ],
@@ -213,19 +213,19 @@ class _TelaViagemState extends ConsumerState<TelaViagem> {
     String subtituloViagem;
     if (kmLitroViagem == null) {
       subtituloViagem =
-          'Falta quanto a moto anda no $nomeComb. Preencha na Ficha.';
+          'Informe o consumo com $nomeComb na Ficha.';
     } else {
       final auto = tanqueLitros == null
           ? null
           : autonomiaKm(tanqueLitros: tanqueLitros, kmPorLitro: kmLitroViagem);
       if (auto == null) {
         subtituloViagem =
-            'Com $nomeComb, uns ${_br(kmLitroViagem)} km por litro. '
-            'Informe o tanque na Ficha para saber se o rolê cabe.';
+            'Consumo com $nomeComb, ${_br(kmLitroViagem)} km por litro. '
+            'Informe o tanque na Ficha para ver se a viagem cabe no tanque.';
       } else {
         subtituloViagem =
-            'Com $nomeComb, uns ${_br(kmLitroViagem)} km por litro. '
-            'Tanque ${_br(tanqueLitros!)} L, cheio dá uns ${_br(auto, casas: 0)} km.';
+            'Consumo com $nomeComb, ${_br(kmLitroViagem)} km por litro. '
+            'Tanque de ${_br(tanqueLitros!)} L, cheio rende cerca de ${_br(auto, casas: 0)} km.';
       }
     }
 
@@ -239,7 +239,7 @@ class _TelaViagemState extends ConsumerState<TelaViagem> {
         avisoTanque = 'Cabe no tanque de ${_br(tanqueLitros)} L.';
       } else if (cabe == false) {
         avisoTanque =
-            'Não cabe no tanque (${_br(tanqueLitros)} L). Precisa uns ${_br(resultado.litros)} L.';
+            'Ultrapassa o tanque de ${_br(tanqueLitros)} L. A viagem precisa de ${_br(resultado.litros)} L.';
       }
     }
 
@@ -290,14 +290,14 @@ class _TelaViagemState extends ConsumerState<TelaViagem> {
           cartaoFlex,
           const SizedBox(height: 16),
         ],
-        _campo(_kmViagem, 'Km deste rolê'),
+        _campo(_kmViagem, 'Km da viagem'),
         OutlinedButton(
           onPressed: _marcarNoMapa,
           child: const Text('Marcar no mapa'),
         ),
         const SizedBox(height: 8),
         Text(
-          'Km de estrada (precisa de internet). Sem sinal, digite os km na mão.',
+          'Km de estrada (requer internet). Sem sinal, digite os km manualmente.',
           style: Theme.of(context).textTheme.bodyMedium,
         ),
         const SizedBox(height: 12),
@@ -342,7 +342,7 @@ class _TelaViagemState extends ConsumerState<TelaViagem> {
           subtitulo: kmAtual == null
               ? 'Ainda falta o km do painel na Ficha.'
               : 'Último km gravado: ${_br(kmAtual, casas: 0)}. '
-                  'Escolha gasolina ou álcool, o km no painel agora e os litros que entrou.',
+                  'Indique o combustível, o km do painel e os litros abastecidos.',
         ),
         const SizedBox(height: 16),
         _seletor(
@@ -351,7 +351,7 @@ class _TelaViagemState extends ConsumerState<TelaViagem> {
         ),
         DuplaCampos(
           esquerda: _campo(_kmPainel, 'Km no painel agora'),
-          direita: _campo(_litrosAbastecidos, 'Litros que entrou'),
+          direita: _campo(_litrosAbastecidos, 'Litros abastecidos'),
         ),
         OutlinedButton(
           onPressed: _registrarAbastecimento,

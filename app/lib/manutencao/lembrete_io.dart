@@ -9,7 +9,7 @@ const _detalhe = NotificationDetails(
   android: AndroidNotificationDetails(
     'manutencao',
     'Manutenção',
-    channelDescription: 'Lembrete de óleo, pneus e papelada',
+    channelDescription: 'Lembrete de óleo, pneus e documentos',
   ),
 );
 

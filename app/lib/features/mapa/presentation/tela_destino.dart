@@ -168,11 +168,11 @@ class _TelaDestinoState extends ConsumerState<TelaDestino> {
     }
     if (_buscandoRota) return 'Buscando a estrada…';
     if (_destino == null) {
-      return 'Toque no mapa onde você vai. Usa km de estrada.';
+      return 'Selecione o destino no mapa. Usa km de estrada.';
     }
     final km = _rota?.km;
     if (km == null) {
-      return 'Sem rota. Toque de novo ou volte e digite os km.';
+      return 'Rota indisponível. Toque novamente ou volte e digite os km.';
     }
     return 'Estrada ${_textoKm(km)}. Sem navegação, só o número da viagem.';
   }

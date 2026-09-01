@@ -13,8 +13,8 @@ class MensagensPermissao {
   }
 
   static const camera =
-      'Não deu para abrir a câmera. Tente a galeria.';
+      'Não foi possível abrir a câmera. Use a galeria.';
 
   static const notificacao =
-      'Sem permissão de aviso. Autorize as notificações para lembrar óleo e papelada.';
+      'Sem permissão de notificação. Autorize avisos de óleo e documentos.';
 }

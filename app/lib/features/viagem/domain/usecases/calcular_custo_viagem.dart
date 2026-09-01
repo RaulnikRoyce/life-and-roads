@@ -21,8 +21,8 @@ class CalcularCustoViagem {
       return (
         resultado: null,
         erro: combustivel == Combustivel.alcool
-            ? 'Falta quanto a moto anda no álcool. Preencha na Ficha ou anote um posto com álcool.'
-            : 'Falta quanto a moto anda na gasolina. Preencha na Ficha.',
+            ? 'Informe o consumo com álcool na Ficha ou registre um abastecimento com álcool.'
+            : 'Informe o consumo com gasolina na Ficha.',
       );
     }
     final r = calcularViagem(

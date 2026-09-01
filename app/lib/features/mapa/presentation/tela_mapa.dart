@@ -75,7 +75,7 @@ class _TelaMapaState extends ConsumerState<TelaMapa> {
       _ctrl.aoGps(ponto);
       _irPara(ponto, 16);
     }, onError: (_) {
-      _aviso('Não deu para ler o GPS.');
+      _aviso('Não foi possível ler o GPS.');
       _parar();
     });
   }

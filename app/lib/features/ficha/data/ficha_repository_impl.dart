@@ -128,7 +128,7 @@ class FichaRepositoryImpl implements FichaRepository {
       return FichaSalva(
         ficha: ficha,
         mensagem:
-            'Salva neste aparelho. Entre na conta para não perder na troca de celular.',
+            'Salvo neste aparelho. Use a conta para manter na troca de celular.',
         sync: await _sync.ler(),
       );
     }

@@ -10,7 +10,7 @@ O catálogo da 1.2 só tinha Cidade e Estrada. A foto da ficha só vinha da câm
 ## Decisão
 
 - `UsoCatalogo.esporte` e segmento **Esportiva** (CBR 500R, CB 500F, R3, MT-03, Ninja 400, Duke 390). Sem FIPE, sem placa.
-- Quatro silhuetas originais em `assets/catalogo/` (cidade, estrada, esporte, scooter). Desenho nosso, sem foto de fabricante.
+- Quatro fotos de categoria em `assets/catalogo/` (cidade, estrada, esporte). Uma por segmento, sem foto de fabricante.
 - Ao escolher o modelo, copiar o asset para `FotoMoto` neste aparelho. O piloto troca depois. Nada na API.
 
 ## Consequências

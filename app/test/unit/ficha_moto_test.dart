@@ -96,7 +96,7 @@ void main() {
       kmLitro: '3',
       kmAtual: '10',
     );
-    expect(r.erro, 'Quanto anda com 1 L de gasolina fica entre 5 e 80.');
+    expect(r.erro, 'Consumo com gasolina entre 5 e 80 km por litro.');
   });
 
   test('tentar aceita vírgula decimal', () {

@@ -62,7 +62,7 @@ void main() {
 
     expect(find.text('Sua moto'), findsWidgets);
     expect(find.textContaining('Sem placa'), findsOneWidget);
-    expect(find.text('Toque para a foto'), findsOneWidget);
+    expect(find.text('Adicionar foto'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('Esportiva'),
       200,
@@ -159,9 +159,9 @@ void main() {
     await tester.tap(_aba('Manutenção'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Quando você trocou'), findsOneWidget);
+    expect(find.text('Data da última troca'), findsOneWidget);
     expect(
-      find.text('Próxima troca (o app completa uns seis meses)'),
+      find.text('Próxima troca (o app sugere seis meses depois)'),
       findsOneWidget,
     );
     expect(find.text('Km do painel na troca'), findsOneWidget);
@@ -200,7 +200,7 @@ void main() {
       scrollable: _scroll(),
     );
     expect(find.text('Registrar abastecimento'), findsOneWidget);
-    expect(find.text('Litros que entrou'), findsOneWidget);
+    expect(find.text('Litros abastecidos'), findsOneWidget);
     expect(find.text('Km no painel agora'), findsOneWidget);
   });
 
@@ -220,7 +220,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.textContaining('uns 35'),
+      find.textContaining('Consumo com gasolina'),
       findsOneWidget,
     );
   });

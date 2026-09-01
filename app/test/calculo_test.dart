@@ -109,7 +109,7 @@ void main() {
         kmLitroGasolina: 40,
         kmLitroAlcool: 32,
       ),
-      contains('vale álcool'),
+      contains('custa menos'),
     );
   });
 

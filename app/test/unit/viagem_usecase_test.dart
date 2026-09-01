@@ -62,7 +62,7 @@ void main() {
     expect(r.ficha!.kmLitro, 40);
     expect(r.ficha!.combustivel, Combustivel.gasolina);
     expect(r.registro!.kmPorLitro, 40);
-    expect(r.aviso, contains('Posto anotado'));
+    expect(r.aviso, contains('Abastecimento registrado'));
     expect(r.aviso, isNot(contains('km/l')));
   });
 
@@ -100,7 +100,7 @@ void main() {
       combustivel: Combustivel.gasolina,
     );
     expect(r.registro, isNull);
-    expect(r.erro, contains('quase não andou'));
+    expect(r.erro, contains('muito baixo'));
     expect(r.erro, isNot(contains('km/l')));
   });
 

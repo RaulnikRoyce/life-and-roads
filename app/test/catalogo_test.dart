@@ -82,7 +82,7 @@ void main() {
     expect(ibex.tanqueLitros, 20);
   });
 
-  test('filtro esportiva e silhueta local', () {
+  test('filtro esportiva e foto da categoria', () {
     final esporte = catalogoFiltrado(UsoCatalogo.esporte);
     expect(esporte, isNotEmpty);
     expect(esporte.every((m) => m.uso == UsoCatalogo.esporte), isTrue);
@@ -99,7 +99,7 @@ void main() {
     expect(cbr.assetSilhueta, 'assets/catalogo/esporte.png');
 
     final elite = catalogoMotos.firstWhere((m) => m.modelo == 'Elite 125');
-    expect(elite.assetSilhueta, 'assets/catalogo/scooter.png');
+    expect(elite.assetSilhueta, 'assets/catalogo/cidade.png');
 
     final bros = catalogoMotos.firstWhere((m) => m.modelo == 'NXR 160 Bros');
     expect(bros.assetSilhueta, 'assets/catalogo/estrada.png');
@@ -132,15 +132,15 @@ void main() {
     expect(r1300.uso, UsoCatalogo.estrada);
   });
 
-  test('silhuetas originais estão no bundle', () async {
+  test('fotos das três categorias estão no bundle', () async {
     for (final p in [
       'assets/catalogo/cidade.png',
       'assets/catalogo/estrada.png',
       'assets/catalogo/esporte.png',
-      'assets/catalogo/scooter.png',
     ]) {
       final dados = await rootBundle.load(p);
       expect(dados.lengthInBytes, greaterThan(100), reason: p);
+      expect(dados.lengthInBytes, lessThan(400000), reason: p);
     }
   });
 }

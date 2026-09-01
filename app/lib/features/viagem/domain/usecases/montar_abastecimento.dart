@@ -20,7 +20,7 @@ class MontarAbastecimento {
       return (
         ficha: null,
         registro: null,
-        erro: 'Informe o km no painel agora e os litros que entrou.',
+        erro: 'Informe o km do painel e os litros abastecidos.',
         aviso: null,
       );
     }
@@ -38,7 +38,7 @@ class MontarAbastecimento {
       return (
         ficha: null,
         registro: null,
-        erro: 'Preencha o km do painel na Ficha antes de anotar o posto.',
+        erro: 'Preencha o km do painel na Ficha antes de registrar o abastecimento.',
         aviso: null,
       );
     }
@@ -98,7 +98,7 @@ class MontarAbastecimento {
       ficha: atualizada,
       registro: registro,
       erro: null,
-      aviso: 'Posto anotado. $kmTxt km com $lTxt L.',
+      aviso: 'Abastecimento registrado. $kmTxt km com $lTxt L.',
     );
   }
 
@@ -116,11 +116,11 @@ class MontarAbastecimento {
       return 'Muita diferença de km desde a Ficha. Confira o painel.';
     }
     if (litros < 0.5 || litros > 40) {
-      return 'Os litros deste tanque ficam entre 0,5 e 40.';
+      return 'Litros abastecidos entre 0,5 e 40.';
     }
     final media = kmRodados / litros;
     if (media < 5) {
-      return 'O painel quase não andou para tanto combustível. Confira o km e os litros.';
+      return 'Km rodados muito baixo para o volume abastecido. Confira o km e os litros.';
     }
     if (media > 80) {
       return 'Andou demais para tão pouco combustível. Confira o km e os litros.';

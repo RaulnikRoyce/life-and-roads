@@ -368,7 +368,7 @@ class _TelaManutencaoState extends ConsumerState<TelaManutencao> {
         TituloOficina(
           'Manutenção',
           subtitulo: _kmAtual == null
-              ? 'Óleo, pneu e papelada. Coloque o km na Ficha para o aviso por km.'
+              ? 'Óleo, pneus e documentos. Informe o km na Ficha para o aviso por km.'
               : 'Painel ${_br(_kmAtual!)} km. Aviso por data e por km.',
         ),
         if (estado.emConflito) ...[
@@ -396,9 +396,9 @@ class _TelaManutencaoState extends ConsumerState<TelaManutencao> {
         ],
         const SizedBox(height: 22),
         _rotuloGrupo('Óleo e corrente'),
-        _linha('Quando você trocou', _oleoUltima, _setOleoUltima),
+        _linha('Data da última troca', _oleoUltima, _setOleoUltima),
         _linha(
-          'Próxima troca (o app completa uns seis meses)',
+          'Próxima troca (o app sugere seis meses depois)',
           _oleoProxima,
           (d) => _oleoProxima = d,
         ),
@@ -422,7 +422,7 @@ class _TelaManutencaoState extends ConsumerState<TelaManutencao> {
         _linha('Pneus, próxima', _pneusProxima, (d) => _pneusProxima = d),
         const SizedBox(height: 20),
         TituloOficina(
-          'Papelada',
+          'Documentos',
           subtitulo:
               'IPVA, seguro e licenciamento voltam na mesma data no ano seguinte. CNH dura 10 ou 5 anos. Sem foto da carteira.',
         ),
