@@ -1,0 +1,8 @@
+CREATE TABLE IF NOT EXISTS localizacoes (
+  usuario_id INT NOT NULL PRIMARY KEY,
+  latitude DECIMAL(9,6) NOT NULL,
+  longitude DECIMAL(9,6) NOT NULL,
+  atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_local_usuario
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+);

@@ -9,7 +9,7 @@ COPY --chown=node:node api/ ./
 COPY --chown=node:node docs/openapi.yaml /docs/openapi.yaml
 
 ENV NODE_ENV=production
-ENV APP_ENV=staging
+ENV APP_ENV=production
 EXPOSE 3001
 
 USER node

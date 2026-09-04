@@ -13,7 +13,7 @@
     "start": "tsx src/server.ts",
     "dev": "tsx watch src/server.ts",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --require ./tests/setup-env.cjs --test --test-concurrency=1 tests/health.test.ts tests/unit/ficha.schema.test.ts tests/unit/manutencao.schema.test.ts tests/unit/localizacao.schema.test.ts tests/unit/auth.schema.test.ts tests/integration/auth.db.test.ts"
+    "test": "tsx --require ./tests/setup-env.cjs --test --test-concurrency=1 tests/health.test.ts tests/unit/*.test.ts tests/integration/auth.db.test.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
