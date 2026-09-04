@@ -51,6 +51,19 @@ jobs:
         working-directory: app
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify tag points to main branch
+        run: |
+          TAG_COMMIT=$(git rev-parse HEAD)
+          git fetch origin main:main
+          if ! git merge-base --is-ancestor "$TAG_COMMIT" main; then
+            echo "ERROR: Tag does not point to a commit in the main branch history"
+            echo "Tags must only be created from commits that exist in the protected main branch"
+            exit 1
+          fi
+          echo "Tag verification passed: commit is in main branch history"
+        working-directory: .
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
