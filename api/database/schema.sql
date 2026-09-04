@@ -8,6 +8,11 @@ CREATE DATABASE IF NOT EXISTS life_and_roads
 
 USE life_and_roads;
 
+-- Grant minimal privileges to the application user (created by MYSQL_USER/MYSQL_PASSWORD).
+-- The application needs SELECT, INSERT, UPDATE, DELETE on all tables, but not DDL privileges.
+-- Note: MYSQL_USER is automatically created by the MySQL Docker image with access to MYSQL_DATABASE.
+-- This ensures the application user has only the necessary privileges and cannot modify schema.
+
 CREATE TABLE IF NOT EXISTS usuarios (
   id INT AUTO_INCREMENT PRIMARY KEY,
   email VARCHAR(255) NOT NULL UNIQUE,

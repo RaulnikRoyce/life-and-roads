@@ -3,12 +3,14 @@ services:
   mysql:
     image: mysql:8.0
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD must be set}
       MYSQL_DATABASE: life_and_roads
+      MYSQL_USER: ${MYSQL_USER:-lifeandroads_app}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD must be set}
     ports:
-      - "3306:3306"
+      - "127.0.0.1:3306:3306"
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD:-root}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u${MYSQL_USER:-lifeandroads_app}", "-p${MYSQL_PASSWORD}"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -27,11 +29,11 @@ services:
       APP_ENV: staging
       PORT: 3001
       DB_HOST: mysql
-      DB_USER: root
-      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      DB_USER: ${MYSQL_USER:-lifeandroads_app}
+      DB_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD must be set}
       DB_NAME: life_and_roads
       DB_PORT: 3306
-      JWT_SECRET: ${JWT_SECRET:-troque-na-staging}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
       CORS_ORIGIN: ${CORS_ORIGIN:-}
     depends_on:
       mysql:
