@@ -13,6 +13,17 @@ export type Env = {
   jwtSecret: string;
 };
 
+const KNOWN_WEAK_SECRETS = [
+  'troque-na-staging',
+  'troque-por-um-segredo-longo',
+  'secret',
+  'jwt-secret',
+  'change-me',
+  'changeme',
+];
+
+const MIN_JWT_SECRET_LENGTH = 32;
+
 export const carregarEnv = (): Env => {
   const dbHost = limpar(process.env.DB_HOST);
   const dbUser = limpar(process.env.DB_USER);
@@ -31,6 +42,21 @@ export const carregarEnv = (): Env => {
     throw new Error(
       `Variável obrigatória ausente: ${faltando.join(', ')}. `
         + 'Modelo em api/.env.example. A API escuta na porta 3001.',
+    );
+  }
+
+  if (process.env.NODE_ENV !== 'test' && jwtSecret.length < MIN_JWT_SECRET_LENGTH) {
+    throw new Error(
+      `JWT_SECRET deve ter no mínimo ${MIN_JWT_SECRET_LENGTH} caracteres. `
+        + 'Use um valor criptograficamente seguro e aleatório.',
+    );
+  }
+
+  const normalizedSecret = jwtSecret.toLowerCase();
+  if (process.env.NODE_ENV !== 'test' && KNOWN_WEAK_SECRETS.some(weak => normalizedSecret.includes(weak))) {
+    throw new Error(
+      'JWT_SECRET contém um valor conhecido ou de exemplo. '
+        + 'Use um valor criptograficamente seguro e aleatório.',
     );
   }
 
