@@ -31,7 +31,7 @@ services:
       DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
       DB_NAME: life_and_roads
       DB_PORT: 3306
-      JWT_SECRET: ${JWT_SECRET:-troque-na-staging}
+      JWT_SECRET: ${JWT_SECRET}
       CORS_ORIGIN: ${CORS_ORIGIN:-}
     depends_on:
       mysql:
