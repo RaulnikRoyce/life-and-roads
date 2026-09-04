@@ -75,22 +75,20 @@ test('login, refresh, ficha e exclusão no MySQL', async (t) => {
     });
     assert.equal(put.status, 200);
 
-    const renovar = await fetch(`${base}/auth/refresh`, {
+    const renovar = () => fetch(`${base}/auth/refresh`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ refreshToken: sessao.refreshToken }),
     });
-    assert.equal(renovar.status, 200);
-    const novo = await renovar.json() as { token: string; refreshToken: string };
+    const concorrentes = await Promise.all([renovar(), renovar()]);
+    assert.deepEqual(
+      concorrentes.map((resposta) => resposta.status).sort(),
+      [200, 401],
+    );
+    const respostaNova = concorrentes.find((resposta) => resposta.status === 200)!;
+    const novo = await respostaNova.json() as { token: string; refreshToken: string };
     assert.ok(novo.token);
     assert.notEqual(novo.refreshToken, sessao.refreshToken);
-
-    const reuse = await fetch(`${base}/auth/refresh`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ refreshToken: sessao.refreshToken }),
-    });
-    assert.equal(reuse.status, 401);
 
     const del = await fetch(`${base}/auth/conta`, {
       method: 'DELETE',

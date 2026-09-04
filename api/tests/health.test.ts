@@ -12,7 +12,7 @@ test('GET /health responde ok', async () => {
     const corpo = await resposta.json() as { status: string };
     assert.equal(resposta.status, 200);
     assert.equal(corpo.status, 'ok');
-    assert.equal((corpo as { env?: string }).env, 'development');
+    assert.equal((corpo as { env?: string }).env, undefined);
     assert.ok(resposta.headers.get('x-request-id'));
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));

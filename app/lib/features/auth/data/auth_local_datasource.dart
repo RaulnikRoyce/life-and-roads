@@ -1,12 +1,15 @@
-import 'package:life_and_roads/api.dart';
+import 'package:life_and_roads/core/security/sessao_segura.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthLocalDatasource {
+  AuthLocalDatasource({SessaoSegura? sessao})
+    : _sessao = sessao ?? SessaoSegura();
+
   static const chaveEmail = 'email_life_and_roads';
+  final SessaoSegura _sessao;
 
   Future<String?> lerToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(ApiCaderneta.chaveToken);
+    return _sessao.lerToken();
   }
 
   Future<String?> lerEmail() async {
@@ -20,17 +23,13 @@ class AuthLocalDatasource {
     String? refresh,
   }) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(ApiCaderneta.chaveToken, token);
+    await _sessao.gravar(token: token, refresh: refresh);
     await prefs.setString(chaveEmail, email);
-    if (refresh != null && refresh.isNotEmpty) {
-      await prefs.setString(ApiCaderneta.chaveRefresh, refresh);
-    }
   }
 
   Future<void> apagarSessao() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(ApiCaderneta.chaveToken);
-    await prefs.remove(ApiCaderneta.chaveRefresh);
+    await _sessao.apagar();
     await prefs.remove(chaveEmail);
   }
 }

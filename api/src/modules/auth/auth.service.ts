@@ -1,10 +1,14 @@
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import {
   ACCESS_SEGUNDOS,
   REFRESH_MS,
   REFRESH_SEGUNDOS,
   getJwtSecret,
+  JWT_ALGORITHM,
+  JWT_AUDIENCE,
+  JWT_ISSUER,
 } from '../../shared/config/jwt';
 import { AppError } from '../../shared/errors';
 import * as repo from './auth.repository';
@@ -19,18 +23,33 @@ export type Tokens = {
 
 type JwtRefresh = { id?: unknown; typ?: unknown };
 
-const emitir = async (id: number, email: string): Promise<Tokens> => {
+const criarTokens = (id: number, email: string): Tokens => {
   const secret = getJwtSecret();
-  const token = jwt.sign({ id, typ: 'access' }, secret, { expiresIn: ACCESS_SEGUNDOS });
-  const refreshToken = jwt.sign({ id, typ: 'refresh' }, secret, {
-    expiresIn: REFRESH_SEGUNDOS,
+  const opcoes = {
+    algorithm: JWT_ALGORITHM,
+    issuer: JWT_ISSUER,
+    audience: JWT_AUDIENCE,
+  };
+  const token = jwt.sign({ id, typ: 'access' }, secret, {
+    ...opcoes,
+    expiresIn: ACCESS_SEGUNDOS,
   });
+  const refreshToken = jwt.sign({ id, typ: 'refresh' }, secret, {
+    ...opcoes,
+    expiresIn: REFRESH_SEGUNDOS,
+    jwtid: crypto.randomUUID(),
+  });
+  return { token, refreshToken, expiresIn: ACCESS_SEGUNDOS, email, id };
+};
+
+const emitir = async (id: number, email: string): Promise<Tokens> => {
+  const tokens = criarTokens(id, email);
   await repo.gravarSessao(
     id,
-    repo.hashRefresh(refreshToken),
+    repo.hashRefresh(tokens.refreshToken),
     new Date(Date.now() + REFRESH_MS),
   );
-  return { token, refreshToken, expiresIn: ACCESS_SEGUNDOS, email, id };
+  return tokens;
 };
 
 export const autenticar = async (
@@ -65,7 +84,11 @@ export const registrar = async (
 export const renovar = async (refreshToken: string): Promise<Tokens> => {
   let decoded: JwtRefresh;
   try {
-    decoded = jwt.verify(refreshToken, getJwtSecret()) as JwtRefresh;
+    decoded = jwt.verify(refreshToken, getJwtSecret(), {
+      algorithms: [JWT_ALGORITHM],
+      issuer: JWT_ISSUER,
+      audience: JWT_AUDIENCE,
+    }) as JwtRefresh;
   } catch {
     throw new AppError(401, 'Token inválido ou expirado.');
   }
@@ -77,24 +100,25 @@ export const renovar = async (refreshToken: string): Promise<Tokens> => {
     throw new AppError(401, 'Token inválido ou expirado.');
   }
 
-  const hash = repo.hashRefresh(refreshToken);
-  const sessao = await repo.buscarSessao(hash);
-  if (!sessao || Number(sessao.revogada) === 1) {
-    if (sessao) await repo.revogarTodas(sessao.usuario_id);
-    throw new AppError(401, 'Token inválido ou expirado.');
-  }
-  if (new Date(sessao.expira_em).getTime() <= Date.now()) {
-    await repo.revogarSessao(sessao.id);
-    throw new AppError(401, 'Token inválido ou expirado.');
-  }
-
   const usuario = await repo.buscarPorId(id);
   if (!usuario || !usuario.ativo) {
     throw new AppError(401, 'Token inválido ou expirado.');
   }
 
-  await repo.revogarSessao(sessao.id);
-  return emitir(usuario.id, usuario.email);
+  const tokens = criarTokens(usuario.id, usuario.email);
+  const resultado = await repo.rotacionarSessao(
+    repo.hashRefresh(refreshToken),
+    usuario.id,
+    repo.hashRefresh(tokens.refreshToken),
+    new Date(Date.now() + REFRESH_MS),
+  );
+  if (resultado === 'reutilizada') {
+    await repo.revogarTodas(usuario.id);
+  }
+  if (resultado !== 'ok') {
+    throw new AppError(401, 'Token inválido ou expirado.');
+  }
+  return tokens;
 };
 
 export const sair = async (

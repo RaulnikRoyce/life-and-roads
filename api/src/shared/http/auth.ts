@@ -1,6 +1,11 @@
 import type { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { getJwtSecret } from '../config/jwt';
+import {
+  getJwtSecret,
+  JWT_ALGORITHM,
+  JWT_AUDIENCE,
+  JWT_ISSUER,
+} from '../config/jwt';
 import { buscarPorId } from '../../modules/auth/auth.repository';
 
 type JwtAccess = { id?: unknown; typ?: unknown };
@@ -24,8 +29,12 @@ export const verificarToken = async (
   }
 
   try {
-    const decoded = jwt.verify(token, getJwtSecret()) as JwtAccess;
-    if (decoded.typ && decoded.typ !== 'access') {
+    const decoded = jwt.verify(token, getJwtSecret(), {
+      algorithms: [JWT_ALGORITHM],
+      issuer: JWT_ISSUER,
+      audience: JWT_AUDIENCE,
+    }) as JwtAccess;
+    if (decoded.typ !== 'access') {
       res.status(401).json({ erro: 'Token inválido ou expirado.' });
       return;
     }

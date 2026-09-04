@@ -34,6 +34,13 @@ export const carregarEnv = (): Env => {
     );
   }
 
+  if (Buffer.byteLength(jwtSecret, 'utf8') < 32) {
+    throw new Error('JWT_SECRET deve ter pelo menos 32 bytes aleatórios.');
+  }
+  if (['troque-na-staging', 'troque-por-um-segredo-longo'].includes(jwtSecret)) {
+    throw new Error('JWT_SECRET usa um valor de exemplo inseguro.');
+  }
+
   process.env.DB_HOST = dbHost;
   process.env.DB_USER = dbUser;
   process.env.DB_NAME = dbName;

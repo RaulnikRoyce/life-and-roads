@@ -68,6 +68,51 @@ export async function buscarSessao(tokenHash: string): Promise<SessaoRow | null>
   return rows[0] ?? null;
 }
 
+export async function rotacionarSessao(
+  tokenHash: string,
+  usuarioId: number,
+  novoTokenHash: string,
+  novaExpiracao: Date,
+): Promise<'ok' | 'invalida' | 'reutilizada'> {
+  const conexao = await getPool().getConnection();
+  try {
+    await conexao.beginTransaction();
+    const [rows] = await conexao.execute<SessaoRow[]>(
+      `SELECT id, usuario_id, token_hash, expira_em, revogada
+         FROM sessoes WHERE token_hash = ? FOR UPDATE`,
+      [tokenHash],
+    );
+    const sessao = rows[0];
+    if (!sessao || sessao.usuario_id !== usuarioId) {
+      await conexao.rollback();
+      return 'invalida';
+    }
+    if (Number(sessao.revogada) === 1) {
+      await conexao.commit();
+      return 'reutilizada';
+    }
+    if (new Date(sessao.expira_em).getTime() <= Date.now()) {
+      await conexao.execute('UPDATE sessoes SET revogada = 1 WHERE id = ?', [sessao.id]);
+      await conexao.commit();
+      return 'invalida';
+    }
+
+    const mysql = novaExpiracao.toISOString().slice(0, 19).replace('T', ' ');
+    await conexao.execute('UPDATE sessoes SET revogada = 1 WHERE id = ?', [sessao.id]);
+    await conexao.execute(
+      'INSERT INTO sessoes (usuario_id, token_hash, expira_em) VALUES (?, ?, ?)',
+      [usuarioId, novoTokenHash, mysql],
+    );
+    await conexao.commit();
+    return 'ok';
+  } catch (erro) {
+    await conexao.rollback();
+    throw erro;
+  } finally {
+    conexao.release();
+  }
+}
+
 export async function revogarSessao(id: number): Promise<void> {
   await getPool().execute('UPDATE sessoes SET revogada = 1 WHERE id = ?', [id]);
 }

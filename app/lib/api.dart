@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:life_and_roads/core/config/ambiente.dart';
+import 'package:life_and_roads/core/security/sessao_segura.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class FalhaApi implements Exception {
@@ -19,6 +20,7 @@ class ApiCaderneta {
   static const chaveRefresh = 'refresh_life_and_roads';
   static const chaveBase = 'api_base_v1';
   static const _timeout = Duration(seconds: 8);
+  static final SessaoSegura _sessaoSegura = SessaoSegura();
 
   static String _base = Ambiente.apiPadrao;
   static String get base => _base;
@@ -137,8 +139,7 @@ class ApiCaderneta {
   }
 
   static Future<String?> renovarAccess() async {
-    final prefs = await SharedPreferences.getInstance();
-    final refresh = prefs.getString(chaveRefresh);
+    final refresh = await _sessaoSegura.lerRefresh();
     if (refresh == null || refresh.isEmpty) return null;
     try {
       final r = await http
@@ -149,16 +150,14 @@ class ApiCaderneta {
           )
           .timeout(_timeout);
       if (r.statusCode != 200) {
-        await prefs.remove(chaveToken);
-        await prefs.remove(chaveRefresh);
+        await _sessaoSegura.apagar();
         return null;
       }
       final corpo = _corpo(r);
       final token = '${corpo['token'] ?? ''}';
       final novoRefresh = '${corpo['refreshToken'] ?? refresh}';
       if (token.isEmpty) return null;
-      await prefs.setString(chaveToken, token);
-      await prefs.setString(chaveRefresh, novoRefresh);
+      await _sessaoSegura.gravar(token: token, refresh: novoRefresh);
       return token;
     } catch (_) {
       return null;
@@ -166,8 +165,7 @@ class ApiCaderneta {
   }
 
   static Future<void> encerrarSessaoRemota() async {
-    final prefs = await SharedPreferences.getInstance();
-    final refresh = prefs.getString(chaveRefresh);
+    final refresh = await _sessaoSegura.lerRefresh();
     if (refresh == null || refresh.isEmpty) return;
     try {
       await http
@@ -192,7 +190,10 @@ class ApiCaderneta {
     return _corpo(r);
   }
 
-  static Future<void> salvarFicha(String token, Map<String, dynamic> ficha) async {
+  static Future<void> salvarFicha(
+    String token,
+    Map<String, dynamic> ficha,
+  ) async {
     final r = await _comAuth(
       token,
       (t) => http.put(
@@ -255,10 +256,7 @@ class ApiCaderneta {
       (t) => http.put(
         Uri.parse('$base/localizacao'),
         headers: _cabecalhos(token: t),
-        body: jsonEncode({
-          'latitude': latitude,
-          'longitude': longitude,
-        }),
+        body: jsonEncode({'latitude': latitude, 'longitude': longitude}),
       ),
     );
     if (r.statusCode != 200) throw _erro(r);
@@ -285,10 +283,7 @@ class ApiCaderneta {
       (t) => http.post(
         Uri.parse('$base/auth/senha'),
         headers: _cabecalhos(token: t),
-        body: jsonEncode({
-          'senhaAtual': senhaAtual,
-          'senhaNova': senhaNova,
-        }),
+        body: jsonEncode({'senhaAtual': senhaAtual, 'senhaNova': senhaNova}),
       ),
     );
     if (r.statusCode != 200) throw _erro(r);

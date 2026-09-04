@@ -24,4 +24,23 @@ void main() {
       isFalse,
     );
   });
+
+  test('staging e produção recusam API sem HTTPS', () {
+    expect(
+      () => Ambiente.validarApiBase(
+        'http://api.exemplo.com',
+        producao: true,
+        staging: false,
+      ),
+      throwsStateError,
+    );
+    expect(
+      Ambiente.validarApiBase(
+        'https://api.exemplo.com/',
+        producao: false,
+        staging: true,
+      ),
+      'https://api.exemplo.com',
+    );
+  });
 }

@@ -27,17 +27,32 @@ class Ambiente {
   static bool exibeCampoServidorDe({
     required bool producao,
     required bool staging,
-  }) =>
-      !producao && !staging;
+  }) => !producao && !staging;
 
   /// Relato de crash só fora do desenvolvimento, ou se o define estiver ligado.
-  static bool get relataCrash =>
-      _crashFlag || staging || producao;
+  static bool get relataCrash => _crashFlag || staging || producao;
 
   /// Origem da URL: dart-define, depois o fallback de desenvolvimento.
   static String get apiPadrao {
     final t = _apiBase.trim();
     if (t.isEmpty) return 'http://localhost:3001';
-    return t.endsWith('/') ? t.substring(0, t.length - 1) : t;
+    return validarApiBase(t, producao: producao, staging: staging);
+  }
+
+  static String validarApiBase(
+    String valor, {
+    required bool producao,
+    required bool staging,
+  }) {
+    final t = valor.trim();
+    final url = t.endsWith('/') ? t.substring(0, t.length - 1) : t;
+    final uri = Uri.tryParse(url);
+    if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
+      throw StateError('API_BASE inválida.');
+    }
+    if ((producao || staging) && uri.scheme != 'https') {
+      throw StateError('API_BASE deve usar HTTPS em staging e produção.');
+    }
+    return url;
   }
 }

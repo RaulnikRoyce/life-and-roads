@@ -73,8 +73,6 @@ app.use(rateLimit({
 
 app.get('/health', (_req, res) => res.json({
   status: 'ok',
-  env: ambiente,
-  ...metricas.resumo(),
 }));
 
 app.get('/ready', async (_req, res) => {
