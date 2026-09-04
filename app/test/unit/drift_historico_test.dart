@@ -112,7 +112,7 @@ void main() {
     await prefs.setString('preco_litro_v1', '6.19');
     await prefs.setString('token_life_and_roads', 'abc');
     await prefs.setString('tema_v1', 'escuro');
-    await prefs.setString('api_base_v1', 'http://10.0.0.2:3001');
+    await prefs.setString('api_base_v1', 'https://api.example.com:3001');
 
     await MigracaoPrefsDrift.executar();
 
@@ -122,7 +122,7 @@ void main() {
     expect(prefs.getString('preco_litro_v1'), isNull);
     expect(prefs.getString('token_life_and_roads'), 'abc');
     expect(prefs.getString('tema_v1'), 'escuro');
-    expect(prefs.getString('api_base_v1'), 'http://10.0.0.2:3001');
+    expect(prefs.getString('api_base_v1'), 'https://api.example.com:3001');
     expect(await ArmazemKv.lerTexto('ficha_moto_v1'), contains('Honda'));
     expect(await ArmazemKv.lerTexto('preco_litro_v1'), '6.19');
     expect(await FotoMoto.carregar(), [9, 8, 7]);

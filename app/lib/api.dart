@@ -29,6 +29,31 @@ class ApiCaderneta {
     return t;
   }
 
+  /// Valida se a URL usa HTTPS ou é localhost (apenas para desenvolvimento).
+  /// Lança [FalhaApi] se a URL não for segura.
+  static void _validarSegurancaTransporte(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null) {
+      throw FalhaApi('URL inválida: $url');
+    }
+    
+    // Permite HTTP apenas para localhost/127.0.0.1 em desenvolvimento
+    final isLocalhost = uri.host == 'localhost' || 
+                       uri.host == '127.0.0.1' || 
+                       uri.host == '::1';
+    
+    if (uri.scheme == 'http' && !isLocalhost) {
+      throw FalhaApi(
+        'Conexões HTTP não são permitidas para segurança dos dados. '
+        'Use HTTPS para servidores remotos.',
+      );
+    }
+    
+    if (uri.scheme != 'http' && uri.scheme != 'https') {
+      throw FalhaApi('Protocolo não suportado: ${uri.scheme}. Use HTTP (apenas localhost) ou HTTPS.');
+    }
+  }
+
   static Future<void> carregarBase() async {
     if (!Ambiente.exibeCampoServidor) {
       _base = padrao;
@@ -40,7 +65,15 @@ class ApiCaderneta {
       _base = padrao;
       return;
     }
-    _base = _semBarra(salvo);
+    final limpo = _semBarra(salvo);
+    try {
+      _validarSegurancaTransporte(limpo);
+      _base = limpo;
+    } catch (e) {
+      // URL salva inválida ou insegura, volta ao padrão
+      _base = padrao;
+      await prefs.remove(chaveBase);
+    }
   }
 
   static Future<void> definirBase(String url) async {
@@ -49,9 +82,19 @@ class ApiCaderneta {
       return;
     }
     final limpo = _semBarra(url);
-    _base = limpo.isEmpty ? padrao : limpo;
+    if (limpo.isEmpty) {
+      _base = padrao;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(chaveBase);
+      return;
+    }
+    
+    // Valida segurança antes de aceitar a URL
+    _validarSegurancaTransporte(limpo);
+    
+    _base = limpo;
     final prefs = await SharedPreferences.getInstance();
-    if (limpo.isEmpty || limpo == padrao) {
+    if (limpo == padrao) {
       await prefs.remove(chaveBase);
     } else {
       await prefs.setString(chaveBase, _base);

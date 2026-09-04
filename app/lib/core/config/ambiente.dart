@@ -35,6 +35,7 @@ class Ambiente {
       _crashFlag || staging || producao;
 
   /// Origem da URL: dart-define, depois o fallback de desenvolvimento.
+  /// IMPORTANTE: URLs remotas devem usar HTTPS. HTTP só é permitido para localhost.
   static String get apiPadrao {
     final t = _apiBase.trim();
     if (t.isEmpty) return 'http://localhost:3001';
