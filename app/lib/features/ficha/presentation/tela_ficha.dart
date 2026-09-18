@@ -9,6 +9,7 @@ import 'package:life_and_roads/core/config/ambiente.dart';
 import 'package:life_and_roads/core/legal/textos.dart';
 import 'package:life_and_roads/core/permissoes/mensagens_permissao.dart';
 import 'package:life_and_roads/core/widgets/cartao_conflito.dart';
+import 'package:life_and_roads/core/widgets/linha_sync.dart';
 import 'package:life_and_roads/features/ficha/domain/ficha_moto.dart';
 import 'package:life_and_roads/features/ficha/data/enviar_caderneta.dart';
 import 'package:life_and_roads/features/ficha/data/escolher_caderneta.dart';
@@ -411,11 +412,14 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
               ? 'Sem placa, chassi ou RENAVAM.'
               : 'Catálogo ou marca e modelo. Sem placa, chassi ou RENAVAM.',
         ),
-        if (estado.offline && !estado.emConflito) ...[
-          const SizedBox(height: 12),
-          Text(
-            'Sem API, caderneta neste aparelho.',
-            style: Theme.of(context).textTheme.bodyMedium,
+        if (logado && !estado.emConflito) ...[
+          const SizedBox(height: 8),
+          LinhaSync(
+            meta: estado.sync,
+            sincronizando: estado.sincronizando,
+            offline: estado.offline,
+            aoSincronizar: () =>
+                ref.read(fichaControllerProvider.notifier).carregar(),
           ),
         ],
         const SizedBox(height: 20),

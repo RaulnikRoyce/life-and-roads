@@ -7,6 +7,7 @@ class ManutencaoEstado {
   const ManutencaoEstado({
     this.carregando = true,
     this.sincronizando = false,
+    this.logado = false,
     this.agenda = const AgendaManutencao(),
     this.remoto,
     this.extra = const ManutencaoExtra(),
@@ -22,6 +23,9 @@ class ManutencaoEstado {
 
   /// Tela já mostra o aparelho; o servidor está sendo consultado por trás.
   final bool sincronizando;
+
+  /// Há conta neste aparelho; a linha de sync só aparece com ela.
+  final bool logado;
   final AgendaManutencao agenda;
   final AgendaManutencao? remoto;
   final ManutencaoExtra extra;
@@ -37,6 +41,7 @@ class ManutencaoEstado {
   ManutencaoEstado copiarCom({
     bool? carregando,
     bool? sincronizando,
+    bool? logado,
     AgendaManutencao? agenda,
     AgendaManutencao? remoto,
     bool limparRemoto = false,
@@ -54,6 +59,7 @@ class ManutencaoEstado {
     return ManutencaoEstado(
       carregando: carregando ?? this.carregando,
       sincronizando: sincronizando ?? this.sincronizando,
+      logado: logado ?? this.logado,
       agenda: agenda ?? this.agenda,
       remoto: limparRemoto ? null : (remoto ?? this.remoto),
       extra: extra ?? this.extra,

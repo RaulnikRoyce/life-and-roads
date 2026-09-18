@@ -55,6 +55,7 @@ class ManutencaoController extends Notifier<ManutencaoEstado> {
     state = ManutencaoEstado(
       carregando: false,
       sincronizando: logado,
+      logado: logado,
       agenda: local.agenda,
       remoto: local.remoto,
       extra: local.extra,
@@ -71,6 +72,7 @@ class ManutencaoController extends Notifier<ManutencaoEstado> {
     }
     state = ManutencaoEstado(
       carregando: false,
+      logado: true,
       agenda: c.agenda,
       remoto: c.remoto,
       extra: c.extra,

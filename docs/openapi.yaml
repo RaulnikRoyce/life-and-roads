@@ -43,9 +43,24 @@ paths:
                 ambiente:
                   type: string
                   enum: [development, staging, production]
+                versaoApp:
+                  type: string
+                  maxLength: 40
+                  nullable: true
+                  description: versionName+build, vindo de --dart-define=APP_VERSION
+                plataforma:
+                  type: string
+                  maxLength: 80
+                  nullable: true
+                  description: ex. "android 14" ou "web"
+                pilha:
+                  type: string
+                  maxLength: 2000
+                  nullable: true
+                  description: começo da stack trace, sem dado do piloto
       responses:
         '200':
-          description: registrado no log
+          description: registrado no log e na tabela eventos_cliente (90 dias)
   /auth/registrar:
     post:
       summary: Cria a conta

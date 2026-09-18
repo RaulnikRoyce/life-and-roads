@@ -109,6 +109,7 @@ jobs:
             --build-number="${GITHUB_RUN_NUMBER}" \
             --dart-define=ENV=production \
             --dart-define=CRASH_REPORTING=true \
+            --dart-define=APP_VERSION="$TAG+${GITHUB_RUN_NUMBER}" \
             --dart-define=API_BASE="$API_BASE"
       - uses: actions/upload-artifact@v4
         with:

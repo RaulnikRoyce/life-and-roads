@@ -17,6 +17,13 @@ class Ambiente {
 
   static const _apiBase = String.fromEnvironment('API_BASE');
 
+  /// `versionName+build` que o CI passa em `--dart-define=APP_VERSION`.
+  /// Vai no relato de crash. Build local fica "dev".
+  static const versaoApp = String.fromEnvironment(
+    'APP_VERSION',
+    defaultValue: 'dev',
+  );
+
   static bool get producao => nome == 'production';
   static bool get staging => nome == 'staging';
 

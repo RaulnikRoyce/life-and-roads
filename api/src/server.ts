@@ -12,6 +12,7 @@ import { carregarEnv } from './shared/config/env';
 import { fecharPool, versaoBanco } from './shared/database/pool';
 import { migrar } from './shared/database/migrar';
 import { apagarSessoesVencidas } from './modules/auth/auth.repository';
+import { apagarEventosAntigos } from './modules/monitor/monitor.repository';
 import { logger } from './shared/http/logger';
 import app from './app';
 
@@ -29,6 +30,8 @@ const limparSessoes = async (): Promise<void> => {
   try {
     const apagadas = await apagarSessoesVencidas();
     if (apagadas > 0) logger.info('sessoes_vencidas_apagadas', { apagadas });
+    const eventos = await apagarEventosAntigos();
+    if (eventos > 0) logger.info('eventos_cliente_apagados', { apagados: eventos });
   } catch (erro) {
     logger.error('Falha ao limpar sessões vencidas', {
       detalhe: erro instanceof Error ? erro.message : 'erro',

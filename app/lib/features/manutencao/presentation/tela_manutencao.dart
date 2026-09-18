@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_and_roads/api.dart';
 import 'package:life_and_roads/core/permissoes/mensagens_permissao.dart';
 import 'package:life_and_roads/core/widgets/cartao_conflito.dart';
+import 'package:life_and_roads/core/widgets/linha_sync.dart';
 import 'package:life_and_roads/features/manutencao/data/agenda_manutencao_model.dart';
 import 'package:life_and_roads/features/manutencao/domain/agenda_manutencao.dart';
 import 'package:life_and_roads/features/manutencao/domain/usecases/montar_avisos_caderneta.dart';
@@ -373,6 +374,16 @@ class _TelaManutencaoState extends ConsumerState<TelaManutencao> {
               ? 'Óleo, pneus e documentos. Informe o km na Ficha para o aviso por km.'
               : 'Painel ${_br(_kmAtual!)} km. Aviso por data e por km.',
         ),
+        if (estado.logado && !estado.emConflito) ...[
+          const SizedBox(height: 8),
+          LinhaSync(
+            meta: estado.sync,
+            sincronizando: estado.sincronizando,
+            offline: estado.offline,
+            aoSincronizar: () =>
+                ref.read(manutencaoControllerProvider.notifier).carregar(),
+          ),
+        ],
         if (estado.emConflito) ...[
           const SizedBox(height: 16),
           CartaoConflito(

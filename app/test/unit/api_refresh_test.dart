@@ -136,4 +136,24 @@ void main() {
     await ApiCaderneta.buscarFicha('a0');
     expect(ApiCaderneta.apiRespondeu, isTrue);
   });
+
+  test('relatarCrash manda contexto e omite o que não tem', () async {
+    Map<String, dynamic>? corpo;
+    ApiCaderneta.usarCliente(MockClient((req) async {
+      corpo = jsonDecode(req.body) as Map<String, dynamic>;
+      return http.Response('{"ok":true}', 200);
+    }));
+
+    await ApiCaderneta.relatarCrash(
+      tipo: 'flutter_zone',
+      mensagem: 'x',
+      ambiente: 'production',
+      versaoApp: '1.2.1+6',
+      plataforma: 'android 14',
+    );
+
+    expect(corpo?['versaoApp'], '1.2.1+6');
+    expect(corpo?['plataforma'], 'android 14');
+    expect(corpo?.containsKey('pilha'), isFalse);
+  });
 }

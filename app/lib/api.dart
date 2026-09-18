@@ -366,6 +366,9 @@ class ApiCaderneta {
     required String tipo,
     required String mensagem,
     required String ambiente,
+    String? versaoApp,
+    String? plataforma,
+    String? pilha,
   }) async {
     try {
       await _cliente
@@ -376,6 +379,9 @@ class ApiCaderneta {
               'tipo': tipo,
               'mensagem': mensagem,
               'ambiente': ambiente,
+              'versaoApp': ?versaoApp,
+              'plataforma': ?plataforma,
+              'pilha': ?pilha,
             }),
           )
           .timeout(_timeout).then(_viva);

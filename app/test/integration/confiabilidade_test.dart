@@ -154,7 +154,11 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Honda Bros'), findsOneWidget);
-    expect(find.text('Sem API, caderneta neste aparelho.'), findsOneWidget);
+    expect(
+      find.text('Sem resposta do servidor. Caderneta neste aparelho.'),
+      findsOneWidget,
+    );
+    expect(find.text('Sincronizar agora'), findsOneWidget);
   });
 
   testWidgets('ficha de outro aparelho pede escolha e usa a do servidor',

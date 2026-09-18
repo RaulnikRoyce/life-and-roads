@@ -8,7 +8,7 @@ Com login, e-mail, senha (bcrypt), ficha (sem PSI), datas de manutenção e o ú
 
 Ficam só no aparelho a foto, o PSI, os pins, os abastecimentos, os serviços, o backup, placa, chassi e RENAVAM.
 
-Crash (só em staging/produção, se ligado no build), tipo de erro e uma mensagem curta, **sem** ficha nem e-mail.
+Crash (só em staging/produção, se ligado no build): tipo de erro, mensagem curta, versão do app, sistema (ex. "android 14") e o começo da pilha de chamadas, **sem** ficha, e-mail ou posição. Fica 90 dias no servidor e depois é apagado.
 
 ## Permissões no Android
 

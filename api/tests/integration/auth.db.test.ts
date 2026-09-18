@@ -429,3 +429,49 @@ test('limpeza apaga só sessões vencidas', async (t) => {
   }
 });
 
+test('crash com contexto vai para eventos_cliente; campo extra é recusado', async (t) => {
+  if (!await bancoPronto(t)) return;
+  const server = app.listen(0);
+  const address = server.address();
+  const port = typeof address === 'object' && address ? address.port : 0;
+  const base = `http://127.0.0.1:${port}`;
+  const json = { 'content-type': 'application/json' };
+  const marca = `pilha-${Date.now()}`;
+
+  try {
+    const ok = await fetch(`${base}/monitor/evento`, {
+      method: 'POST',
+      headers: json,
+      body: JSON.stringify({
+        tipo: 'flutter_zone',
+        mensagem: 'Null check operator used on a null value',
+        ambiente: 'production',
+        versaoApp: '1.2.1+6',
+        plataforma: 'android 14',
+        pilha: `#0 ${marca}
+#1 outra linha`,
+      }),
+    });
+    assert.equal(ok.status, 200);
+
+    const [rows] = await getPool().execute<import('mysql2').RowDataPacket[]>(
+      'SELECT tipo, versao_app, plataforma, pilha FROM eventos_cliente WHERE pilha LIKE ?',
+      [`%${marca}%`],
+    );
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].tipo, 'flutter_zone');
+    assert.equal(rows[0].versao_app, '1.2.1+6');
+    assert.equal(rows[0].plataforma, 'android 14');
+
+    const extra = await fetch(`${base}/monitor/evento`, {
+      method: 'POST',
+      headers: json,
+      body: JSON.stringify({ tipo: 'flutter_error', mensagem: 'x', email: 'a@b.c' }),
+    });
+    assert.equal(extra.status, 400);
+  } finally {
+    await getPool().execute('DELETE FROM eventos_cliente WHERE pilha LIKE ?', [`%${marca}%`]);
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
