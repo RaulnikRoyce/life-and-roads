@@ -75,6 +75,13 @@ paths:
   /auth/refresh:
     post:
       summary: Troca o refresh por um par novo (rotação)
+      description: |
+        O refresh usado é revogado e um par novo é devolvido. Se o mesmo
+        refresh chegar de novo em até 15 s (abas do app renovando juntas),
+        a API emite outro par em vez de punir. Depois disso, reuso de um
+        refresh rotacionado é tratado como roubo e revoga todas as sessões
+        da conta. Refresh revogado por sair ou troca de senha responde 401
+        sem derrubar as outras sessões.
       requestBody:
         required: true
         content:
@@ -89,7 +96,7 @@ paths:
         '200':
           description: novo par
         '401':
-          description: refresh inválido ou reutilizado
+          description: refresh inválido, vencido, revogado ou reutilizado fora da janela
   /auth/sair:
     post:
       summary: Revoga o refresh (e os demais da conta se autenticado)

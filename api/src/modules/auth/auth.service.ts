@@ -5,6 +5,7 @@ import {
   ACCESS_SEGUNDOS,
   REFRESH_MS,
   REFRESH_SEGUNDOS,
+  REFRESH_TOLERANCIA_SEGUNDOS,
   getJwtSecret,
   JWT_ALGORITHM,
   JWT_AUDIENCE,
@@ -111,6 +112,7 @@ export const renovar = async (refreshToken: string): Promise<Tokens> => {
     usuario.id,
     repo.hashRefresh(tokens.refreshToken),
     new Date(Date.now() + REFRESH_MS),
+    REFRESH_TOLERANCIA_SEGUNDOS,
   );
   if (resultado === 'reutilizada') {
     await repo.revogarTodas(usuario.id);

@@ -16,6 +16,8 @@ type SessaoRow = RowDataPacket & {
   token_hash: string;
   expira_em: Date;
   revogada: number;
+  rotacionada_em: Date | null;
+  segundos_rotacao: number | null;
 };
 
 export const hashRefresh = (token: string): string =>
@@ -62,23 +64,37 @@ export async function gravarSessao(
 
 export async function buscarSessao(tokenHash: string): Promise<SessaoRow | null> {
   const [rows] = await getPool().execute<SessaoRow[]>(
-    'SELECT id, usuario_id, token_hash, expira_em, revogada FROM sessoes WHERE token_hash = ?',
+    `SELECT id, usuario_id, token_hash, expira_em, revogada, rotacionada_em,
+            NULL AS segundos_rotacao
+       FROM sessoes WHERE token_hash = ?`,
     [tokenHash],
   );
   return rows[0] ?? null;
 }
 
+/**
+ * Troca um refresh por outro dentro de uma transação.
+ *
+ * - `ok`: rotacionou (ou o token foi rotacionado há poucos segundos e este é
+ *   um retry concorrente; nesse caso só emite outra sessão).
+ * - `reutilizada`: token já trocado fora da janela. Sinal de roubo; o
+ *   serviço revoga a conta.
+ * - `invalida`: não existe, é de outro usuário, venceu, ou foi revogado por
+ *   sair / troca de senha (aparelho atrasado, sem punição).
+ */
 export async function rotacionarSessao(
   tokenHash: string,
   usuarioId: number,
   novoTokenHash: string,
   novaExpiracao: Date,
+  toleranciaSegundos: number,
 ): Promise<'ok' | 'invalida' | 'reutilizada'> {
   const conexao = await getPool().getConnection();
   try {
     await conexao.beginTransaction();
     const [rows] = await conexao.execute<SessaoRow[]>(
-      `SELECT id, usuario_id, token_hash, expira_em, revogada
+      `SELECT id, usuario_id, token_hash, expira_em, revogada, rotacionada_em,
+              TIMESTAMPDIFF(SECOND, rotacionada_em, NOW()) AS segundos_rotacao
          FROM sessoes WHERE token_hash = ? FOR UPDATE`,
       [tokenHash],
     );
@@ -87,22 +103,36 @@ export async function rotacionarSessao(
       await conexao.rollback();
       return 'invalida';
     }
+
+    const mysql = novaExpiracao.toISOString().slice(0, 19).replace('T', ' ');
+    const inserirNova = () => conexao.execute(
+      'INSERT INTO sessoes (usuario_id, token_hash, expira_em) VALUES (?, ?, ?)',
+      [usuarioId, novoTokenHash, mysql],
+    );
+
     if (Number(sessao.revogada) === 1) {
+      const rotacionada = sessao.rotacionada_em != null;
+      const segundos = Number(sessao.segundos_rotacao);
+      if (rotacionada && Number.isFinite(segundos) && segundos <= toleranciaSegundos) {
+        await inserirNova();
+        await conexao.commit();
+        return 'ok';
+      }
       await conexao.commit();
-      return 'reutilizada';
+      return rotacionada ? 'reutilizada' : 'invalida';
     }
+
     if (new Date(sessao.expira_em).getTime() <= Date.now()) {
       await conexao.execute('UPDATE sessoes SET revogada = 1 WHERE id = ?', [sessao.id]);
       await conexao.commit();
       return 'invalida';
     }
 
-    const mysql = novaExpiracao.toISOString().slice(0, 19).replace('T', ' ');
-    await conexao.execute('UPDATE sessoes SET revogada = 1 WHERE id = ?', [sessao.id]);
     await conexao.execute(
-      'INSERT INTO sessoes (usuario_id, token_hash, expira_em) VALUES (?, ?, ?)',
-      [usuarioId, novoTokenHash, mysql],
+      'UPDATE sessoes SET revogada = 1, rotacionada_em = NOW() WHERE id = ?',
+      [sessao.id],
     );
+    await inserirNova();
     await conexao.commit();
     return 'ok';
   } catch (erro) {
@@ -118,8 +148,10 @@ export async function revogarSessao(id: number): Promise<void> {
 }
 
 export async function revogarTodas(usuarioId: number): Promise<void> {
+  // Zera rotacionada_em: depois de sair, senha ou roubo detectado, nenhum
+  // token antigo desta conta entra na janela de tolerância.
   await getPool().execute(
-    'UPDATE sessoes SET revogada = 1 WHERE usuario_id = ? AND revogada = 0',
+    'UPDATE sessoes SET revogada = 1, rotacionada_em = NULL WHERE usuario_id = ?',
     [usuarioId],
   );
 }

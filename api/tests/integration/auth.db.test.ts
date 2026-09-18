@@ -1,8 +1,24 @@
-import { test } from 'node:test';
+import { after, test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import app from '../../src/app';
-import { pingBanco } from '../../src/shared/database/pool';
+import { fecharPool, getPool, pingBanco } from '../../src/shared/database/pool';
 import { migrar } from '../../src/shared/database/migrar';
+
+// Sem isto o pool segura o processo aberto até o idle timeout do mysql2.
+after(() => fecharPool());
+
+/** Local sem MySQL: pula. CI sem MySQL: falha, para o job não ficar verde à toa. */
+const bancoPronto = async (t: TestContext): Promise<boolean> => {
+  try {
+    await pingBanco();
+    await migrar();
+    return true;
+  } catch (erro) {
+    if (process.env.CI === 'true') throw erro;
+    t.skip('MySQL indisponível neste ambiente');
+    return false;
+  }
+};
 
 const ficha = {
   marca: 'Honda',
@@ -18,13 +34,7 @@ const ficha = {
 };
 
 test('login, refresh, ficha e exclusão no MySQL', async (t) => {
-  try {
-    await pingBanco();
-    await migrar();
-  } catch {
-    t.skip('MySQL indisponível neste ambiente');
-    return;
-  }
+  if (!await bancoPronto(t)) return;
 
   const server = app.listen(0);
   const address = server.address();
@@ -80,15 +90,19 @@ test('login, refresh, ficha e exclusão no MySQL', async (t) => {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ refreshToken: sessao.refreshToken }),
     });
+    // Abas do app renovando juntas com o mesmo refresh: as duas passam.
     const concorrentes = await Promise.all([renovar(), renovar()]);
     assert.deepEqual(
-      concorrentes.map((resposta) => resposta.status).sort(),
-      [200, 401],
+      concorrentes.map((resposta) => resposta.status),
+      [200, 200],
     );
-    const respostaNova = concorrentes.find((resposta) => resposta.status === 200)!;
-    const novo = await respostaNova.json() as { token: string; refreshToken: string };
+    const pares = await Promise.all(
+      concorrentes.map((r) => r.json() as Promise<{ token: string; refreshToken: string }>),
+    );
+    const novo = pares[0];
     assert.ok(novo.token);
     assert.notEqual(novo.refreshToken, sessao.refreshToken);
+    assert.notEqual(pares[1].refreshToken, novo.refreshToken);
 
     const del = await fetch(`${base}/auth/conta`, {
       method: 'DELETE',
@@ -106,13 +120,7 @@ test('login, refresh, ficha e exclusão no MySQL', async (t) => {
 });
 
 test('troca de senha revoga refresh e emite par novo', async (t) => {
-  try {
-    await pingBanco();
-    await migrar();
-  } catch {
-    t.skip('MySQL indisponível neste ambiente');
-    return;
-  }
+  if (!await bancoPronto(t)) return;
 
   const server = app.listen(0);
   const address = server.address();
@@ -228,6 +236,64 @@ test('troca de senha revoga refresh e emite par novo', async (t) => {
     const del = await fetch(`${base}/auth/conta`, {
       method: 'DELETE',
       headers: { authorization: `Bearer ${sessaoNova.token}` },
+    });
+    assert.equal(del.status, 200);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('refresh rotacionado fora da janela é roubo e revoga a conta', async (t) => {
+  if (!await bancoPronto(t)) return;
+
+  const server = app.listen(0);
+  const address = server.address();
+  const port = typeof address === 'object' && address ? address.port : 0;
+  const base = `http://127.0.0.1:${port}`;
+  const email = `roubo.${Date.now()}@teste.local`;
+  const json = { 'content-type': 'application/json' };
+
+  try {
+    await fetch(`${base}/auth/registrar`, {
+      method: 'POST', headers: json, body: JSON.stringify({ email, senha: 'senha1234' }),
+    });
+    const login = await fetch(`${base}/auth/login`, {
+      method: 'POST', headers: json, body: JSON.stringify({ email, senha: 'senha1234' }),
+    });
+    const antigo = await login.json() as { refreshToken: string };
+
+    const primeira = await fetch(`${base}/auth/refresh`, {
+      method: 'POST', headers: json, body: JSON.stringify({ refreshToken: antigo.refreshToken }),
+    });
+    assert.equal(primeira.status, 200);
+    const atual = await primeira.json() as { refreshToken: string };
+
+    // Simula o tempo passando: a rotação foi há 60 s, fora da tolerância.
+    await getPool().execute(
+      `UPDATE sessoes s JOIN usuarios u ON u.id = s.usuario_id
+          SET s.rotacionada_em = NOW() - INTERVAL 60 SECOND
+        WHERE u.email = ? AND s.rotacionada_em IS NOT NULL`,
+      [email],
+    );
+
+    const reuso = await fetch(`${base}/auth/refresh`, {
+      method: 'POST', headers: json, body: JSON.stringify({ refreshToken: antigo.refreshToken }),
+    });
+    assert.equal(reuso.status, 401);
+
+    // A conta inteira caiu, inclusive o par legítimo.
+    const legitimo = await fetch(`${base}/auth/refresh`, {
+      method: 'POST', headers: json, body: JSON.stringify({ refreshToken: atual.refreshToken }),
+    });
+    assert.equal(legitimo.status, 401);
+
+    const loginDeNovo = await fetch(`${base}/auth/login`, {
+      method: 'POST', headers: json, body: JSON.stringify({ email, senha: 'senha1234' }),
+    });
+    assert.equal(loginDeNovo.status, 200);
+    const sessao = await loginDeNovo.json() as { token: string };
+    const del = await fetch(`${base}/auth/conta`, {
+      method: 'DELETE', headers: { authorization: `Bearer ${sessao.token}` },
     });
     assert.equal(del.status, 200);
   } finally {

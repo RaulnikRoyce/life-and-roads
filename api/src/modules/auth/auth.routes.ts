@@ -19,6 +19,8 @@ const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { erro: 'Muitas tentativas. Aguarde 15 minutos.' },
+  // Os testes de integração somam mais de 20 chamadas no mesmo processo.
+  skip: () => process.env.NODE_ENV === 'test',
 });
 
 router.post('/login', authLimiter, validarSchema(loginSchema), authController.login);

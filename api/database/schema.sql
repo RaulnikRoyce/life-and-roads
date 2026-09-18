@@ -1,6 +1,11 @@
 -- Caderneta remota do life.and.roads.
 -- Uma ficha, uma manutenção e um ponto por usuário.
 -- Sem placa, chassi, RENAVAM, foto ou histórico de rastro.
+--
+-- Este arquivo é a foto inicial do banco (migrations 000 e 001).
+-- Coluna ou tabela nova entra só em database/migrations/, que a API
+-- aplica no boot. Não edite este arquivo para acompanhar migrations,
+-- senão o ALTER TABLE da migration falha num banco criado por aqui.
 
 CREATE DATABASE IF NOT EXISTS life_and_roads
   CHARACTER SET utf8mb4

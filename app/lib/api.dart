@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:http/http.dart' as http;
 import 'package:life_and_roads/core/config/ambiente.dart';
 import 'package:life_and_roads/core/security/sessao_segura.dart';
@@ -16,11 +17,22 @@ class FalhaApi implements Exception {
 /// Cliente HTTP da API life.and.roads (porta 3001).
 class ApiCaderneta {
   static String get padrao => Ambiente.apiPadrao;
-  static const chaveToken = 'token_life_and_roads';
-  static const chaveRefresh = 'refresh_life_and_roads';
   static const chaveBase = 'api_base_v1';
   static const _timeout = Duration(seconds: 8);
   static final SessaoSegura _sessaoSegura = SessaoSegura();
+  static http.Client _cliente = http.Client();
+
+  /// Um refresh por vez. Abas que caem no 401 juntas esperam o mesmo pedido
+  /// em vez de mandar cada uma o seu com o mesmo refresh (a API trata reuso
+  /// fora da janela como roubo e derruba a conta).
+  static Future<String?>? _renovacaoEmVoo;
+
+  /// Troca o transporte HTTP. Só para testes.
+  @visibleForTesting
+  static void usarCliente(http.Client cliente) {
+    _cliente = cliente;
+    _renovacaoEmVoo = null;
+  }
 
   static String _base = Ambiente.apiPadrao;
   static String get base => _base;
@@ -105,7 +117,7 @@ class ApiCaderneta {
   }
 
   static Future<void> registrar(String email, String senha) async {
-    final r = await http
+    final r = await _cliente
         .post(
           Uri.parse('$base/auth/registrar'),
           headers: _cabecalhos(),
@@ -116,7 +128,7 @@ class ApiCaderneta {
   }
 
   static Future<Map<String, dynamic>> login(String email, String senha) async {
-    final r = await http
+    final r = await _cliente
         .post(
           Uri.parse('$base/auth/login'),
           headers: _cabecalhos(),
@@ -133,16 +145,33 @@ class ApiCaderneta {
   ) async {
     final r = await enviar(token).timeout(_timeout);
     if (r.statusCode != 401) return r;
+
+    // Outra aba pode ter renovado um instante antes. Usa o access mais novo
+    // do storage antes de gastar mais um refresh.
+    final guardado = await _sessaoSegura.lerToken();
+    if (guardado != null && guardado.isNotEmpty && guardado != token) {
+      final r2 = await enviar(guardado).timeout(_timeout);
+      if (r2.statusCode != 401) return r2;
+    }
+
     final novo = await renovarAccess();
     if (novo == null) return r;
     return enviar(novo).timeout(_timeout);
   }
 
-  static Future<String?> renovarAccess() async {
+  static Future<String?> renovarAccess() {
+    final emVoo = _renovacaoEmVoo;
+    if (emVoo != null) return emVoo;
+    final pedido = _renovar().whenComplete(() => _renovacaoEmVoo = null);
+    _renovacaoEmVoo = pedido;
+    return pedido;
+  }
+
+  static Future<String?> _renovar() async {
     final refresh = await _sessaoSegura.lerRefresh();
     if (refresh == null || refresh.isEmpty) return null;
     try {
-      final r = await http
+      final r = await _cliente
           .post(
             Uri.parse('$base/auth/refresh'),
             headers: _cabecalhos(),
@@ -168,7 +197,7 @@ class ApiCaderneta {
     final refresh = await _sessaoSegura.lerRefresh();
     if (refresh == null || refresh.isEmpty) return;
     try {
-      await http
+      await _cliente
           .post(
             Uri.parse('$base/auth/sair'),
             headers: _cabecalhos(),
@@ -183,7 +212,7 @@ class ApiCaderneta {
   static Future<Map<String, dynamic>?> buscarFicha(String token) async {
     final r = await _comAuth(
       token,
-      (t) => http.get(Uri.parse('$base/ficha'), headers: _cabecalhos(token: t)),
+      (t) => _cliente.get(Uri.parse('$base/ficha'), headers: _cabecalhos(token: t)),
     );
     if (r.statusCode == 404) return null;
     if (r.statusCode != 200) throw _erro(r);
@@ -196,7 +225,7 @@ class ApiCaderneta {
   ) async {
     final r = await _comAuth(
       token,
-      (t) => http.put(
+      (t) => _cliente.put(
         Uri.parse('$base/ficha'),
         headers: _cabecalhos(token: t),
         body: jsonEncode(ficha),
@@ -208,7 +237,7 @@ class ApiCaderneta {
   static Future<Map<String, dynamic>?> buscarManutencao(String token) async {
     final r = await _comAuth(
       token,
-      (t) => http.get(
+      (t) => _cliente.get(
         Uri.parse('$base/manutencao'),
         headers: _cabecalhos(token: t),
       ),
@@ -224,7 +253,7 @@ class ApiCaderneta {
   ) async {
     final r = await _comAuth(
       token,
-      (t) => http.put(
+      (t) => _cliente.put(
         Uri.parse('$base/manutencao'),
         headers: _cabecalhos(token: t),
         body: jsonEncode(manutencao),
@@ -236,7 +265,7 @@ class ApiCaderneta {
   static Future<Map<String, dynamic>?> buscarLocalizacao(String token) async {
     final r = await _comAuth(
       token,
-      (t) => http.get(
+      (t) => _cliente.get(
         Uri.parse('$base/localizacao'),
         headers: _cabecalhos(token: t),
       ),
@@ -253,7 +282,7 @@ class ApiCaderneta {
   }) async {
     final r = await _comAuth(
       token,
-      (t) => http.put(
+      (t) => _cliente.put(
         Uri.parse('$base/localizacao'),
         headers: _cabecalhos(token: t),
         body: jsonEncode({'latitude': latitude, 'longitude': longitude}),
@@ -265,7 +294,7 @@ class ApiCaderneta {
   static Future<void> excluirConta(String token) async {
     final r = await _comAuth(
       token,
-      (t) => http.delete(
+      (t) => _cliente.delete(
         Uri.parse('$base/auth/conta'),
         headers: _cabecalhos(token: t),
       ),
@@ -280,7 +309,7 @@ class ApiCaderneta {
   }) async {
     final r = await _comAuth(
       token,
-      (t) => http.post(
+      (t) => _cliente.post(
         Uri.parse('$base/auth/senha'),
         headers: _cabecalhos(token: t),
         body: jsonEncode({'senhaAtual': senhaAtual, 'senhaNova': senhaNova}),
@@ -297,7 +326,7 @@ class ApiCaderneta {
     required String ambiente,
   }) async {
     try {
-      await http
+      await _cliente
           .post(
             Uri.parse('$base/monitor/evento'),
             headers: _cabecalhos(),
