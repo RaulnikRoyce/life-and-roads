@@ -56,4 +56,3 @@ export const carregarEnv = (): Env => {
   };
 };
 
-export { limpar };

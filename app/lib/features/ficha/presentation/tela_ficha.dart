@@ -867,7 +867,7 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
     final texto = await escolherCadernetaJson();
     if (!mounted) return;
     if (texto == null) return; // cancelou
-    final erro = await const ImportarCadernetaArquivo().executar(json: texto);
+    final erro = await const ImportarCadernetaArquivo().executar(texto);
     if (!mounted) return;
     if (erro != null) {
       _aviso(erro);

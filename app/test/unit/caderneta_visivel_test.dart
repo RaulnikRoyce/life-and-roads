@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_and_roads/core/database/armazem_kv.dart';
 import 'package:life_and_roads/core/database/chaves_kv.dart';
-import 'package:life_and_roads/features/ficha/domain/usecases/exportar_caderneta_arquivo.dart';
+import 'package:life_and_roads/features/ficha/domain/usecases/enviar_caderneta_arquivo.dart';
 import 'package:life_and_roads/features/ficha/domain/usecases/importar_caderneta_arquivo.dart';
 import 'package:life_and_roads/features/viagem/domain/usecases/resumo_consumo.dart';
 import 'package:life_and_roads/viagem/calculo.dart';
@@ -49,30 +49,35 @@ void main() {
       ChavesKv.ficha,
       '{"marca":"Honda","modelo":"Bros"}',
     );
-    final saida = await ExportarCadernetaArquivo(pasta: dir.path).executar();
+    String? gerado;
+    final saida = await EnviarCadernetaArquivo(
+      pasta: dir.path,
+      enviar: ({String? caminho, String? json}) async {
+        gerado = caminho;
+        return true;
+      },
+    ).executar();
     expect(saida.erro, isNull);
-    expect(saida.caminho, isNotNull);
-    expect(File(saida.caminho!).existsSync(), isTrue);
+    expect(gerado, isNotNull);
+    final arquivo = File(gerado!);
+    expect(arquivo.existsSync(), isTrue);
 
     await ArmazemKv.gravarTexto(ChavesKv.ficha, null);
     expect(await ArmazemKv.lerTexto(ChavesKv.ficha), isNull);
 
-    expect(
-      await ImportarCadernetaArquivo(pasta: dir.path).executar(),
-      isNull,
-    );
+    // O que a tela faz depois do seletor de arquivos: lê e passa o texto.
+    final texto = await arquivo.readAsString();
+    expect(await const ImportarCadernetaArquivo().executar(texto), isNull);
     expect(await ArmazemKv.lerTexto(ChavesKv.ficha), contains('Bros'));
   });
 
-  test('arquivo ausente avisa em PT-BR', () async {
+  test('backup vazio avisa em PT-BR', () async {
     SharedPreferences.setMockInitialValues({});
     await abrirBancoTeste();
     addTearDown(fecharBancoTeste);
-    final dir = await Directory.systemTemp.createTemp('caderneta-vazia');
-    addTearDown(() => dir.delete(recursive: true));
     expect(
-      await ImportarCadernetaArquivo(pasta: dir.path).executar(),
-      'Arquivo de backup não encontrado.',
+      await const ImportarCadernetaArquivo().executar('   '),
+      'Arquivo de backup vazio.',
     );
   });
 }

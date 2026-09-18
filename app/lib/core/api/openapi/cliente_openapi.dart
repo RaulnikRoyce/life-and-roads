@@ -51,15 +51,17 @@ class ClienteOpenApi {
     );
   }
 
-  Future<Map<String, dynamic>> trocarSenha({
-    required String token,
-    required String senhaAtual,
-    required String senhaNova,
-  }) {
-    return ApiCaderneta.trocarSenha(
-      token: token,
-      senhaAtual: senhaAtual,
-      senhaNova: senhaNova,
-    );
+  Future<void> registrar(CredenciaisDto credenciais) {
+    return ApiCaderneta.registrar(credenciais.toJson());
+  }
+
+  /// Corpo do login: `token`, `refreshToken`, `email`, `id`.
+  Future<Map<String, dynamic>> login(CredenciaisDto credenciais) {
+    return ApiCaderneta.login(credenciais.toJson());
+  }
+
+  /// Corpo com o par novo (`token`, `refreshToken`, `email`).
+  Future<Map<String, dynamic>> trocarSenha(String token, TrocaSenhaDto troca) {
+    return ApiCaderneta.trocarSenha(token, troca.toJson());
   }
 }

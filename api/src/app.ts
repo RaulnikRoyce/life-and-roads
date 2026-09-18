@@ -14,7 +14,6 @@ import { logger } from './shared/http/logger';
 import { requestId } from './shared/http/request-id';
 import { pingBanco } from './shared/database/pool';
 import { appEnv } from './shared/config/ambiente';
-import { metricas } from './shared/http/metricas';
 
 const app = express();
 const ambiente = appEnv();
@@ -51,10 +50,8 @@ app.use(express.json({ limit: '20kb' }));
 
 app.use((req, res, next) => {
   if (req.path === '/health' || req.path === '/ready') return next();
-  metricas.toqueHttp();
   const inicio = Date.now();
   res.on('finish', () => {
-    if (res.statusCode >= 500) metricas.toque5xx();
     logger.info('http', {
       metodo: req.method,
       rota: req.originalUrl,

@@ -110,24 +110,6 @@ class ApiCaderneta {
     return double.tryParse('$valor'.trim().replaceAll(',', '.'));
   }
 
-  static Map<String, dynamic> fichaParaApi(Map<String, dynamic> mapa) {
-    final ano = '${mapa['ano'] ?? ''}'.trim();
-    final cc = '${mapa['cilindrada'] ?? ''}'.trim();
-    final comb = '${mapa['combustivel'] ?? 'gasolina'}';
-    return {
-      'marca': mapa['marca'],
-      'modelo': mapa['modelo'],
-      'ano': ano.isEmpty ? null : int.tryParse(ano),
-      'cilindrada': cc.isEmpty ? null : int.tryParse(cc),
-      'kmLitro': numero(mapa['kmLitro']),
-      'kmLitroAlcool': numero(mapa['kmLitroAlcool']),
-      'combustivel': comb == 'alcool' ? 'alcool' : 'gasolina',
-      'kmAtual': numero(mapa['kmAtual']),
-      'tanqueLitros': numero(mapa['tanqueLitros']),
-      'personalizacoes': mapa['personalizacoes'] ?? '',
-    };
-  }
-
   /// Qualquer resposta HTTP prova que a API está de pé.
   static http.Response _viva(http.Response r) {
     _apiRespondeu = true;
@@ -154,23 +136,25 @@ class ApiCaderneta {
     return FalhaApi(msg);
   }
 
-  static Future<void> registrar(String email, String senha) async {
+  static Future<void> registrar(Map<String, dynamic> credenciais) async {
     final r = await _cliente
         .post(
           Uri.parse('$base/auth/registrar'),
           headers: _cabecalhos(),
-          body: jsonEncode({'email': email, 'senha': senha}),
+          body: jsonEncode(credenciais),
         )
         .timeout(_timeout).then(_viva);
     if (r.statusCode != 201) throw _erro(r);
   }
 
-  static Future<Map<String, dynamic>> login(String email, String senha) async {
+  static Future<Map<String, dynamic>> login(
+    Map<String, dynamic> credenciais,
+  ) async {
     final r = await _cliente
         .post(
           Uri.parse('$base/auth/login'),
           headers: _cabecalhos(),
-          body: jsonEncode({'email': email, 'senha': senha}),
+          body: jsonEncode(credenciais),
         )
         .timeout(_timeout).then(_viva);
     if (r.statusCode != 200) throw _erro(r);
@@ -344,17 +328,16 @@ class ApiCaderneta {
     if (r.statusCode != 200) throw _erro(r);
   }
 
-  static Future<Map<String, dynamic>> trocarSenha({
-    required String token,
-    required String senhaAtual,
-    required String senhaNova,
-  }) async {
+  static Future<Map<String, dynamic>> trocarSenha(
+    String token,
+    Map<String, dynamic> troca,
+  ) async {
     final r = await _comAuth(
       token,
       (t) => _cliente.post(
         Uri.parse('$base/auth/senha'),
         headers: _cabecalhos(token: t),
-        body: jsonEncode({'senhaAtual': senhaAtual, 'senhaNova': senhaNova}),
+        body: jsonEncode(troca),
       ),
     );
     if (r.statusCode != 200) throw _erro(r);

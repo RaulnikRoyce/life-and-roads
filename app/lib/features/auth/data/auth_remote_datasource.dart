@@ -1,44 +1,50 @@
 import 'package:life_and_roads/api.dart';
+import 'package:life_and_roads/core/api/openapi/cliente_openapi.dart';
+import 'package:life_and_roads/core/api/openapi/dtos.dart';
+
+typedef ParSessao = ({String token, String email, String refresh});
 
 class AuthRemoteDatasource {
+  AuthRemoteDatasource({ClienteOpenApi? cliente})
+      : _cliente = cliente ?? ClienteOpenApi();
+
+  final ClienteOpenApi _cliente;
+
   Future<void> registrar(String email, String senha) {
-    return ApiCaderneta.registrar(email, senha);
+    return _cliente.registrar(CredenciaisDto(email: email, senha: senha));
   }
 
-  Future<({String token, String email, String refresh})> login(
-    String email,
-    String senha,
-  ) async {
-    final corpo = await ApiCaderneta.login(email, senha);
-    final token = '${corpo['token'] ?? ''}';
-    final mail = '${corpo['email'] ?? email}';
-    final refresh = '${corpo['refreshToken'] ?? ''}';
-    if (token.isEmpty) {
-      throw FalhaApi('Resposta da API sem token.');
-    }
-    return (token: token, email: mail, refresh: refresh);
+  Future<ParSessao> login(String email, String senha) async {
+    final corpo = await _cliente.login(
+      CredenciaisDto(email: email, senha: senha),
+    );
+    return _par(corpo, emailPadrao: email);
   }
 
   Future<void> excluirConta(String token) {
     return ApiCaderneta.excluirConta(token);
   }
 
-  Future<({String token, String email, String refresh})> trocarSenha({
+  Future<ParSessao> trocarSenha({
     required String token,
     required String senhaAtual,
     required String senhaNova,
   }) async {
-    final corpo = await ApiCaderneta.trocarSenha(
-      token: token,
-      senhaAtual: senhaAtual,
-      senhaNova: senhaNova,
+    final corpo = await _cliente.trocarSenha(
+      token,
+      TrocaSenhaDto(senhaAtual: senhaAtual, senhaNova: senhaNova),
     );
-    final novoToken = '${corpo['token'] ?? ''}';
-    final mail = '${corpo['email'] ?? ''}';
-    final refresh = '${corpo['refreshToken'] ?? ''}';
-    if (novoToken.isEmpty) {
-      throw FalhaApi('Resposta da API sem token.');
-    }
-    return (token: novoToken, email: mail, refresh: refresh);
+    return _par(corpo, emailPadrao: '');
+  }
+
+  /// Login e troca de senha devolvem o mesmo par. Sem `token` é erro.
+  ParSessao _par(Map<String, dynamic> corpo, {required String emailPadrao}) {
+    final token = '${corpo['token'] ?? ''}';
+    if (token.isEmpty) throw FalhaApi('Resposta da API sem token.');
+    return (
+      token: token,
+      email: '${corpo['email'] ?? emailPadrao}',
+      refresh: '${corpo['refreshToken'] ?? ''}',
+    );
   }
 }

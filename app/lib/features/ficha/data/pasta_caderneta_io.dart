@@ -23,16 +23,3 @@ Future<({String? caminho, String? erro})> gravarCadernetaJson(
     return (caminho: null, erro: 'Não foi possível salvar o arquivo.');
   }
 }
-
-Future<String?> lerCadernetaJson({String? caminho, String? pasta}) async {
-  try {
-    final file = File(
-      caminho ??
-          p.join(pasta ?? await _pastaPadrao(), nomeArquivoCaderneta),
-    );
-    if (!await file.exists()) return null;
-    return await file.readAsString();
-  } catch (_) {
-    return null;
-  }
-}
