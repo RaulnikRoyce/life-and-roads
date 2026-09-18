@@ -42,6 +42,10 @@ class ManutencaoSalva {
 }
 
 abstract class ManutencaoRepository {
+  /// Só o que está no aparelho, sem tocar na rede.
+  Future<ManutencaoCarregada> carregarLocal();
+
+  /// Local + servidor. Pode demorar.
   Future<ManutencaoCarregada> carregar();
   Future<double?> lerKmDaFicha();
   Future<ManutencaoSalva> salvar(AgendaManutencao agenda, ManutencaoExtra extra);

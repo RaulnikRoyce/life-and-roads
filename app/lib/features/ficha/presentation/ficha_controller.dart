@@ -57,13 +57,38 @@ class FichaController extends Notifier<FichaEstado> {
   @override
   FichaEstado build() => const FichaEstado();
 
+  /// Sobe a cada salvar(). Um carregar() antigo que termine depois de um
+  /// salvar() não pode sobrescrever o que o piloto acabou de gravar.
+  int _geracao = 0;
+
+  /// Aparelho primeiro (tela abre na hora), servidor por trás. Com a API
+  /// hibernada no Render, a primeira resposta pode levar ~20 s; o piloto
+  /// não fica esperando por isso.
   Future<void> carregar() async {
     state = state.copiarCom(
-      carregando: true,
+      carregando: state.ficha == null,
       limparErro: true,
       limparAviso: true,
     );
+    final geracao = _geracao;
+    final local = await _ficha.carregarLocal();
+    state = FichaEstado(
+      carregando: false,
+      sincronizando: local.sessao.logado,
+      ficha: local.ficha,
+      remoto: local.remoto,
+      token: local.sessao.token,
+      email: local.sessao.email,
+      servidor: local.sessao.servidor,
+      sync: local.sync,
+    );
+    if (!local.sessao.logado) return;
+
     final carregada = await _ficha.carregar();
+    if (geracao != _geracao) {
+      state = state.copiarCom(sincronizando: false);
+      return;
+    }
     state = FichaEstado(
       carregando: false,
       ficha: carregada.ficha,
@@ -77,6 +102,7 @@ class FichaController extends Notifier<FichaEstado> {
   }
 
   Future<void> salvar(FichaMoto ficha, {bool silencioso = false}) async {
+    _geracao++;
     final resultado = await _ficha.salvar(ficha);
     state = state.copiarCom(
       ficha: resultado.ficha,

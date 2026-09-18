@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart' show visibleForTesting;
@@ -18,7 +19,18 @@ class FalhaApi implements Exception {
 class ApiCaderneta {
   static String get padrao => Ambiente.apiPadrao;
   static const chaveBase = 'api_base_v1';
-  static const _timeout = Duration(seconds: 8);
+  static const _timeoutNormal = Duration(seconds: 8);
+
+  /// Render no plano grátis hiberna após 15 min; acordar leva ~20 s.
+  static const _timeoutPrimeiraResposta = Duration(seconds: 25);
+
+  /// Vira true na primeira resposta HTTP desta sessão do app.
+  static bool _apiRespondeu = false;
+
+  /// Enquanto a API não deu sinal de vida, espera mais. Depois, 8 s.
+  static Duration get _timeout =>
+      _apiRespondeu ? _timeoutNormal : _timeoutPrimeiraResposta;
+
   static final SessaoSegura _sessaoSegura = SessaoSegura();
   static http.Client _cliente = http.Client();
 
@@ -32,6 +44,26 @@ class ApiCaderneta {
   static void usarCliente(http.Client cliente) {
     _cliente = cliente;
     _renovacaoEmVoo = null;
+    _apiRespondeu = false;
+  }
+
+  @visibleForTesting
+  static bool get apiRespondeu => _apiRespondeu;
+
+  /// Acorda a API antes de o piloto precisar dela. Só com conta: sem conta
+  /// nada sai do aparelho. Não espera a resposta e ignora falha.
+  static Future<void> aquecer() async {
+    final token = await _sessaoSegura.lerToken();
+    if (token == null || token.isEmpty) return;
+    unawaited(
+      _cliente
+          .get(Uri.parse('$base/health'))
+          .timeout(_timeoutPrimeiraResposta)
+          .then<void>((_) {
+            _apiRespondeu = true;
+          })
+          .catchError((_) {}),
+    );
   }
 
   static String _base = Ambiente.apiPadrao;
@@ -96,6 +128,12 @@ class ApiCaderneta {
     };
   }
 
+  /// Qualquer resposta HTTP prova que a API está de pé.
+  static http.Response _viva(http.Response r) {
+    _apiRespondeu = true;
+    return r;
+  }
+
   static Map<String, String> _cabecalhos({String? token}) {
     return {
       'Content-Type': 'application/json',
@@ -123,7 +161,7 @@ class ApiCaderneta {
           headers: _cabecalhos(),
           body: jsonEncode({'email': email, 'senha': senha}),
         )
-        .timeout(_timeout);
+        .timeout(_timeout).then(_viva);
     if (r.statusCode != 201) throw _erro(r);
   }
 
@@ -134,7 +172,7 @@ class ApiCaderneta {
           headers: _cabecalhos(),
           body: jsonEncode({'email': email, 'senha': senha}),
         )
-        .timeout(_timeout);
+        .timeout(_timeout).then(_viva);
     if (r.statusCode != 200) throw _erro(r);
     return _corpo(r);
   }
@@ -143,20 +181,20 @@ class ApiCaderneta {
     String token,
     Future<http.Response> Function(String token) enviar,
   ) async {
-    final r = await enviar(token).timeout(_timeout);
+    final r = await enviar(token).timeout(_timeout).then(_viva);
     if (r.statusCode != 401) return r;
 
     // Outra aba pode ter renovado um instante antes. Usa o access mais novo
     // do storage antes de gastar mais um refresh.
     final guardado = await _sessaoSegura.lerToken();
     if (guardado != null && guardado.isNotEmpty && guardado != token) {
-      final r2 = await enviar(guardado).timeout(_timeout);
+      final r2 = await enviar(guardado).timeout(_timeout).then(_viva);
       if (r2.statusCode != 401) return r2;
     }
 
     final novo = await renovarAccess();
     if (novo == null) return r;
-    return enviar(novo).timeout(_timeout);
+    return enviar(novo).timeout(_timeout).then(_viva);
   }
 
   static Future<String?> renovarAccess() {
@@ -177,7 +215,7 @@ class ApiCaderneta {
             headers: _cabecalhos(),
             body: jsonEncode({'refreshToken': refresh}),
           )
-          .timeout(_timeout);
+          .timeout(_timeout).then(_viva);
       if (r.statusCode != 200) {
         await _sessaoSegura.apagar();
         return null;
@@ -203,7 +241,7 @@ class ApiCaderneta {
             headers: _cabecalhos(),
             body: jsonEncode({'refreshToken': refresh}),
           )
-          .timeout(_timeout);
+          .timeout(_timeout).then(_viva);
     } catch (_) {
       // local já apaga a sessão
     }
@@ -340,7 +378,7 @@ class ApiCaderneta {
               'ambiente': ambiente,
             }),
           )
-          .timeout(_timeout);
+          .timeout(_timeout).then(_viva);
     } catch (_) {}
   }
 }

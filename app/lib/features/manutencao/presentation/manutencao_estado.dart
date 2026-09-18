@@ -6,6 +6,7 @@ import 'package:life_and_roads/manutencao/servicos.dart';
 class ManutencaoEstado {
   const ManutencaoEstado({
     this.carregando = true,
+    this.sincronizando = false,
     this.agenda = const AgendaManutencao(),
     this.remoto,
     this.extra = const ManutencaoExtra(),
@@ -18,6 +19,9 @@ class ManutencaoEstado {
   });
 
   final bool carregando;
+
+  /// Tela já mostra o aparelho; o servidor está sendo consultado por trás.
+  final bool sincronizando;
   final AgendaManutencao agenda;
   final AgendaManutencao? remoto;
   final ManutencaoExtra extra;
@@ -32,6 +36,7 @@ class ManutencaoEstado {
 
   ManutencaoEstado copiarCom({
     bool? carregando,
+    bool? sincronizando,
     AgendaManutencao? agenda,
     AgendaManutencao? remoto,
     bool limparRemoto = false,
@@ -48,6 +53,7 @@ class ManutencaoEstado {
   }) {
     return ManutencaoEstado(
       carregando: carregando ?? this.carregando,
+      sincronizando: sincronizando ?? this.sincronizando,
       agenda: agenda ?? this.agenda,
       remoto: limparRemoto ? null : (remoto ?? this.remoto),
       extra: extra ?? this.extra,

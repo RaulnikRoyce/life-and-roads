@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:life_and_roads/features/auth/domain/auth_repository.dart';
 import 'package:life_and_roads/features/ficha/presentation/ficha_controller.dart';
 import 'package:life_and_roads/features/manutencao/data/manutencao_local_datasource.dart';
 import 'package:life_and_roads/features/manutencao/data/manutencao_remote_datasource.dart';
@@ -34,17 +35,40 @@ final manutencaoRepositoryProvider = Provider<ManutencaoRepository>(
 
 class ManutencaoController extends Notifier<ManutencaoEstado> {
   ManutencaoRepository get _repo => ref.read(manutencaoRepositoryProvider);
+  AuthRepository get _auth => ref.read(authRepositoryProvider);
 
   @override
   ManutencaoEstado build() => const ManutencaoEstado();
 
+  int _geracao = 0;
+
+  /// Aparelho primeiro, servidor por trás (ver FichaController.carregar).
   Future<void> carregar() async {
     state = state.copiarCom(
-      carregando: true,
+      carregando: state.carregando && state.agenda.vazia,
       limparErro: true,
       limparAviso: true,
     );
+    final geracao = _geracao;
+    final local = await _repo.carregarLocal();
+    final logado = (await _auth.carregar()).logado;
+    state = ManutencaoEstado(
+      carregando: false,
+      sincronizando: logado,
+      agenda: local.agenda,
+      remoto: local.remoto,
+      extra: local.extra,
+      servicos: local.servicos,
+      kmAtual: local.kmAtual,
+      sync: local.sync,
+    );
+    if (!logado) return;
+
     final c = await _repo.carregar();
+    if (geracao != _geracao) {
+      state = state.copiarCom(sincronizando: false);
+      return;
+    }
     state = ManutencaoEstado(
       carregando: false,
       agenda: c.agenda,
@@ -63,6 +87,7 @@ class ManutencaoController extends Notifier<ManutencaoEstado> {
   }
 
   Future<void> salvar(AgendaManutencao agenda, ManutencaoExtra extra) async {
+    _geracao++;
     final erro = agenda.tentar();
     if (erro != null) {
       state = state.copiarCom(erro: erro, limparAviso: true);

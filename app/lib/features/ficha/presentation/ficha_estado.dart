@@ -4,6 +4,7 @@ import 'package:life_and_roads/features/ficha/domain/ficha_moto.dart';
 class FichaEstado {
   const FichaEstado({
     this.carregando = true,
+    this.sincronizando = false,
     this.ficha,
     this.remoto,
     this.token,
@@ -16,6 +17,9 @@ class FichaEstado {
   });
 
   final bool carregando;
+
+  /// Tela já mostra o aparelho; o servidor está sendo consultado por trás.
+  final bool sincronizando;
   final FichaMoto? ficha;
   final FichaMoto? remoto;
   final String? token;
@@ -32,6 +36,7 @@ class FichaEstado {
 
   FichaEstado copiarCom({
     bool? carregando,
+    bool? sincronizando,
     FichaMoto? ficha,
     bool limparFicha = false,
     FichaMoto? remoto,
@@ -49,6 +54,7 @@ class FichaEstado {
   }) {
     return FichaEstado(
       carregando: carregando ?? this.carregando,
+      sincronizando: sincronizando ?? this.sincronizando,
       ficha: limparFicha ? null : (ficha ?? this.ficha),
       remoto: limparRemoto ? null : (remoto ?? this.remoto),
       token: limparSessao ? null : (token ?? this.token),

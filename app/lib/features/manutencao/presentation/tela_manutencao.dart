@@ -365,6 +365,8 @@ class _TelaManutencaoState extends ConsumerState<TelaManutencao> {
     return ListView(
       padding: paddingOficina(context),
       children: [
+        if (estado.sincronizando)
+          const LinearProgressIndicator(minHeight: 2),
         TituloOficina(
           'Manutenção',
           subtitulo: _kmAtual == null

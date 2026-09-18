@@ -193,6 +193,15 @@ void main() {
     expect(remoto.salvamentos, 1);
   });
 
+  test('carregarLocal devolve o aparelho sem tocar na rede', () async {
+    await repo.salvar(ficha);
+    remoto.falhar = true; // se tocasse na rede, lançaria
+    final local = await repo.carregarLocal();
+    expect(local.ficha?.modelo, 'Bros');
+    expect(local.sessao.logado, isTrue);
+    expect(local.sync.status, StatusSync.synced);
+  });
+
   test('sem ficha local o GET preenche', () async {
     remoto.remota = ficha;
     final carregada = await repo.carregar();

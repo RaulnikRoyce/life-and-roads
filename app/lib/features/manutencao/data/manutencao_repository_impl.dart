@@ -56,6 +56,13 @@ class ManutencaoRepositoryImpl implements ManutencaoRepository {
   }
 
   @override
+  Future<ManutencaoCarregada> carregarLocal() async {
+    final agenda = (await _local.lerAgenda()).normalizarAnuais();
+    final extra = _normalizarCnh(await _local.lerExtra());
+    return _base(agenda: agenda, extra: extra, remoto: await _conflito.ler());
+  }
+
+  @override
   Future<ManutencaoCarregada> carregar() async {
     final sessao = await _auth.carregar();
     var agenda = (await _local.lerAgenda()).normalizarAnuais();

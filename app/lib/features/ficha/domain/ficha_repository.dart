@@ -35,6 +35,10 @@ class FichaSalva {
 }
 
 abstract class FichaRepository {
+  /// Só o que está no aparelho, sem tocar na rede. Para a tela abrir na hora.
+  Future<FichaCarregada> carregarLocal();
+
+  /// Local + servidor (GET, retry da fila, conflito). Pode demorar.
   Future<FichaCarregada> carregar();
   Future<FichaSalva> salvar(FichaMoto ficha);
   Future<FichaCarregada> manterLocal();

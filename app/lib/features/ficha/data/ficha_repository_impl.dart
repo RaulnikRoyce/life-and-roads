@@ -32,6 +32,17 @@ class FichaRepositoryImpl implements FichaRepository {
   final DetectarConflitoFicha _detectar;
 
   @override
+  Future<FichaCarregada> carregarLocal() async {
+    final sessao = await _auth.carregar();
+    return FichaCarregada(
+      sessao: sessao,
+      ficha: await _local.ler(),
+      remoto: await _conflito.ler(),
+      sync: await _sync.ler(),
+    );
+  }
+
+  @override
   Future<FichaCarregada> carregar() async {
     final sessao = await _auth.carregar();
     var ficha = await _local.ler();

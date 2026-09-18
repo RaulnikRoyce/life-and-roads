@@ -15,8 +15,13 @@ class _ApiFalsa {
   int refreshChamado = 0;
   int fichaChamada = 0;
   bool refreshFalha = false;
+  int healthChamado = 0;
 
   http.Client cliente() => MockClient((req) async {
+        if (req.url.path == '/health') {
+          healthChamado++;
+          return http.Response('{"status":"ok"}', 200);
+        }
         if (req.url.path == '/auth/refresh') {
           refreshChamado++;
           if (refreshFalha) {
@@ -105,5 +110,30 @@ void main() {
     expect(api.refreshChamado, 1);
     expect(await SessaoSegura().lerToken(), isNull);
     expect(await SessaoSegura().lerRefresh(), isNull);
+  });
+
+  test('aquecer só chama /health quando há conta', () async {
+    final api = _ApiFalsa(accessValido: 'a0');
+    ApiCaderneta.usarCliente(api.cliente());
+
+    await ApiCaderneta.aquecer();
+    await Future<void>.delayed(Duration.zero);
+    expect(api.healthChamado, 0);
+    expect(ApiCaderneta.apiRespondeu, isFalse);
+
+    await SessaoSegura().gravar(token: 'a0', refresh: 'r0');
+    await ApiCaderneta.aquecer();
+    await Future<void>.delayed(Duration.zero);
+    expect(api.healthChamado, 1);
+    expect(ApiCaderneta.apiRespondeu, isTrue);
+  });
+
+  test('qualquer resposta marca a API como viva', () async {
+    final api = _ApiFalsa(accessValido: 'a0');
+    ApiCaderneta.usarCliente(api.cliente());
+    expect(ApiCaderneta.apiRespondeu, isFalse);
+
+    await ApiCaderneta.buscarFicha('a0');
+    expect(ApiCaderneta.apiRespondeu, isTrue);
   });
 }

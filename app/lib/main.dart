@@ -5,6 +5,8 @@
 /// ficha ao ficarem visíveis.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -30,6 +32,8 @@ Future<void> main() async {
   await CadernetaBanco.abrirArquivo();
   await MigracaoPrefsDrift.executar();
   await ApiCaderneta.carregarBase();
+  // Com conta, acorda a API do Render enquanto a abertura roda.
+  unawaited(ApiCaderneta.aquecer());
   instalarCrashReporting();
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
