@@ -6,6 +6,7 @@ import 'package:life_and_roads/features/viagem/domain/precos_litro.dart';
 import 'package:life_and_roads/features/viagem/domain/usecases/resumo_consumo.dart';
 import 'package:life_and_roads/features/viagem/presentation/viagem_controller.dart';
 import 'package:life_and_roads/features/mapa/presentation/tela_destino.dart';
+import 'package:life_and_roads/core/widgets/estado_vazio.dart';
 import 'package:life_and_roads/core/widgets/movimento.dart';
 import 'package:life_and_roads/tema.dart';
 import 'package:life_and_roads/viagem/calculo.dart';
@@ -361,6 +362,14 @@ class _TelaViagemState extends ConsumerState<TelaViagem> {
           onPressed: _registrarAbastecimento,
           child: const Text('Registrar abastecimento'),
         ),
+        if (historico.isEmpty) ...[
+          const SizedBox(height: 16),
+          const EstadoVazio(
+            icone: Icons.local_gas_station_outlined,
+            titulo: 'Nenhum abastecimento ainda',
+            frase: 'Registre o primeiro para ver o consumo real da moto.',
+          ),
+        ],
         if (historico.isNotEmpty) ...[
           const SizedBox(height: 24),
           TituloOficina(
@@ -368,7 +377,13 @@ class _TelaViagemState extends ConsumerState<TelaViagem> {
             subtitulo: 'Neste aparelho, sem placa.',
           ),
           const SizedBox(height: 12),
-          for (final r in historico) _linhaPosto(context, r),
+          // Cascata: cada posto entra 40 ms depois do anterior (até o 8º).
+          for (final (i, r) in historico.indexed)
+            EntradaSuave(
+              atraso: Duration(milliseconds: 40 * i.clamp(0, 8)),
+              deslocamento: 8,
+              child: _linhaPosto(context, r),
+            ),
         ],
       ],
       ),
@@ -388,9 +403,15 @@ class _TelaViagemState extends ConsumerState<TelaViagem> {
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 4),
-          FractionallySizedBox(
-            widthFactor: largura,
-            alignment: Alignment.centerLeft,
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: largura),
+            duration: Movimento.longo,
+            curve: Movimento.curva,
+            builder: (context, f, filho) => FractionallySizedBox(
+              widthFactor: f,
+              alignment: Alignment.centerLeft,
+              child: filho,
+            ),
             child: Container(
               height: 8,
               decoration: BoxDecoration(

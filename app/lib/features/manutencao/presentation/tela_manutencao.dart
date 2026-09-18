@@ -16,6 +16,7 @@ import 'package:life_and_roads/manutencao/extra.dart';
 import 'package:life_and_roads/manutencao/lembrete.dart';
 import 'package:life_and_roads/manutencao/regras.dart';
 import 'package:life_and_roads/manutencao/servicos.dart';
+import 'package:life_and_roads/core/widgets/estado_vazio.dart';
 import 'package:life_and_roads/core/widgets/movimento.dart';
 import 'package:life_and_roads/tema.dart';
 
@@ -493,16 +494,28 @@ class _TelaManutencaoState extends ConsumerState<TelaManutencao> {
           onPressed: _registrarServico,
           child: const Text('Registrar serviço'),
         ),
+        if (_servicos.isEmpty) ...[
+          const SizedBox(height: 16),
+          const EstadoVazio(
+            icone: Icons.build_outlined,
+            titulo: 'Nenhum serviço ainda',
+            frase: 'Troca de óleo, pneu, revisão. Fica neste aparelho.',
+          ),
+        ],
         if (_servicos.isNotEmpty) ...[
           const SizedBox(height: 16),
-          for (final s in _servicos)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: CartaoOficina(
-                child: Text(
-                  '${_dataCurta(s.em)}  ${s.tipo}\n'
-                  '${_br(s.kmPainel)} km · R\$ ${_br(s.reais, casas: 2)}',
-                  style: Theme.of(context).textTheme.bodyMedium,
+          for (final (i, s) in _servicos.indexed)
+            EntradaSuave(
+              atraso: Duration(milliseconds: 40 * i.clamp(0, 8)),
+              deslocamento: 8,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: CartaoOficina(
+                  child: Text(
+                    '${_dataCurta(s.em)}  ${s.tipo}\n'
+                    '${_br(s.kmPainel)} km · R\$ ${_br(s.reais, casas: 2)}',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
                 ),
               ),
             ),
