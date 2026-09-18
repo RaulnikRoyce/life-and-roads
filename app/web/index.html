@@ -31,6 +31,11 @@
 
   <title>life.and.roads</title>
   <link rel="manifest" href="manifest.json">
+  <style>
+    /* Fundo antes de o Flutter carregar: segue o tema do sistema, sem piscar. */
+    html, body { margin: 0; background: #F4F0EA; }
+    @media (prefers-color-scheme: dark) { html, body { background: #121212; } }
+  </style>
 </head>
 <body>
   <!--
