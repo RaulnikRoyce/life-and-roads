@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_and_roads/api.dart';
 import 'package:life_and_roads/core/sync/ficha_sync_store.dart';
+import 'package:life_and_roads/core/sync/lido_do_servidor.dart';
 import 'package:life_and_roads/core/sync/status_sync.dart';
 import 'package:life_and_roads/features/auth/data/auth_local_datasource.dart';
 import 'package:life_and_roads/features/auth/data/auth_remote_datasource.dart';
@@ -18,19 +19,33 @@ class _RemotoFake implements FichaRemoteDatasource {
   bool falhar = false;
   int salvamentos = 0;
 
-  @override
-  Future<FichaMoto?> buscar(String token) async {
-    if (falhar) throw FalhaApi('API fora do ar. A ficha ficou só neste aparelho.');
-    return remota;
+  /// Carimbo do servidor. Cada gravação avança um segundo, como o
+  /// `atualizado_em` do MySQL.
+  DateTime carimbo = DateTime.utc(2026, 9, 17, 12, 0, 0);
+
+  /// Simula outro aparelho gravando no servidor.
+  void mexerNoServidor(FichaMoto nova) {
+    remota = nova;
+    carimbo = carimbo.add(const Duration(seconds: 1));
   }
 
   @override
-  Future<void> salvar(String token, FichaMoto ficha) async {
+  Future<LidoDoServidor<FichaMoto>?> buscar(String token) async {
+    if (falhar) throw FalhaApi('API fora do ar. A ficha ficou só neste aparelho.');
+    final r = remota;
+    if (r == null) return null;
+    return LidoDoServidor(r, atualizadoEm: carimbo);
+  }
+
+  @override
+  Future<DateTime?> salvar(String token, FichaMoto ficha) async {
     if (falhar) {
       throw FalhaApi('API fora do ar. A ficha ficou só neste aparelho.');
     }
     salvamentos++;
     remota = ficha;
+    carimbo = carimbo.add(const Duration(seconds: 1));
+    return carimbo;
   }
 }
 
@@ -140,6 +155,42 @@ void main() {
     expect(ok.ficha?.modelo, 'Fazer');
     expect(ok.ficha?.psiDianteiro, 32);
     expect(ok.sync.status, StatusSync.synced);
+  });
+
+  test('editar offline em aparelho único sobe sem perguntar', () async {
+    // Sincroniza uma vez: guarda o carimbo do servidor.
+    final primeira = await repo.salvar(ficha);
+    expect(primeira.sincronizada, isTrue);
+    expect(remoto.salvamentos, 1);
+
+    // Edita sem rede: fica pending, servidor continua no mesmo carimbo.
+    remoto.falhar = true;
+    final editada = await repo.salvar(ficha.copiarCom(kmAtual: 1500));
+    expect(editada.sync.status, StatusSync.failed);
+
+    // Volta a rede: local != remoto, mas o servidor não mudou. Sem conflito.
+    remoto.falhar = false;
+    final carregada = await repo.carregar();
+    expect(carregada.sync.status, StatusSync.synced);
+    expect(carregada.remoto, isNull);
+    expect(remoto.salvamentos, 2);
+    expect(remoto.remota?.kmAtual, 1500);
+  });
+
+  test('pending com servidor alterado por outro aparelho pergunta', () async {
+    await repo.salvar(ficha);
+    remoto.falhar = true;
+    await repo.salvar(ficha.copiarCom(kmAtual: 1500));
+    remoto.falhar = false;
+
+    // Outro aparelho gravou no servidor: carimbo avança.
+    remoto.mexerNoServidor(ficha.copiarCom(kmAtual: 9000));
+
+    final carregada = await repo.carregar();
+    expect(carregada.sync.status, StatusSync.conflict);
+    expect(carregada.remoto?.kmAtual, 9000);
+    expect(carregada.ficha?.kmAtual, 1500);
+    expect(remoto.salvamentos, 1);
   });
 
   test('sem ficha local o GET preenche', () async {

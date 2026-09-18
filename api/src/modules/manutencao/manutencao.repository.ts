@@ -1,6 +1,9 @@
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { getPool } from '../../shared/database/pool';
 import type { ManutencaoDto } from './manutencao.schema';
+import { carimboIso } from '../ficha/ficha.repository';
+
+export type ManutencaoLida = ManutencaoDto & { atualizadoEm: string | null };
 
 type Linha = RowDataPacket & {
   oleo_ultima: string | null;
@@ -11,6 +14,7 @@ type Linha = RowDataPacket & {
   ipva_proxima: string | null;
   seguro_proxima: string | null;
   licenciamento_proxima: string | null;
+  atualizado_em_unix: number | string | null;
 };
 
 const SELECT = `SELECT
@@ -21,12 +25,14 @@ const SELECT = `SELECT
   DATE_FORMAT(pneus_proxima, '%Y-%m-%d') AS pneus_proxima,
   DATE_FORMAT(ipva_proxima, '%Y-%m-%d') AS ipva_proxima,
   DATE_FORMAT(seguro_proxima, '%Y-%m-%d') AS seguro_proxima,
-  DATE_FORMAT(licenciamento_proxima, '%Y-%m-%d') AS licenciamento_proxima
+  DATE_FORMAT(licenciamento_proxima, '%Y-%m-%d') AS licenciamento_proxima,
+  UNIX_TIMESTAMP(atualizado_em) AS atualizado_em_unix
  FROM manutencoes WHERE usuario_id = ?`;
 
-const paraJson = (linha: Linha | undefined): ManutencaoDto | null => {
+const paraJson = (linha: Linha | undefined): ManutencaoLida | null => {
   if (!linha) return null;
   return {
+    atualizadoEm: carimboIso(linha.atualizado_em_unix),
     oleoUltima: linha.oleo_ultima,
     oleoProxima: linha.oleo_proxima,
     revisaoUltima: linha.revisao_ultima,
@@ -38,7 +44,7 @@ const paraJson = (linha: Linha | undefined): ManutencaoDto | null => {
   };
 };
 
-export async function buscarPorUsuario(usuarioId: number): Promise<ManutencaoDto | null> {
+export async function buscarPorUsuario(usuarioId: number): Promise<ManutencaoLida | null> {
   const [rows] = await getPool().execute<Linha[]>(SELECT, [usuarioId]);
   return paraJson(rows[0]);
 }
@@ -46,7 +52,7 @@ export async function buscarPorUsuario(usuarioId: number): Promise<ManutencaoDto
 export async function salvar(
   usuarioId: number,
   dados: ManutencaoDto,
-): Promise<ManutencaoDto> {
+): Promise<ManutencaoLida> {
   const params = [
     usuarioId,
     dados.oleoUltima,
@@ -75,5 +81,9 @@ export async function salvar(
         licenciamento_proxima = VALUES(licenciamento_proxima)`,
     params,
   );
-  return dados;
+  const [rows] = await getPool().execute<Linha[]>(
+    'SELECT UNIX_TIMESTAMP(atualizado_em) AS atualizado_em_unix FROM manutencoes WHERE usuario_id = ?',
+    [usuarioId],
+  );
+  return { ...dados, atualizadoEm: carimboIso(rows[0]?.atualizado_em_unix) };
 }

@@ -1,28 +1,40 @@
 import 'package:life_and_roads/api.dart';
 import 'package:life_and_roads/core/api/openapi/dtos.dart';
+import 'package:life_and_roads/core/sync/lido_do_servidor.dart';
 
 /// Cliente HTTP tipado do contrato `docs/openapi.yaml`.
 ///
 /// Transporte (JWT, refresh, timeout) continua em [ApiCaderneta].
+/// `atualizadoEm` (FichaLida / ManutencaoLida) fica fora do DTO: é só de
+/// leitura e o PUT `.strict()` recusa se for junto.
 class ClienteOpenApi {
-  Future<FichaDto?> buscarFicha(String token) async {
+  Future<LidoDoServidor<FichaDto>?> buscarFicha(String token) async {
     final mapa = await ApiCaderneta.buscarFicha(token);
     if (mapa == null) return null;
-    return FichaDto.fromJson(mapa);
+    return LidoDoServidor(
+      FichaDto.fromJson(mapa),
+      atualizadoEm: LidoDoServidor.carimbo(mapa['atualizadoEm']),
+    );
   }
 
-  Future<void> salvarFicha(String token, FichaDto ficha) {
-    return ApiCaderneta.salvarFicha(token, ficha.toJson());
+  /// Devolve o carimbo novo do servidor.
+  Future<DateTime?> salvarFicha(String token, FichaDto ficha) async {
+    final corpo = await ApiCaderneta.salvarFicha(token, ficha.toJson());
+    return LidoDoServidor.carimbo(corpo['atualizadoEm']);
   }
 
-  Future<ManutencaoDto?> buscarManutencao(String token) async {
+  Future<LidoDoServidor<ManutencaoDto>?> buscarManutencao(String token) async {
     final mapa = await ApiCaderneta.buscarManutencao(token);
     if (mapa == null) return null;
-    return ManutencaoDto.fromJson(mapa);
+    return LidoDoServidor(
+      ManutencaoDto.fromJson(mapa),
+      atualizadoEm: LidoDoServidor.carimbo(mapa['atualizadoEm']),
+    );
   }
 
-  Future<void> salvarManutencao(String token, ManutencaoDto agenda) {
-    return ApiCaderneta.salvarManutencao(token, agenda.toJson());
+  Future<DateTime?> salvarManutencao(String token, ManutencaoDto agenda) async {
+    final corpo = await ApiCaderneta.salvarManutencao(token, agenda.toJson());
+    return LidoDoServidor.carimbo(corpo['atualizadoEm']);
   }
 
   Future<LocalizacaoDto?> buscarLocalizacao(String token) async {

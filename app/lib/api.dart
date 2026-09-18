@@ -219,7 +219,8 @@ class ApiCaderneta {
     return _corpo(r);
   }
 
-  static Future<void> salvarFicha(
+  /// Devolve o corpo da resposta (ficha + `atualizadoEm` do servidor).
+  static Future<Map<String, dynamic>> salvarFicha(
     String token,
     Map<String, dynamic> ficha,
   ) async {
@@ -232,6 +233,7 @@ class ApiCaderneta {
       ),
     );
     if (r.statusCode != 200) throw _erro(r);
+    return _corpo(r);
   }
 
   static Future<Map<String, dynamic>?> buscarManutencao(String token) async {
@@ -247,7 +249,8 @@ class ApiCaderneta {
     return _corpo(r);
   }
 
-  static Future<void> salvarManutencao(
+  /// Devolve o corpo da resposta (datas + `atualizadoEm` do servidor).
+  static Future<Map<String, dynamic>> salvarManutencao(
     String token,
     Map<String, dynamic> manutencao,
   ) async {
@@ -260,6 +263,7 @@ class ApiCaderneta {
       ),
     );
     if (r.statusCode != 200) throw _erro(r);
+    return _corpo(r);
   }
 
   static Future<Map<String, dynamic>?> buscarLocalizacao(String token) async {

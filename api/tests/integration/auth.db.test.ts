@@ -86,6 +86,48 @@ test('login, refresh, ficha e exclusão no MySQL', async (t) => {
     });
     assert.equal(put.status, 200);
 
+    // Carimbo do servidor: vem no PUT e no GET, iguais; não entra no PUT.
+    const putCorpo = await put.json() as { atualizadoEm: string | null };
+    assert.match(putCorpo.atualizadoEm ?? '', /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+    const get = await fetch(`${base}/ficha`, {
+      headers: { authorization: `Bearer ${sessao.token}` },
+    });
+    assert.equal(get.status, 200);
+    const getCorpo = await get.json() as { atualizadoEm: string | null; modelo: string };
+    assert.equal(getCorpo.atualizadoEm, putCorpo.atualizadoEm);
+    assert.equal(getCorpo.modelo, 'CG 160');
+    const carimboNoPut = await fetch(`${base}/ficha`, {
+      method: 'PUT',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${sessao.token}`,
+      },
+      body: JSON.stringify({ ...ficha, atualizadoEm: putCorpo.atualizadoEm }),
+    });
+    assert.equal(carimboNoPut.status, 400);
+
+    const agenda = {
+      oleoUltima: '2026-01-10', oleoProxima: '2026-07-10', revisaoUltima: null,
+      pneusUltima: null, pneusProxima: null, ipvaProxima: null,
+      seguroProxima: null, licenciamentoProxima: null,
+    };
+    const putAgenda = await fetch(`${base}/manutencao`, {
+      method: 'PUT',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${sessao.token}`,
+      },
+      body: JSON.stringify(agenda),
+    });
+    assert.equal(putAgenda.status, 200);
+    const agendaCorpo = await putAgenda.json() as { atualizadoEm: string | null };
+    assert.ok(agendaCorpo.atualizadoEm);
+    const getAgenda = await fetch(`${base}/manutencao`, {
+      headers: { authorization: `Bearer ${sessao.token}` },
+    });
+    const getAgendaCorpo = await getAgenda.json() as { atualizadoEm: string | null };
+    assert.equal(getAgendaCorpo.atualizadoEm, agendaCorpo.atualizadoEm);
+
     const renovar = () => fetch(`${base}/auth/refresh`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },

@@ -147,7 +147,11 @@ paths:
         - bearerAuth: []
       responses:
         '200':
-          description: ficha
+          description: ficha com o carimbo do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FichaLida'
         '404':
           description: ainda não há ficha
     put:
@@ -161,14 +165,22 @@ paths:
               $ref: '#/components/schemas/Ficha'
       responses:
         '200':
-          description: gravada
+          description: gravada, com o carimbo novo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FichaLida'
   /manutencao:
     get:
       security:
         - bearerAuth: []
       responses:
         '200':
-          description: datas
+          description: datas com o carimbo do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManutencaoLida'
         '404':
           description: ainda não há
     put:
@@ -182,7 +194,11 @@ paths:
               $ref: '#/components/schemas/Manutencao'
       responses:
         '200':
-          description: gravada
+          description: gravada, com o carimbo novo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManutencaoLida'
   /localizacao:
     get:
       security:
@@ -278,6 +294,28 @@ components:
         ipvaProxima: { type: string, format: date, nullable: true }
         seguroProxima: { type: string, format: date, nullable: true }
         licenciamentoProxima: { type: string, format: date, nullable: true }
+    # Resposta do GET/PUT. atualizadoEm é só de leitura; no PUT é recusado.
+    FichaLida:
+      allOf:
+        - $ref: '#/components/schemas/Ficha'
+        - type: object
+          properties:
+            atualizadoEm:
+              type: string
+              format: date-time
+              nullable: true
+              readOnly: true
+              description: Quando o servidor gravou pela última vez (UTC). O app compara com o valor guardado para saber se outro aparelho mexeu.
+    ManutencaoLida:
+      allOf:
+        - $ref: '#/components/schemas/Manutencao'
+        - type: object
+          properties:
+            atualizadoEm:
+              type: string
+              format: date-time
+              nullable: true
+              readOnly: true
     Localizacao:
       type: object
       additionalProperties: false

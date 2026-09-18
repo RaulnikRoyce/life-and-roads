@@ -34,10 +34,13 @@ class ManutencaoSyncStore {
     return _gravar(StatusSync.pending, erro: erro, tocarLocal: true);
   }
 
-  Future<void> marcarSincronizado() {
+  /// [carimbo] é o `atualizadoEm` do servidor. Sem ele, guarda a hora local,
+  /// que nunca bate com o servidor e por isso força a pergunta de conflito.
+  Future<void> marcarSincronizado({DateTime? carimbo}) {
     return _gravar(
       StatusSync.synced,
       remotoAgora: true,
+      carimbo: carimbo,
       zerarTentativas: true,
     );
   }
@@ -55,6 +58,7 @@ class ManutencaoSyncStore {
     String? erro,
     bool tocarLocal = false,
     bool remotoAgora = false,
+    DateTime? carimbo,
     bool somarTentativa = false,
     bool zerarTentativas = false,
   }) async {
@@ -66,7 +70,7 @@ class ManutencaoSyncStore {
             ? atual.tentativas + 1
             : atual.tentativas;
     final local = tocarLocal ? agora : (atual.localUpdatedAt ?? agora);
-    final remoto = remotoAgora ? agora : atual.remoteUpdatedAt;
+    final remoto = remotoAgora ? (carimbo?.toUtc() ?? agora) : atual.remoteUpdatedAt;
     await ArmazemKv.gravarTexto(
       chave,
       jsonEncode({

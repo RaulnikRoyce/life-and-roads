@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_and_roads/api.dart';
+import 'package:life_and_roads/core/sync/lido_do_servidor.dart';
 import 'package:life_and_roads/core/sync/status_sync.dart';
 import 'package:life_and_roads/features/auth/data/auth_local_datasource.dart';
 import 'package:life_and_roads/features/auth/data/auth_remote_datasource.dart';
@@ -19,22 +20,32 @@ class _RemotoFake implements ManutencaoRemoteDatasource {
   AgendaManutencao? remota;
   bool falhar = false;
   int salvamentos = 0;
+  DateTime carimbo = DateTime.utc(2026, 9, 17, 12, 0, 0);
 
-  @override
-  Future<AgendaManutencao?> buscar(String token) async {
-    if (falhar) {
-      throw FalhaApi('API fora do ar. Ficou só neste aparelho.');
-    }
-    return remota;
+  void mexerNoServidor(AgendaManutencao nova) {
+    remota = nova;
+    carimbo = carimbo.add(const Duration(seconds: 1));
   }
 
   @override
-  Future<void> salvar(String token, AgendaManutencao agenda) async {
+  Future<LidoDoServidor<AgendaManutencao>?> buscar(String token) async {
+    if (falhar) {
+      throw FalhaApi('API fora do ar. Ficou só neste aparelho.');
+    }
+    final r = remota;
+    if (r == null) return null;
+    return LidoDoServidor(r, atualizadoEm: carimbo);
+  }
+
+  @override
+  Future<DateTime?> salvar(String token, AgendaManutencao agenda) async {
     if (falhar) {
       throw FalhaApi('API fora do ar. Ficou só neste aparelho.');
     }
     salvamentos++;
     remota = agenda;
+    carimbo = carimbo.add(const Duration(seconds: 1));
+    return carimbo;
   }
 }
 
@@ -99,6 +110,52 @@ void main() {
     expect(remoto.salvamentos, 0);
     expect(carregada.sync.status, StatusSync.conflict);
     expect(carregada.remoto?.oleoUltima, DateTime(2025, 1, 1));
+  });
+
+  test('editar offline em aparelho único sobe sem perguntar', () async {
+    final primeira = await repo.salvar(agenda, const ManutencaoExtra());
+    expect(primeira.sincronizada, isTrue);
+
+    remoto.falhar = true;
+    final editada = await repo.salvar(
+      AgendaManutencao(
+        oleoUltima: DateTime(2026, 2, 1),
+        oleoProxima: DateTime(2026, 8, 1),
+      ),
+      const ManutencaoExtra(),
+    );
+    expect(editada.sync.status, StatusSync.failed);
+
+    remoto.falhar = false;
+    final carregada = await repo.carregar();
+    expect(carregada.sync.status, StatusSync.synced);
+    expect(carregada.remoto, isNull);
+    expect(remoto.salvamentos, 2);
+    expect(remoto.remota?.oleoUltima, DateTime(2026, 2, 1));
+  });
+
+  test('pending com servidor alterado por outro aparelho pergunta', () async {
+    await repo.salvar(agenda, const ManutencaoExtra());
+    remoto.falhar = true;
+    await repo.salvar(
+      AgendaManutencao(
+        oleoUltima: DateTime(2026, 2, 1),
+        oleoProxima: DateTime(2026, 8, 1),
+      ),
+      const ManutencaoExtra(),
+    );
+    remoto.falhar = false;
+    remoto.mexerNoServidor(
+      AgendaManutencao(
+        oleoUltima: DateTime(2025, 1, 1),
+        oleoProxima: DateTime(2025, 7, 1),
+      ),
+    );
+
+    final carregada = await repo.carregar();
+    expect(carregada.sync.status, StatusSync.conflict);
+    expect(carregada.remoto?.oleoUltima, DateTime(2025, 1, 1));
+    expect(remoto.salvamentos, 1);
   });
 
   test('km e CNH ficam no extra local', () async {

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:life_and_roads/api.dart';
+import 'package:life_and_roads/core/sync/lido_do_servidor.dart';
 import 'package:life_and_roads/core/permissoes/mensagens_permissao.dart';
 import 'package:life_and_roads/core/widgets/cartao_conflito.dart';
 import 'package:life_and_roads/features/ficha/data/ficha_local_datasource.dart';
@@ -25,15 +26,18 @@ class _FichaRemotaFake implements FichaRemoteDatasource {
   bool falhar;
 
   @override
-  Future<FichaMoto?> buscar(String token) async {
+  Future<LidoDoServidor<FichaMoto>?> buscar(String token) async {
     if (falhar) throw FalhaApi('API fora do ar.');
-    return remota;
+    final r = remota;
+    if (r == null) return null;
+    return LidoDoServidor(r, atualizadoEm: DateTime.utc(2026, 9, 17));
   }
 
   @override
-  Future<void> salvar(String token, FichaMoto ficha) async {
+  Future<DateTime?> salvar(String token, FichaMoto ficha) async {
     if (falhar) throw FalhaApi('API fora do ar.');
     remota = ficha;
+    return DateTime.utc(2026, 9, 17);
   }
 }
 

@@ -1,4 +1,5 @@
 import 'package:life_and_roads/api.dart';
+import 'package:life_and_roads/core/sync/lido_do_servidor.dart';
 import 'package:life_and_roads/features/auth/domain/auth_repository.dart';
 import 'package:life_and_roads/features/ficha/data/ficha_local_datasource.dart';
 import 'package:life_and_roads/features/manutencao/data/agenda_conflito_store.dart';
@@ -66,10 +67,12 @@ class ManutencaoRepositoryImpl implements ManutencaoRepository {
     }
 
     AgendaManutencao? remota;
+    DateTime? carimbo;
     var offline = false;
     try {
-      remota = await _remoto.buscar(sessao.token!);
-      if (remota != null) remota = remota.normalizarAnuais();
+      final lida = await _remoto.buscar(sessao.token!);
+      remota = lida?.dado.normalizarAnuais();
+      carimbo = lida?.atualizadoEm;
     } on FalhaApi {
       offline = true;
     } catch (_) {
@@ -102,15 +105,21 @@ class ManutencaoRepositoryImpl implements ManutencaoRepository {
     if (agenda.vazia) {
       agenda = remota;
       await _local.gravarAgenda(agenda);
-      await _sync.marcarSincronizado();
+      await _sync.marcarSincronizado(carimbo: carimbo);
       await _conflito.limpar();
       return _base(agenda: agenda, extra: extra);
     }
 
     if (_detectar.executar(agenda, remota)) {
-      await _sync.marcarConflito();
-      await _conflito.gravar(remota);
-      return _base(agenda: agenda, extra: extra, remoto: remota);
+      // Servidor no mesmo carimbo que guardamos + pending local = só este
+      // aparelho mudou. Sobe sem perguntar (ADR 0018).
+      final soLocalMudou = meta.deveReenviar &&
+          mesmoCarimbo(carimbo, meta.remoteUpdatedAt);
+      if (!soLocalMudou) {
+        await _sync.marcarConflito();
+        await _conflito.gravar(remota);
+        return _base(agenda: agenda, extra: extra, remoto: remota);
+      }
     }
 
     await _conflito.limpar();
@@ -122,7 +131,7 @@ class ManutencaoRepositoryImpl implements ManutencaoRepository {
         offline: envio.offline,
       );
     }
-    await _sync.marcarSincronizado();
+    await _sync.marcarSincronizado(carimbo: carimbo);
     return _base(agenda: agenda, extra: extra);
   }
 
@@ -203,15 +212,18 @@ class ManutencaoRepositoryImpl implements ManutencaoRepository {
     final sessao = await _auth.carregar();
     final extra = _normalizarCnh(await _local.lerExtra());
     var remota = await _conflito.ler();
+    DateTime? carimbo;
     if (remota == null && sessao.logado) {
       try {
-        remota = await _remoto.buscar(sessao.token!);
+        final lida = await _remoto.buscar(sessao.token!);
+        remota = lida?.dado;
+        carimbo = lida?.atualizadoEm;
       } catch (_) {}
     }
     if (remota == null) return carregar();
     final normal = remota.normalizarAnuais();
     await _local.gravarAgenda(normal);
-    await _sync.marcarSincronizado();
+    await _sync.marcarSincronizado(carimbo: carimbo);
     await _conflito.limpar();
     return _base(agenda: normal, extra: extra);
   }
@@ -232,8 +244,8 @@ class ManutencaoRepositoryImpl implements ManutencaoRepository {
     AgendaManutencao agenda,
   ) async {
     try {
-      await _remoto.salvar(token, agenda);
-      await _sync.marcarSincronizado();
+      final carimbo = await _remoto.salvar(token, agenda);
+      await _sync.marcarSincronizado(carimbo: carimbo);
       return (ok: true, offline: false, mensagem: '');
     } on FalhaApi catch (e) {
       await _sync.marcarFalhou(e.mensagem);

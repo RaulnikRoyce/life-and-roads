@@ -13,11 +13,23 @@ type FichaRow = RowDataPacket & {
   km_atual: string | number;
   tanque_litros: string | number | null;
   personalizacoes: string | null;
+  atualizado_em_unix: number | string | null;
 };
 
-const paraJson = (linha: FichaRow | undefined): FichaDto | null => {
+/** Ficha como sai no GET/PUT: o contrato mais o carimbo do servidor. */
+export type FichaLida = FichaDto & { atualizadoEm: string | null };
+
+/** UNIX_TIMESTAMP() não depende do fuso da sessão; ISO em UTC para o app. */
+export const carimboIso = (unix: number | string | null | undefined): string | null => {
+  const n = Number(unix);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return new Date(n * 1000).toISOString();
+};
+
+const paraJson = (linha: FichaRow | undefined): FichaLida | null => {
   if (!linha) return null;
   return {
+    atualizadoEm: carimboIso(linha.atualizado_em_unix),
     marca: linha.marca,
     modelo: linha.modelo,
     ano: linha.ano,
@@ -31,17 +43,18 @@ const paraJson = (linha: FichaRow | undefined): FichaDto | null => {
   };
 };
 
-export async function buscarPorUsuario(usuarioId: number): Promise<FichaDto | null> {
+export async function buscarPorUsuario(usuarioId: number): Promise<FichaLida | null> {
   const [rows] = await getPool().execute<FichaRow[]>(
     `SELECT marca, modelo, ano, cilindrada, km_litro, km_litro_alcool, combustivel,
-            km_atual, tanque_litros, personalizacoes
+            km_atual, tanque_litros, personalizacoes,
+            UNIX_TIMESTAMP(atualizado_em) AS atualizado_em_unix
        FROM fichas WHERE usuario_id = ?`,
     [usuarioId],
   );
   return paraJson(rows[0]);
 }
 
-export async function salvar(usuarioId: number, dados: FichaDto): Promise<FichaDto> {
+export async function salvar(usuarioId: number, dados: FichaDto): Promise<FichaLida> {
   const params = [
     usuarioId,
     dados.marca,
@@ -74,5 +87,9 @@ export async function salvar(usuarioId: number, dados: FichaDto): Promise<FichaD
         personalizacoes = VALUES(personalizacoes)`,
     params,
   );
-  return dados;
+  const [rows] = await getPool().execute<FichaRow[]>(
+    'SELECT UNIX_TIMESTAMP(atualizado_em) AS atualizado_em_unix FROM fichas WHERE usuario_id = ?',
+    [usuarioId],
+  );
+  return { ...dados, atualizadoEm: carimboIso(rows[0]?.atualizado_em_unix) };
 }

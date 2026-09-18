@@ -1,5 +1,6 @@
 import 'package:life_and_roads/api.dart';
 import 'package:life_and_roads/core/sync/ficha_sync_store.dart';
+import 'package:life_and_roads/core/sync/lido_do_servidor.dart';
 import 'package:life_and_roads/features/auth/domain/auth_repository.dart';
 import 'package:life_and_roads/features/ficha/data/ficha_conflito_store.dart';
 import 'package:life_and_roads/features/ficha/data/ficha_local_datasource.dart';
@@ -47,9 +48,9 @@ class FichaRepositoryImpl implements FichaRepository {
       );
     }
 
-    FichaMoto? remota;
+    LidoDoServidor<FichaMoto>? lida;
     try {
-      remota = await _remoto.buscar(sessao.token!);
+      lida = await _remoto.buscar(sessao.token!);
     } on FalhaApi {
       offline = true;
     } catch (_) {
@@ -66,11 +67,12 @@ class FichaRepositoryImpl implements FichaRepository {
       );
     }
 
+    final remota = lida?.dado;
     if (ficha == null) {
       if (remota != null) {
         await _local.gravar(remota);
         ficha = remota;
-        await _sync.marcarSincronizado();
+        await _sync.marcarSincronizado(carimbo: lida?.atualizadoEm);
         await _conflito.limpar();
         meta = await _sync.ler();
       }
@@ -92,15 +94,22 @@ class FichaRepositoryImpl implements FichaRepository {
     }
 
     if (_detectar.executar(ficha, remota)) {
-      await _sync.marcarConflito();
-      await _conflito.gravar(remota);
-      meta = await _sync.ler();
-      return FichaCarregada(
-        sessao: sessao,
-        ficha: ficha,
-        remoto: remota,
-        sync: meta,
-      );
+      // Diverge. Se há alteração local pendente e o servidor ainda está no
+      // carimbo que guardamos, ninguém mexeu lá: é só o pending deste
+      // aparelho. Sobe sem perguntar (ADR 0018). Fora disso, pergunta.
+      final soLocalMudou = meta.deveReenviar &&
+          mesmoCarimbo(lida?.atualizadoEm, meta.remoteUpdatedAt);
+      if (!soLocalMudou) {
+        await _sync.marcarConflito();
+        await _conflito.gravar(remota);
+        meta = await _sync.ler();
+        return FichaCarregada(
+          sessao: sessao,
+          ficha: ficha,
+          remoto: remota,
+          sync: meta,
+        );
+      }
     }
 
     await _conflito.limpar();
@@ -109,7 +118,7 @@ class FichaRepositoryImpl implements FichaRepository {
       offline = envio.offline;
       meta = await _sync.ler();
     } else {
-      await _sync.marcarSincronizado();
+      await _sync.marcarSincronizado(carimbo: lida?.atualizadoEm);
       meta = await _sync.ler();
     }
     return FichaCarregada(
@@ -179,9 +188,12 @@ class FichaRepositoryImpl implements FichaRepository {
     final sessao = await _auth.carregar();
     final local = await _local.ler();
     var remota = await _conflito.ler();
+    DateTime? carimbo;
     if (remota == null && sessao.logado) {
       try {
-        remota = await _remoto.buscar(sessao.token!);
+        final lida = await _remoto.buscar(sessao.token!);
+        remota = lida?.dado;
+        carimbo = lida?.atualizadoEm;
       } catch (_) {}
     }
     if (remota == null) return carregar();
@@ -190,7 +202,9 @@ class FichaRepositoryImpl implements FichaRepository {
       psiTraseiro: remota.psiTraseiro ?? local?.psiTraseiro,
     );
     await _local.gravar(mesclada);
-    await _sync.marcarSincronizado();
+    // Vindo do snapshot de conflito não há carimbo; o próximo carregar()
+    // (local == remoto) grava o carimbo certo.
+    await _sync.marcarSincronizado(carimbo: carimbo);
     await _conflito.limpar();
     return FichaCarregada(
       sessao: sessao,
@@ -204,8 +218,8 @@ class FichaRepositoryImpl implements FichaRepository {
     FichaMoto ficha,
   ) async {
     try {
-      await _remoto.salvar(token, ficha);
-      await _sync.marcarSincronizado();
+      final carimbo = await _remoto.salvar(token, ficha);
+      await _sync.marcarSincronizado(carimbo: carimbo);
       return (
         ok: true,
         offline: false,
