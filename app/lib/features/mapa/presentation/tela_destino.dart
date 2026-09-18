@@ -226,15 +226,18 @@ class _TelaDestinoState extends ConsumerState<TelaDestino> {
                         point: destino,
                         width: 44,
                         height: 44,
-                        child: const Icon(
+                        child: Icon(
                           Icons.place,
-                          color: Oficina.creme,
+                          color: Theme.of(context).colorScheme.onSurface,
                           size: 38,
+                          shadows: const [
+                            Shadow(color: Colors.black54, blurRadius: 6),
+                          ],
                         ),
                       ),
                   ],
                 ),
-                const CreditoOsm(texto: 'OSM · CARTO · OSRM'),
+                const CreditoOsm(texto: 'OpenStreetMap · OSRM'),
               ],
             ),
           ),

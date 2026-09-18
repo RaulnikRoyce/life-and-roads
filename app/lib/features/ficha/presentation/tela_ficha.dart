@@ -326,7 +326,6 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
         ? ImageSource.gallery
         : await showModalBottomSheet<ImageSource>(
             context: context,
-            backgroundColor: Oficina.couro,
             builder: (ctx) => SafeArea(
               child: Column(
                 mainAxisSize: MainAxisSize.min,

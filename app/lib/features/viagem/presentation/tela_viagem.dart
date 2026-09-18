@@ -187,7 +187,7 @@ class _TelaViagemState extends ConsumerState<TelaViagem> {
               Text(
                 'R\$ ${_br(melhor, casas: 2)}',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: Oficina.creme,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontSize: 36,
                       height: 1.1,
                     ),

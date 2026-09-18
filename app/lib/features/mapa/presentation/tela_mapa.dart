@@ -99,7 +99,6 @@ class _TelaMapaState extends ConsumerState<TelaMapa> {
   Future<void> _aoSegurar(TapPosition _, LatLng ponto) async {
     final tipo = await showModalBottomSheet<String>(
       context: context,
-      backgroundColor: Oficina.couro,
       builder: (ctx) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -129,7 +128,6 @@ class _TelaMapaState extends ConsumerState<TelaMapa> {
     final rotulo = pin.tipo == 'posto' ? 'Posto' : 'Oficina';
     final acao = await showModalBottomSheet<String>(
       context: context,
-      backgroundColor: Oficina.couro,
       builder: (ctx) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -171,7 +169,6 @@ class _TelaMapaState extends ConsumerState<TelaMapa> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: Oficina.couro,
         title: Text('Apagar $nome?'),
         content: const Text('Só some neste aparelho.'),
         actions: [
@@ -255,8 +252,11 @@ class _TelaMapaState extends ConsumerState<TelaMapa> {
                           pin.tipo == 'posto'
                               ? Icons.local_gas_station
                               : Icons.build,
-                          color: Oficina.creme,
+                          color: Theme.of(context).colorScheme.onSurface,
                           size: 34,
+                          shadows: const [
+                            Shadow(color: Colors.black54, blurRadius: 6),
+                          ],
                         ),
                       ),
                     ),
