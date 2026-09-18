@@ -13,4 +13,6 @@ ENV APP_ENV=production
 EXPOSE 3001
 
 USER node
-CMD ["npm", "start"]
+# tsx direto como processo principal: o SIGTERM do Render chega no nosso
+# encerrar() e o container sai com 0, sem o "npm error signal SIGTERM".
+CMD ["node_modules/.bin/tsx", "src/server.ts"]

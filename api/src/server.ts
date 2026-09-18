@@ -9,7 +9,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 import type { Server } from 'http';
 import { carregarEnv } from './shared/config/env';
-import { fecharPool } from './shared/database/pool';
+import { fecharPool, versaoBanco } from './shared/database/pool';
 import { migrar } from './shared/database/migrar';
 import { apagarSessoesVencidas } from './modules/auth/auth.repository';
 import { logger } from './shared/http/logger';
@@ -44,6 +44,12 @@ const subir = async (): Promise<void> => {
       detalhe: erro instanceof Error ? erro.message : 'erro',
     });
     process.exit(1);
+  }
+
+  try {
+    logger.info('banco', { versao: await versaoBanco() });
+  } catch {
+    // o /ready cobre banco indisponível
   }
 
   await limparSessoes();

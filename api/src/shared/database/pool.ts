@@ -45,6 +45,14 @@ export async function pingBanco(): Promise<void> {
   }
 }
 
+/** Versão do servidor (MySQL 8.0.x, 8.4.x, MariaDB…). Vai para o log de boot. */
+export async function versaoBanco(): Promise<string> {
+  const [rows] = await getPool().query<import('mysql2').RowDataPacket[]>(
+    'SELECT VERSION() AS versao',
+  );
+  return String(rows[0]?.versao ?? 'desconhecida');
+}
+
 export async function fecharPool(): Promise<void> {
   if (!pool) return;
   await pool.end();
