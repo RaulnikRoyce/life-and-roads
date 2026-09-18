@@ -28,7 +28,7 @@ class EstadoVazio extends StatelessWidget {
           border: Border.all(color: tema.colorScheme.outline),
         ),
         child: Stack(
-          alignment: Alignment.centerRight,
+          alignment: Alignment.centerLeft,
           children: [
             Positioned(
               right: -8,
@@ -38,16 +38,17 @@ class EstadoVazio extends StatelessWidget {
                 color: Oficina.latao.withValues(alpha: 0.12),
               ),
             ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(titulo, style: tema.textTheme.titleMedium),
-                const SizedBox(height: 4),
-                Padding(
-                  padding: const EdgeInsets.only(right: 72),
-                  child: Text(frase, style: tema.textTheme.bodyMedium),
-                ),
-              ],
+            Padding(
+              padding: const EdgeInsets.only(right: 72),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(titulo, style: tema.textTheme.titleMedium),
+                  const SizedBox(height: 4),
+                  Text(frase, style: tema.textTheme.bodyMedium),
+                ],
+              ),
             ),
           ],
         ),
