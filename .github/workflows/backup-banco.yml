@@ -1,0 +1,46 @@
+name: backup-banco
+
+# Dump semanal do MySQL de produção (Aiven, plano grátis sem backup próprio).
+# Fica como artifact por 90 dias. Também roda à mão em Actions → backup-banco.
+on:
+  schedule:
+    - cron: '0 6 * * 1'   # segunda, 06:00 UTC (03:00 em Brasília)
+  workflow_dispatch:
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Certificado da Aiven
+        env:
+          DB_SSL_CA_BASE64: ${{ secrets.DB_SSL_CA_BASE64 }}
+        run: |
+          test -n "$DB_SSL_CA_BASE64"
+          echo "$DB_SSL_CA_BASE64" | base64 -d > ca.pem
+          grep -q "BEGIN CERTIFICATE" ca.pem
+
+      - name: mysqldump
+        env:
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+        run: |
+          test -n "$DB_HOST" -a -n "$DB_USER" -a -n "$DB_NAME"
+          # MYSQL_PWD evita a senha na linha de comando (visível em ps).
+          export MYSQL_PWD="$DB_PASSWORD"
+          mysqldump --host="$DB_HOST" --port="${DB_PORT:-3306}" --user="$DB_USER" \
+            --ssl-mode=VERIFY_CA --ssl-ca=ca.pem \
+            --single-transaction --set-gtid-purged=OFF --no-tablespaces \
+            --routines --triggers "$DB_NAME" | gzip -9 > "life-and-roads-$(date -u +%Y%m%d).sql.gz"
+          ls -la *.sql.gz
+          # Sanidade: o dump precisa ter as tabelas do produto.
+          zcat *.sql.gz | grep -c "CREATE TABLE" | xargs test 5 -le
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backup-mysql-${{ github.run_id }}
+          path: '*.sql.gz'
+          retention-days: 90
+          if-no-files-found: error

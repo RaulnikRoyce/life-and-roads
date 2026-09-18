@@ -15,7 +15,7 @@ A caderneta funciona offline, sem conta. O login replica ficha, datas de manuten
 | **Viagem** | litros e reais da rota, álcool versus gasolina (R$/km), km digitado ou marcado no mapa |
 | **Mapa** | GPS, último ponto, pins de posto e oficina (toque longo) |
 
-Backup fica na Ficha, em **Backup neste aparelho**. Fora da v1 ficam iOS, frota, PDF, navegação passo a passo e envio da foto.
+Backup fica na Ficha, em **Backup neste aparelho**: envia o arquivo pelo compartilhar do Android e restaura pelo seletor de arquivos. Fora da v1 ficam iOS, frota, PDF, navegação passo a passo e envio da foto.
 
 ## Beta de testes
 

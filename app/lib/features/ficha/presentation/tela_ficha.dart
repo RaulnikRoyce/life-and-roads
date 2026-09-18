@@ -10,7 +10,9 @@ import 'package:life_and_roads/core/legal/textos.dart';
 import 'package:life_and_roads/core/permissoes/mensagens_permissao.dart';
 import 'package:life_and_roads/core/widgets/cartao_conflito.dart';
 import 'package:life_and_roads/features/ficha/domain/ficha_moto.dart';
-import 'package:life_and_roads/features/ficha/domain/usecases/exportar_caderneta_arquivo.dart';
+import 'package:life_and_roads/features/ficha/data/enviar_caderneta.dart';
+import 'package:life_and_roads/features/ficha/data/escolher_caderneta.dart';
+import 'package:life_and_roads/features/ficha/domain/usecases/enviar_caderneta_arquivo.dart';
 import 'package:life_and_roads/features/ficha/domain/usecases/importar_caderneta_arquivo.dart';
 import 'package:life_and_roads/features/ficha/presentation/ficha_controller.dart';
 import 'package:life_and_roads/ficha/catalogo.dart';
@@ -791,28 +793,31 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
           style: Theme.of(context).textTheme.titleMedium,
         ),
         subtitle: Text(
-          'Copia ou salva a caderneta. Sem login e sem placa.',
+          'Envie o arquivo para o Drive ou o WhatsApp e restaure de lá. '
+          'Sem login e sem placa.',
           style: Theme.of(context).textTheme.bodyMedium,
         ),
         children: [
+          FilledButton.icon(
+            onPressed: _enviarBackup,
+            icon: const Icon(Icons.ios_share),
+            label: const Text('Enviar backup'),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: _restaurarDeArquivo,
+            icon: const Icon(Icons.folder_open),
+            label: const Text('Restaurar de um arquivo'),
+          ),
+          const SizedBox(height: 8),
           OutlinedButton(
             onPressed: _copiarBackup,
             child: const Text('Copiar backup'),
           ),
           const SizedBox(height: 8),
           OutlinedButton(
-            onPressed: _salvarBackupArquivo,
-            child: const Text('Salvar arquivo'),
-          ),
-          const SizedBox(height: 8),
-          OutlinedButton(
             onPressed: _colarBackup,
             child: const Text('Colar backup'),
-          ),
-          const SizedBox(height: 8),
-          OutlinedButton(
-            onPressed: _restaurarBackupArquivo,
-            child: const Text('Restaurar do arquivo'),
           ),
         ],
       ),
@@ -826,14 +831,15 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
     _aviso('Backup copiado. Guarde num lugar seu.');
   }
 
-  Future<void> _salvarBackupArquivo() async {
-    final r = await const ExportarCadernetaArquivo().executar();
+  Future<void> _enviarBackup() async {
+    final r = await const EnviarCadernetaArquivo(enviar: enviarCaderneta)
+        .executar();
     if (!mounted) return;
     if (r.erro != null) {
       _aviso(r.erro!);
       return;
     }
-    _aviso('Caderneta salva neste aparelho.');
+    _aviso('Backup enviado. Guarde num lugar seu.');
   }
 
   Future<void> _colarBackup() async {
@@ -853,8 +859,11 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
     _aviso('Caderneta restaurada neste aparelho.');
   }
 
-  Future<void> _restaurarBackupArquivo() async {
-    final erro = await const ImportarCadernetaArquivo().executar();
+  Future<void> _restaurarDeArquivo() async {
+    final texto = await escolherCadernetaJson();
+    if (!mounted) return;
+    if (texto == null) return; // cancelou
+    final erro = await const ImportarCadernetaArquivo().executar(json: texto);
     if (!mounted) return;
     if (erro != null) {
       _aviso(erro);
