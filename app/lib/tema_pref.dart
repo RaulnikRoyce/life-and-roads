@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Preferência de tema (claro, escuro ou automático). Persistida neste aparelho.
@@ -55,3 +56,23 @@ class PreferenciaTema {
     await prefs.setString(chave, paraTexto(modo));
   }
 }
+
+/// Tema atual do app. Quem precisa (MaterialApp, botão da barra) observa;
+/// assim a tela principal reage à troca mesmo tendo entrado por rota.
+class TemaController extends Notifier<ThemeMode> {
+  @override
+  ThemeMode build() {
+    PreferenciaTema.carregar().then((m) => state = m);
+    return ThemeMode.system;
+  }
+
+  Future<void> ciclar() async {
+    final n = PreferenciaTema.seguinte(state);
+    state = n;
+    await PreferenciaTema.salvar(n);
+  }
+}
+
+final temaProvider = NotifierProvider<TemaController, ThemeMode>(
+  TemaController.new,
+);

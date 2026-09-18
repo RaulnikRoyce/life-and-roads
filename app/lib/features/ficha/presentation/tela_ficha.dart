@@ -18,6 +18,7 @@ import 'package:life_and_roads/features/ficha/presentation/widgets/bloco_backup.
 import 'package:life_and_roads/features/ficha/presentation/widgets/bloco_conta.dart';
 import 'package:life_and_roads/features/ficha/presentation/widgets/campo_oficina.dart';
 import 'package:life_and_roads/features/ficha/presentation/widgets/foto_da_moto.dart';
+import 'package:life_and_roads/features/ficha/presentation/widgets/painel_moto.dart';
 import 'package:life_and_roads/ficha/catalogo.dart';
 import 'package:life_and_roads/ficha/foto.dart';
 import 'package:life_and_roads/manutencao/extra.dart';
@@ -445,77 +446,213 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
     final logado = estado.logado;
     final fichaSalva = estado.salvo;
 
+    final margem = paddingOficina(context);
+    // Com ficha salva, o painel sangra até as bordas; o resto fica na margem.
+    final lateral = fichaSalva
+        ? EdgeInsets.symmetric(horizontal: margem.left)
+        : EdgeInsets.zero;
+
     return EntradaSuave(
       child: ListView(
-      padding: paddingOficina(context),
-      children: [
-        if (estado.sincronizando) const LinearProgressIndicator(minHeight: 2),
-        TituloOficina(
-          'Sua moto',
-          subtitulo: fichaSalva
-              ? 'Sem placa, chassi ou RENAVAM.'
-              : 'Catálogo ou marca e modelo. Sem placa, chassi ou RENAVAM.',
+        padding: fichaSalva ? EdgeInsets.only(bottom: margem.bottom) : margem,
+        children: [
+          if (estado.sincronizando) const LinearProgressIndicator(minHeight: 2),
+          // Conflito é raro e pede decisão: vem antes de tudo.
+          if (estado.emConflito)
+            Padding(
+              padding: EdgeInsets.fromLTRB(margem.left, 8, margem.right, 12),
+              child: CartaoConflito(
+                titulo: 'Ficha diferente no servidor',
+                resumoRemoto: estado.remoto!.nome,
+                aoManter: () =>
+                    ref.read(fichaControllerProvider.notifier).manterLocal(),
+                aoUsarServidor: () =>
+                    ref.read(fichaControllerProvider.notifier).usarRemoto(),
+              ),
+            ),
+          if (fichaSalva)
+            _painel()
+          else
+            const TituloOficina(
+              'Sua moto',
+              subtitulo:
+                  'Catálogo ou marca e modelo. Sem placa, chassi ou RENAVAM.',
+            ),
+          ..._naMargem(lateral, [
+            if (logado && !estado.emConflito) ...[
+              const SizedBox(height: 8),
+              LinhaSync(
+                meta: estado.sync,
+                sincronizando: estado.sincronizando,
+                offline: estado.offline,
+                aoSincronizar: () =>
+                    ref.read(fichaControllerProvider.notifier).carregar(),
+              ),
+            ],
+            SizedBox(height: fichaSalva ? 12 : 20),
+            if (!fichaSalva) ...[
+              _cartaoResumo(context),
+              const SizedBox(height: 22),
+              _catalogo(),
+              const SizedBox(height: 14),
+              _camposIdentidade(),
+              _camposConsumo(),
+              _botaoSalvar(),
+              const SizedBox(height: 12),
+              _blocoAjustar(setup: true),
+            ],
+            const SizedBox(height: 28),
+            BlocoBackup(
+              aoEnviar: _enviarBackup,
+              aoRestaurar: _restaurarDeArquivo,
+              aoCopiar: _copiarBackup,
+              aoColar: _colarBackup,
+            ),
+            const SizedBox(height: 12),
+            BlocoConta(
+              logado: logado,
+              email: estado.email,
+              reenviar: estado.sync.deveReenviar,
+              emailCtrl: _email,
+              senhaCtrl: _senha,
+              senhaAtualCtrl: _senhaAtual,
+              senhaNovaCtrl: _senhaNova,
+              servidorCtrl: _servidor,
+              aoEntrar: _entrar,
+              aoCadastrar: _cadastrar,
+              aoSair: _sair,
+              aoTrocarSenha: _trocarSenha,
+              aoExcluirConta: _excluirConta,
+              aoMostrarTexto: _mostrarTexto,
+            ),
+          ]),
+        ],
+      ),
+    );
+  }
+
+  /// Itens continuam diretos no ListView (rolagem preguiçosa), cada um
+  /// com a margem lateral. Com ficha salva, o painel acima sangra até a borda.
+  List<Widget> _naMargem(EdgeInsets margem, List<Widget> filhos) => [
+    for (final f in filhos) Padding(padding: margem, child: f),
+  ];
+
+  /// Painel da moto salva: foto, nome, km grande e pastilhas.
+  Widget _painel() {
+    final nome = '${_marca.text.trim()} ${_modelo.text.trim()}'.trim();
+    final km = double.tryParse(_kmAtual.text.trim().replaceAll(',', '.'));
+    final gas = double.tryParse(_kmLitro.text.trim().replaceAll(',', '.'));
+    final alcool = double.tryParse(
+      _kmLitroAlcool.text.trim().replaceAll(',', '.'),
+    );
+    final psiD = _psiDianteiro.text.trim();
+    final psiT = _psiTraseiro.text.trim();
+    final auto = _autonomiaGasolina;
+    final autoAlcool = _flex ? _autonomiaAlcool : null;
+
+    String semDecimal(double? v) => v == null ? '-' : v.toStringAsFixed(0);
+
+    return PainelMoto(
+      foto: _foto,
+      nome: nome,
+      combustivel: _flex ? 'Flex' : '',
+      km: km,
+      pastilhas: [
+        Pastilha(
+          icone: Icons.local_gas_station_outlined,
+          valor: '${semDecimal(gas)} km/l',
+          rotulo: 'GASOLINA',
         ),
-        if (logado && !estado.emConflito) ...[
-          const SizedBox(height: 8),
-          LinhaSync(
-            meta: estado.sync,
-            sincronizando: estado.sincronizando,
-            offline: estado.offline,
-            aoSincronizar: () =>
-                ref.read(fichaControllerProvider.notifier).carregar(),
+        if (_flex)
+          Pastilha(
+            icone: Icons.eco_outlined,
+            valor: '${semDecimal(alcool)} km/l',
+            rotulo: 'ÁLCOOL',
           ),
-        ],
-        const SizedBox(height: 20),
-        if (estado.emConflito) ...[
-          CartaoConflito(
-            titulo: 'Ficha diferente no servidor',
-            resumoRemoto: estado.remoto!.nome,
-            aoManter: () =>
-                ref.read(fichaControllerProvider.notifier).manterLocal(),
-            aoUsarServidor: () =>
-                ref.read(fichaControllerProvider.notifier).usarRemoto(),
+        Pastilha(
+          icone: Icons.tire_repair_outlined,
+          valor: psiD.isEmpty && psiT.isEmpty
+              ? '-'
+              : '${psiD.isEmpty ? '-' : psiD}/${psiT.isEmpty ? '-' : psiT}',
+          rotulo: 'PNEU PSI',
+        ),
+        if (auto != null)
+          Pastilha(
+            icone: Icons.route_outlined,
+            valor: '${semDecimal(auto)} km',
+            rotulo: 'ALCANCE',
           ),
-          const SizedBox(height: 16),
-        ],
-        _cartaoResumo(context),
-        const SizedBox(height: 22),
-        if (fichaSalva) ...[
-          _blocoAjustar(setup: false),
-        ] else ...[
-          _catalogo(),
-          const SizedBox(height: 14),
-          _camposIdentidade(),
-          _camposConsumo(),
-          _botaoSalvar(),
-          const SizedBox(height: 12),
-          _blocoAjustar(setup: true),
-        ],
-        const SizedBox(height: 28),
-        BlocoBackup(
-          aoEnviar: _enviarBackup,
-          aoRestaurar: _restaurarDeArquivo,
-          aoCopiar: _copiarBackup,
-          aoColar: _colarBackup,
-        ),
-        const SizedBox(height: 12),
-        BlocoConta(
-          logado: logado,
-          email: estado.email,
-          reenviar: estado.sync.deveReenviar,
-          emailCtrl: _email,
-          senhaCtrl: _senha,
-          senhaAtualCtrl: _senhaAtual,
-          senhaNovaCtrl: _senhaNova,
-          servidorCtrl: _servidor,
-          aoEntrar: _entrar,
-          aoCadastrar: _cadastrar,
-          aoSair: _sair,
-          aoTrocarSenha: _trocarSenha,
-          aoExcluirConta: _excluirConta,
-          aoMostrarTexto: _mostrarTexto,
-        ),
+        if (autoAlcool != null)
+          Pastilha(
+            icone: Icons.route_outlined,
+            valor: '${semDecimal(autoAlcool)} km',
+            rotulo: 'ALCANCE ÁLCOOL',
+          ),
       ],
+      aoFoto: _escolherFoto,
+      aoApagarFoto: _apagarFoto,
+      aoAjustar: _abrirAjuste,
+    );
+  }
+
+  /// Formulário completo numa folha que sobe. Salvar fecha a folha.
+  Future<void> _abrirAjuste() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (ctx) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.88,
+        minChildSize: 0.5,
+        maxChildSize: 0.96,
+        builder: (ctx, rolagem) => Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
+          child: ListView(
+            controller: rolagem,
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 14),
+                  decoration: BoxDecoration(
+                    color: Oficina.mute.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Text(
+                'Ajustar números',
+                style: Theme.of(ctx).textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Catálogo, média, tanque e pneu.',
+                style: Theme.of(ctx).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 16),
+              _catalogo(),
+              const SizedBox(height: 14),
+              _camposIdentidade(),
+              _camposConsumo(),
+              _camposExtra(),
+              FilledButton(
+                onPressed: () async {
+                  final tentativa = _tentarFicha();
+                  if (tentativa.erro != null) {
+                    _aviso(tentativa.erro!);
+                    return;
+                  }
+                  await _ctrl.salvar(tentativa.ficha!);
+                  if (ctx.mounted) Navigator.of(ctx).pop();
+                },
+                child: const Text('Salvar ficha'),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -702,8 +839,7 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
           _camposConsumo(),
         ],
         _camposExtra(),
-        if (!setup)
-          _botaoSalvar(),
+        if (!setup) _botaoSalvar(),
       ],
     );
   }

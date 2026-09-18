@@ -25,7 +25,6 @@ ThemeData temaOficinaClaro() => _temaOficina(escuro: false);
 ThemeData _temaOficina({required bool escuro}) {
   final fundo = escuro ? Oficina.asfalto : const Color(0xFFF4F0EA);
   final cartao = escuro ? Oficina.couro : const Color(0xFFE8E2D8);
-  final faixa = escuro ? Oficina.faixa : const Color(0xFFEDE8E0);
   final texto = escuro ? Oficina.creme : const Color(0xFF1A1A1A);
   final tinta = escuro ? Oficina.tinta : const Color(0xFF4A4A4A);
   final mute = escuro ? Oficina.mute : const Color(0xFF6E6E6E);
@@ -108,27 +107,6 @@ ThemeData _temaOficina({required bool escuro}) {
         letterSpacing: 1.0,
         color: texto,
       ),
-    ),
-    navigationBarTheme: NavigationBarThemeData(
-      backgroundColor: faixa,
-      indicatorColor: Oficina.latao.withValues(alpha: 0.28),
-      elevation: 0,
-      height: 72,
-      labelTextStyle: WidgetStateProperty.resolveWith((states) {
-        final ativo = states.contains(WidgetState.selected);
-        return GoogleFonts.oswald(
-          fontSize: 11,
-          letterSpacing: 0.4,
-          color: ativo ? Oficina.latao : mute,
-        );
-      }),
-      iconTheme: WidgetStateProperty.resolveWith((states) {
-        final ativo = states.contains(WidgetState.selected);
-        return IconThemeData(
-          color: ativo ? Oficina.latao : mute,
-          size: 24,
-        );
-      }),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,

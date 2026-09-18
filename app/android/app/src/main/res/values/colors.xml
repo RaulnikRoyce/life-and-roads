@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="asfalto">#FF121212</color>
+    <!-- Fundo da abertura nativa segue o sistema: creme de dia (values), asfalto à noite (values-night). -->
+    <color name="fundo">#FFF4F0EA</color>
 	<color name="ic_launcher_background">#000000</color>
 </resources>

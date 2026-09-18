@@ -20,6 +20,7 @@ class EntradaSuave extends StatelessWidget {
     this.chave,
     this.deslocamento = 12,
     this.duracao = Movimento.medio,
+    this.atraso = Duration.zero,
   });
 
   final Widget child;
@@ -27,13 +28,18 @@ class EntradaSuave extends StatelessWidget {
   final double deslocamento;
   final Duration duracao;
 
+  /// Espera antes de entrar. Itens em cascata usam 40 a 60 ms cada.
+  final Duration atraso;
+
   @override
   Widget build(BuildContext context) {
+    final total = duracao + atraso;
+    final inicio = atraso.inMilliseconds / total.inMilliseconds;
     return TweenAnimationBuilder<double>(
       key: ValueKey(chave),
       tween: Tween(begin: 0, end: 1),
-      duration: duracao,
-      curve: Movimento.curva,
+      duration: total,
+      curve: Interval(inicio, 1, curve: Movimento.curva),
       child: child,
       builder: (context, t, filho) => Opacity(
         opacity: t,
