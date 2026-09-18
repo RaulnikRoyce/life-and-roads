@@ -29,6 +29,16 @@ export const manipularErros = (
     return;
   }
 
+  // express.json() lança erro pronto com status 4xx (JSON quebrado, corpo
+  // grande, charset estranho). É culpa do cliente; não é falha nossa.
+  const status = err && typeof err === 'object' && 'status' in err
+    ? Number((err as { status: unknown }).status)
+    : NaN;
+  if (Number.isInteger(status) && status >= 400 && status < 500) {
+    res.status(status).json({ erro: mensagemDoCliente(err, status) });
+    return;
+  }
+
   const detalhe = err instanceof Error ? err.message : 'erro';
   logger.error('Erro não tratado', {
     rota: req.originalUrl,
@@ -39,6 +49,18 @@ export const manipularErros = (
   });
 
   res.status(500).json({ erro: 'Erro interno do servidor' });
+};
+
+const mensagemDoCliente = (err: unknown, status: number): string => {
+  const tipo = err && typeof err === 'object' && 'type' in err
+    ? String((err as { type: unknown }).type)
+    : '';
+  if (tipo === 'entity.parse.failed') return 'JSON inválido.';
+  if (status === 413) return 'Corpo da requisição grande demais.';
+  if (tipo === 'charset.unsupported' || tipo === 'encoding.unsupported') {
+    return 'Codificação não suportada. Use UTF-8.';
+  }
+  return 'Requisição inválida.';
 };
 
 export const rotaNaoEncontrada = (req: Request, res: Response): void => {

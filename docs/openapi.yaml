@@ -267,16 +267,17 @@ components:
           type: string
     Manutencao:
       type: object
+      description: Datas em AAAA-MM-DD, existentes no calendário, ano entre 1980 e 2100. Vazio vira null.
       additionalProperties: false
       properties:
-        oleoUltima: { type: string, nullable: true }
-        oleoProxima: { type: string, nullable: true }
-        revisaoUltima: { type: string, nullable: true }
-        pneusUltima: { type: string, nullable: true }
-        pneusProxima: { type: string, nullable: true }
-        ipvaProxima: { type: string, nullable: true }
-        seguroProxima: { type: string, nullable: true }
-        licenciamentoProxima: { type: string, nullable: true }
+        oleoUltima: { type: string, format: date, nullable: true }
+        oleoProxima: { type: string, format: date, nullable: true }
+        revisaoUltima: { type: string, format: date, nullable: true }
+        pneusUltima: { type: string, format: date, nullable: true }
+        pneusProxima: { type: string, format: date, nullable: true }
+        ipvaProxima: { type: string, format: date, nullable: true }
+        seguroProxima: { type: string, format: date, nullable: true }
+        licenciamentoProxima: { type: string, format: date, nullable: true }
     Localizacao:
       type: object
       additionalProperties: false

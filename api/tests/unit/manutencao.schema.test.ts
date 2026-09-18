@@ -26,3 +26,27 @@ test('placa extra é recusada', () => {
   const r = manutencaoSchema.safeParse({ ...valida, placa: 'ABC1D23' });
   assert.equal(r.success, false);
 });
+
+test('data que não existe no calendário é recusada', () => {
+  for (const errada of ['2026-02-31', '2026-02-29', '2026-13-01', '2026-04-31', '2026-00-10']) {
+    const r = manutencaoSchema.safeParse({ ...valida, oleoUltima: errada });
+    assert.equal(r.success, false, errada);
+  }
+});
+
+test('29 de fevereiro em ano bissexto passa', () => {
+  const r = manutencaoSchema.safeParse({ ...valida, oleoUltima: '2024-02-29', oleoProxima: '2024-08-29' });
+  assert.equal(r.success, true);
+});
+
+test('ano fora de 1980 a 2100 é recusado', () => {
+  assert.equal(manutencaoSchema.safeParse({ ...valida, ipvaProxima: '1979-12-31' }).success, false);
+  assert.equal(manutencaoSchema.safeParse({ ...valida, ipvaProxima: '2101-01-01' }).success, false);
+});
+
+test('data vazia continua virando nulo', () => {
+  const r = manutencaoSchema.safeParse({ ...valida, ipvaProxima: '' });
+  assert.equal(r.success, true);
+  if (r.success) assert.equal(r.data.ipvaProxima, null);
+});
+
