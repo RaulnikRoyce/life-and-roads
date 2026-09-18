@@ -283,5 +283,6 @@ class FichaController extends Notifier<FichaEstado> {
   }
 }
 
-final fichaControllerProvider =
-    NotifierProvider<FichaController, FichaEstado>(FichaController.new);
+final fichaControllerProvider = NotifierProvider<FichaController, FichaEstado>(
+  FichaController.new,
+);

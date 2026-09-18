@@ -5,8 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_and_roads/backup.dart';
-import 'package:life_and_roads/core/config/ambiente.dart';
-import 'package:life_and_roads/core/legal/textos.dart';
 import 'package:life_and_roads/core/permissoes/mensagens_permissao.dart';
 import 'package:life_and_roads/core/widgets/cartao_conflito.dart';
 import 'package:life_and_roads/core/widgets/linha_sync.dart';
@@ -16,6 +14,10 @@ import 'package:life_and_roads/features/ficha/data/escolher_caderneta.dart';
 import 'package:life_and_roads/features/ficha/domain/usecases/enviar_caderneta_arquivo.dart';
 import 'package:life_and_roads/features/ficha/domain/usecases/importar_caderneta_arquivo.dart';
 import 'package:life_and_roads/features/ficha/presentation/ficha_controller.dart';
+import 'package:life_and_roads/features/ficha/presentation/widgets/bloco_backup.dart';
+import 'package:life_and_roads/features/ficha/presentation/widgets/bloco_conta.dart';
+import 'package:life_and_roads/features/ficha/presentation/widgets/campo_oficina.dart';
+import 'package:life_and_roads/features/ficha/presentation/widgets/foto_da_moto.dart';
 import 'package:life_and_roads/ficha/catalogo.dart';
 import 'package:life_and_roads/ficha/foto.dart';
 import 'package:life_and_roads/manutencao/extra.dart';
@@ -140,8 +142,9 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
     _ano.text = ficha.ano?.toString() ?? '';
     _cilindrada.text = ficha.cilindrada?.toString() ?? '';
     _kmLitro.text = _fmt(ficha.kmLitro);
-    _kmLitroAlcool.text =
-        ficha.kmLitroAlcool == null ? '' : _fmt(ficha.kmLitroAlcool!);
+    _kmLitroAlcool.text = ficha.kmLitroAlcool == null
+        ? ''
+        : _fmt(ficha.kmLitroAlcool!);
     _combustivel = ficha.combustivel.name;
     _kmAtual.text = _fmt(ficha.kmAtual);
     _tanque.text = ficha.tanqueLitros == null ? '' : _fmt(ficha.tanqueLitros!);
@@ -306,7 +309,9 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
   }
 
   double? get _autonomiaAlcool {
-    final kmL = double.tryParse(_kmLitroAlcool.text.trim().replaceAll(',', '.'));
+    final kmL = double.tryParse(
+      _kmLitroAlcool.text.trim().replaceAll(',', '.'),
+    );
     final tanque = double.tryParse(_tanque.text.trim().replaceAll(',', '.'));
     if (kmL == null || tanque == null) return null;
     return autonomiaKm(tanqueLitros: tanque, kmPorLitro: kmL);
@@ -327,12 +332,18 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   ListTile(
-                    leading: const Icon(Icons.photo_camera, color: Oficina.latao),
+                    leading: const Icon(
+                      Icons.photo_camera,
+                      color: Oficina.latao,
+                    ),
                     title: const Text('Câmera'),
                     onTap: () => Navigator.pop(ctx, ImageSource.camera),
                   ),
                   ListTile(
-                    leading: const Icon(Icons.photo_library, color: Oficina.latao),
+                    leading: const Icon(
+                      Icons.photo_library,
+                      color: Oficina.latao,
+                    ),
                     title: const Text('Galeria'),
                     onTap: () => Navigator.pop(ctx, ImageSource.gallery),
                   ),
@@ -404,8 +415,7 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
     return ListView(
       padding: paddingOficina(context),
       children: [
-        if (estado.sincronizando)
-          const LinearProgressIndicator(minHeight: 2),
+        if (estado.sincronizando) const LinearProgressIndicator(minHeight: 2),
         TituloOficina(
           'Sua moto',
           subtitulo: fichaSalva
@@ -443,17 +453,34 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
           const SizedBox(height: 14),
           _camposIdentidade(),
           _camposConsumo(),
-          FilledButton(
-            onPressed: _salvar,
-            child: const Text('Salvar ficha'),
-          ),
+          FilledButton(onPressed: _salvar, child: const Text('Salvar ficha')),
           const SizedBox(height: 12),
           _blocoAjustar(setup: true),
         ],
         const SizedBox(height: 28),
-        _blocoBackup(),
+        BlocoBackup(
+          aoEnviar: _enviarBackup,
+          aoRestaurar: _restaurarDeArquivo,
+          aoCopiar: _copiarBackup,
+          aoColar: _colarBackup,
+        ),
         const SizedBox(height: 12),
-        _blocoConta(logado, estado.email, estado.sync.deveReenviar),
+        BlocoConta(
+          logado: logado,
+          email: estado.email,
+          reenviar: estado.sync.deveReenviar,
+          emailCtrl: _email,
+          senhaCtrl: _senha,
+          senhaAtualCtrl: _senhaAtual,
+          senhaNovaCtrl: _senhaNova,
+          servidorCtrl: _servidor,
+          aoEntrar: _entrar,
+          aoCadastrar: _cadastrar,
+          aoSair: _sair,
+          aoTrocarSenha: _trocarSenha,
+          aoExcluirConta: _excluirConta,
+          aoMostrarTexto: _mostrarTexto,
+        ),
       ],
     );
   }
@@ -467,38 +494,36 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
           fit: BoxFit.scaleDown,
           alignment: Alignment.centerLeft,
           child: SegmentedButton<String>(
-          showSelectedIcon: false,
-          style: const ButtonStyle(
-            visualDensity: VisualDensity.compact,
+            showSelectedIcon: false,
+            style: const ButtonStyle(visualDensity: VisualDensity.compact),
+            segments: const [
+              ButtonSegment(value: 'cidade', label: Text('Cidade')),
+              ButtonSegment(value: 'estrada', label: Text('Estrada')),
+              ButtonSegment(value: 'esporte', label: Text('Esportiva')),
+              ButtonSegment(value: 'todas', label: Text('Todas')),
+            ],
+            selected: {
+              _usoCatalogo == UsoCatalogo.cidade
+                  ? 'cidade'
+                  : _usoCatalogo == UsoCatalogo.estrada
+                  ? 'estrada'
+                  : _usoCatalogo == UsoCatalogo.esporte
+                  ? 'esporte'
+                  : 'todas',
+            },
+            onSelectionChanged: (s) {
+              setState(() {
+                final v = s.first;
+                _usoCatalogo = v == 'cidade'
+                    ? UsoCatalogo.cidade
+                    : v == 'estrada'
+                    ? UsoCatalogo.estrada
+                    : v == 'esporte'
+                    ? UsoCatalogo.esporte
+                    : null;
+              });
+            },
           ),
-          segments: const [
-            ButtonSegment(value: 'cidade', label: Text('Cidade')),
-            ButtonSegment(value: 'estrada', label: Text('Estrada')),
-            ButtonSegment(value: 'esporte', label: Text('Esportiva')),
-            ButtonSegment(value: 'todas', label: Text('Todas')),
-          ],
-          selected: {
-            _usoCatalogo == UsoCatalogo.cidade
-                ? 'cidade'
-                : _usoCatalogo == UsoCatalogo.estrada
-                    ? 'estrada'
-                    : _usoCatalogo == UsoCatalogo.esporte
-                        ? 'esporte'
-                        : 'todas',
-          },
-          onSelectionChanged: (s) {
-            setState(() {
-              final v = s.first;
-              _usoCatalogo = v == 'cidade'
-                  ? UsoCatalogo.cidade
-                  : v == 'estrada'
-                      ? UsoCatalogo.estrada
-                      : v == 'esporte'
-                          ? UsoCatalogo.esporte
-                          : null;
-            });
-          },
-        ),
         ),
         const SizedBox(height: 12),
         DropdownMenu<ModeloCatalogo>(
@@ -508,8 +533,7 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
           enableFilter: true,
           requestFocusOnTap: true,
           dropdownMenuEntries: [
-            for (final m in lista)
-              DropdownMenuEntry(value: m, label: m.rotulo),
+            for (final m in lista) DropdownMenuEntry(value: m, label: m.rotulo),
           ],
           onSelected: (m) {
             if (m != null) _preencherDoCatalogo(m);
@@ -530,34 +554,34 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
 
   Widget _camposIdentidade() {
     return DuplaCampos(
-      esquerda: _campo(_marca, 'Marca', max: 40),
-      direita: _campo(_modelo, 'Modelo', max: 60),
+      esquerda: CampoOficina(_marca, 'Marca', max: 40),
+      direita: CampoOficina(_modelo, 'Modelo', max: 60),
     );
   }
 
   Widget _camposConsumo() {
-    final gasolina = _campo(
+    final gasolina = CampoOficina(
       _kmLitro,
       'Km com 1 L de gasolina',
       teclado: const TextInputType.numberWithOptions(decimal: true),
       max: 5,
       filtros: [FilteringTextInputFormatter.allow(RegExp(r'[0-9,.]'))],
     );
-    final alcool = _campo(
+    final alcool = CampoOficina(
       _kmLitroAlcool,
       'Km com 1 L de álcool',
       teclado: const TextInputType.numberWithOptions(decimal: true),
       max: 5,
       filtros: [FilteringTextInputFormatter.allow(RegExp(r'[0-9,.]'))],
     );
-    final km = _campo(
+    final km = CampoOficina(
       _kmAtual,
       'Km no painel agora',
       teclado: const TextInputType.numberWithOptions(decimal: true),
       max: 7,
       filtros: [FilteringTextInputFormatter.allow(RegExp(r'[0-9,.]'))],
     );
-    final tanque = _campo(
+    final tanque = CampoOficina(
       _tanque,
       'Tanque (litros)',
       teclado: const TextInputType.numberWithOptions(decimal: true),
@@ -566,10 +590,7 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
     );
     return Column(
       children: [
-        DuplaCampos(
-          esquerda: gasolina,
-          direita: _flex ? alcool : km,
-        ),
+        DuplaCampos(esquerda: gasolina, direita: _flex ? alcool : km),
         DuplaCampos(
           esquerda: _flex ? km : tanque,
           direita: _flex ? tanque : const SizedBox.shrink(),
@@ -582,14 +603,14 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
     return Column(
       children: [
         DuplaCampos(
-          esquerda: _campo(
+          esquerda: CampoOficina(
             _ano,
             'Ano',
             teclado: TextInputType.number,
             max: 4,
             filtros: [FilteringTextInputFormatter.digitsOnly],
           ),
-          direita: _campo(
+          direita: CampoOficina(
             _cilindrada,
             'Cilindrada (cc)',
             teclado: TextInputType.number,
@@ -598,14 +619,14 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
           ),
         ),
         DuplaCampos(
-          esquerda: _campo(
+          esquerda: CampoOficina(
             _psiDianteiro,
             'PSI dianteiro',
             teclado: TextInputType.number,
             max: 3,
             filtros: [FilteringTextInputFormatter.digitsOnly],
           ),
-          direita: _campo(
+          direita: CampoOficina(
             _psiTraseiro,
             'PSI traseiro',
             teclado: TextInputType.number,
@@ -613,7 +634,7 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
             filtros: [FilteringTextInputFormatter.digitsOnly],
           ),
         ),
-        _campo(
+        CampoOficina(
           _personalizacoes,
           'Personalizações (baú, escape, sem placa)',
           linhas: 3,
@@ -647,10 +668,7 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
         ],
         _camposExtra(),
         if (!setup)
-          FilledButton(
-            onPressed: _salvar,
-            child: const Text('Salvar ficha'),
-          ),
+          FilledButton(onPressed: _salvar, child: const Text('Salvar ficha')),
       ],
     );
   }
@@ -659,78 +677,19 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
     final nome = '${_marca.text.trim()} ${_modelo.text.trim()}'.trim();
     final km = double.tryParse(_kmAtual.text.trim().replaceAll(',', '.'));
     final gas = double.tryParse(_kmLitro.text.trim().replaceAll(',', '.'));
-    final alcool = double.tryParse(_kmLitroAlcool.text.trim().replaceAll(',', '.'));
+    final alcool = double.tryParse(
+      _kmLitroAlcool.text.trim().replaceAll(',', '.'),
+    );
     final auto = _autonomiaGasolina;
     return CartaoOficina(
       destaque: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: SizedBox(
-              height: 196,
-              width: double.infinity,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  if (_foto != null)
-                    Image.memory(_foto!, fit: BoxFit.cover)
-                  else
-                    ColoredBox(
-                      color: Oficina.asfalto,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.two_wheeler,
-                            color: Oficina.latao,
-                            size: 48,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Adicionar foto',
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                        ],
-                      ),
-                    ),
-                  Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: _escolherFoto,
-                      onLongPress: _foto == null ? null : _apagarFoto,
-                      child: const SizedBox.expand(),
-                    ),
-                  ),
-                  if (_foto != null)
-                    Positioned(
-                      right: 8,
-                      top: 8,
-                      child: IconButton.filled(
-                        style: IconButton.styleFrom(
-                          backgroundColor: Oficina.asfalto.withValues(alpha: 0.7),
-                          foregroundColor: Oficina.creme,
-                          visualDensity: VisualDensity.compact,
-                        ),
-                        tooltip: 'Remover foto',
-                        onPressed: _apagarFoto,
-                        icon: const Icon(Icons.close, size: 18),
-                      ),
-                    ),
-                  Positioned(
-                    right: 8,
-                    bottom: 8,
-                    child: IgnorePointer(
-                      child: Icon(
-                        Icons.photo_camera_outlined,
-                        color: Oficina.latao.withValues(alpha: 0.9),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          FotoDaMoto(
+            foto: _foto,
+            aoEscolher: _escolherFoto,
+            aoApagar: _apagarFoto,
           ),
           const SizedBox(height: 14),
           Text(
@@ -764,7 +723,7 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
                         _psiTraseiro.text.trim().isEmpty
                     ? '-'
                     : '${_psiDianteiro.text.trim().isEmpty ? '-' : _psiDianteiro.text.trim()}/'
-                        '${_psiTraseiro.text.trim().isEmpty ? '-' : _psiTraseiro.text.trim()}',
+                          '${_psiTraseiro.text.trim().isEmpty ? '-' : _psiTraseiro.text.trim()}',
               ),
               if (!_flex) const Expanded(child: SizedBox()),
             ],
@@ -780,49 +739,6 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
               style: Theme.of(context).textTheme.bodyMedium,
             ),
           ],
-        ],
-      ),
-    );
-  }
-
-  Widget _blocoBackup() {
-    return Theme(
-      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-      child: ExpansionTile(
-        tilePadding: EdgeInsets.zero,
-        childrenPadding: const EdgeInsets.only(bottom: 8),
-        leading: const Icon(Icons.save_alt, color: Oficina.latao),
-        title: Text(
-          'Backup neste aparelho',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        subtitle: Text(
-          'Envie o arquivo para o Drive ou o WhatsApp e restaure de lá. '
-          'Sem login e sem placa.',
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-        children: [
-          FilledButton.icon(
-            onPressed: _enviarBackup,
-            icon: const Icon(Icons.ios_share),
-            label: const Text('Enviar backup'),
-          ),
-          const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: _restaurarDeArquivo,
-            icon: const Icon(Icons.folder_open),
-            label: const Text('Restaurar de um arquivo'),
-          ),
-          const SizedBox(height: 8),
-          OutlinedButton(
-            onPressed: _copiarBackup,
-            child: const Text('Copiar backup'),
-          ),
-          const SizedBox(height: 8),
-          OutlinedButton(
-            onPressed: _colarBackup,
-            child: const Text('Colar backup'),
-          ),
         ],
       ),
     );
@@ -875,123 +791,5 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
     }
     await _ctrl.carregar();
     _aviso('Caderneta restaurada neste aparelho.');
-  }
-
-  Widget _blocoConta(bool logado, String? email, bool reenviar) {
-    return Theme(
-      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-      child: ExpansionTile(
-        tilePadding: EdgeInsets.zero,
-        childrenPadding: const EdgeInsets.only(bottom: 8),
-        leading: const Icon(Icons.lock_outline, color: Oficina.latao),
-        title: Text(
-          logado ? (email ?? 'Conta') : 'Conta (opcional)',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        subtitle: Text(
-          logado
-              ? (reenviar
-                  ? 'Ficha neste aparelho. Reenvia quando a API voltar.'
-                  : 'Ficha sincroniza com o servidor')
-              : 'Evita perder a ficha ao trocar de celular.',
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-        children: [
-          if (logado) ...[
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton(onPressed: _sair, child: const Text('Sair')),
-            ),
-            _campo(_senhaAtual, 'Senha atual', max: 72, senha: true),
-            _campo(_senhaNova, 'Senha nova (mín. 8)', max: 72, senha: true),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: FilledButton(
-                  onPressed: _trocarSenha,
-                  child: const Text('Trocar senha'),
-                ),
-              ),
-            ),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton(
-                onPressed: _excluirConta,
-                child: const Text('Excluir conta no servidor'),
-              ),
-            ),
-          ] else ...[
-            if (Ambiente.exibeCampoServidor)
-              _campo(
-                _servidor,
-                'Servidor (http://IP:3001 no celular)',
-                max: 120,
-                teclado: TextInputType.url,
-              ),
-            _campo(_email, 'E-mail da conta', max: 255, teclado: TextInputType.emailAddress),
-            _campo(_senha, 'Senha (mín. 8)', max: 72, senha: true),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: _cadastrar,
-                    child: const Text('Cadastrar'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: _entrar,
-                    child: const Text('Entrar'),
-                  ),
-                ),
-              ],
-            ),
-          ],
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton(
-              onPressed: () => _mostrarTexto('Termos de uso', termosResumo),
-              child: const Text('Termos de uso'),
-            ),
-          ),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton(
-              onPressed: () =>
-                  _mostrarTexto('Privacidade', privacidadeResumo),
-              child: const Text('Privacidade'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _campo(
-    TextEditingController controller,
-    String rotulo, {
-    TextInputType? teclado,
-    int linhas = 1,
-    int max = 80,
-    bool senha = false,
-    List<TextInputFormatter>? filtros,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: TextField(
-        controller: controller,
-        keyboardType: teclado,
-        maxLines: senha ? 1 : linhas,
-        maxLength: max,
-        obscureText: senha,
-        inputFormatters: filtros,
-        decoration: InputDecoration(
-          labelText: rotulo,
-          counterText: '',
-        ),
-      ),
-    );
   }
 }
