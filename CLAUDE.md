@@ -37,7 +37,7 @@ Português comum, sem gíria de posto e sem fórmula na tela (`÷`, `×`, `km/l`
 
 ## Estado (set/2026)
 
-Beta fechado com pilotos, APK `1.2.0+5` instalado e funcionando. `flutter_secure_storage` fica em `^10.3.x` durante o beta (a 11 é breaking e exige passar pela 10 antes). API sem deploy público ainda; `render.yaml` e `docker-compose.yml` prontos.
+Beta fechado com pilotos. Release `1.2.1+6` (tag `v1.2.1`, 18/09/2026) com todas as correções e a Fase 22; o APK `1.2.0+5` anterior ainda pode estar em alguns aparelhos. `flutter_secure_storage` fica em `^10.3.x` durante o beta (a 11 é breaking e exige passar pela 10 antes). 
 
 Auditoria de 17/09/2026 (Claude Code): os cinco itens principais (race no refresh, backup lendo token antigo, JSON malformado em 500, MySQL no CI, data inválida) e os baixos da API (ano congelado, `/auth/sair`, limpeza de sessões, timing do login, `TRUST_PROXY`, fuso do pool) estão corrigidos e testados. O conflito falso de sync em aparelho único foi resolvido com o carimbo `atualizadoEm` (ADR 0018). Upserts usam a sintaxe `VALUES (...) AS novo ON DUPLICATE KEY UPDATE col = novo.col` (MySQL ≥ 8.0.20; produção é 8.4.8 na Aiven, compose e CI usam `mysql:8.0`). Não usar `VALUES(col)`, que está obsoleto.
 

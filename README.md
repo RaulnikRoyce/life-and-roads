@@ -1,6 +1,6 @@
 # life.and.roads
 
-**Beta de testes · v1.2.0 (build 5)**
+**Beta de testes · v1.2.1 (build 6)**
 
 Caderneta digital de **uma motocicleta**. Ficha, manutenção, viagem e último ponto no mapa.
 
@@ -23,7 +23,7 @@ Esta é a versão fechada para o período de testes com pilotos. Não é release
 
 | Item | Detalhe |
 |---|---|
-| Versão | `1.2.0+5` (`versionName` 1.2.0, `versionCode` 5) |
+| Versão | `1.2.1+6` (`versionName` 1.2.1, `versionCode` 6) |
 | APK release | `app/build/app/outputs/flutter-apk/app-release.apk` (65 MB). Exige `android/key.properties` + keystore; sem eles o Gradle recusa o build release |
 | Plataforma | Android (APK). Chrome serve para prints e smoke test com Drift web |
 | Conta | opcional. Campo **Servidor** com `http://IP-do-PC:3001` no celular |
@@ -45,8 +45,13 @@ flutter build apk --release
 
 O build release exige `android/key.properties` + `upload-keystore.jks` (fora do Git). Sem eles o Gradle para com erro, de propósito, para nenhum APK sair com assinatura debug por engano. Para teste interno sem keystore, use `flutter build apk --debug`.
 
-**O que validar nesta build**
+**O que validar nesta build (1.2.1)**
 
+- Abertura com a logo se desenhando e a Ficha como painel (foto, km grande, pastilhas, "Ajustar números")
+- Mapa sem a marca "API KEY REQUIRED" (tiles do OpenStreetMap), círculo de alcance, "Abrir no app de mapas", "Onde estou"
+- Backup por "Enviar backup" (compartilhar) e "Restaurar de um arquivo"
+- Linha do tempo dos vencimentos na Manutenção
+- Com conta: abrir o app depois de mais de 15 min sem cair da sessão; linha "No servidor" com hora
 - Ficha com catálogo (3 silhuetas por categoria), foto local e backup JSON
 - Manutenção com óleo, pneus, documentos e lembretes
 - Viagem com estimativa, flex (R$/km) e registro de abastecimento
