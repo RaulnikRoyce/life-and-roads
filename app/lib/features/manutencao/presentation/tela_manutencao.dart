@@ -9,6 +9,7 @@ import 'package:life_and_roads/features/manutencao/data/agenda_manutencao_model.
 import 'package:life_and_roads/features/manutencao/domain/agenda_manutencao.dart';
 import 'package:life_and_roads/features/manutencao/domain/usecases/montar_avisos_caderneta.dart';
 import 'package:life_and_roads/features/manutencao/domain/usecases/montar_linha_do_tempo.dart';
+import 'package:life_and_roads/features/manutencao/presentation/widgets/folha_data.dart';
 import 'package:life_and_roads/features/manutencao/presentation/widgets/linha_do_tempo.dart';
 import 'package:life_and_roads/features/manutencao/presentation/avisos_controller.dart';
 import 'package:life_and_roads/features/manutencao/presentation/manutencao_controller.dart';
@@ -132,7 +133,8 @@ class _TelaManutencaoState extends ConsumerState<TelaManutencao> {
       oleoKmUltima: ApiCaderneta.numero(_oleoKmUltima.text),
       oleoKmIntervalo: ApiCaderneta.numero(_oleoKmIntervalo.text) ?? 4000,
       correnteKmUltima: ApiCaderneta.numero(_correnteKmUltima.text),
-      correnteKmIntervalo: ApiCaderneta.numero(_correnteKmIntervalo.text) ?? 1000,
+      correnteKmIntervalo:
+          ApiCaderneta.numero(_correnteKmIntervalo.text) ?? 1000,
       cnhProxima: AgendaManutencaoModel.paraIso(_cnhProxima),
       cnhCincoAnos: _cnhCincoAnos,
     );
@@ -143,94 +145,11 @@ class _TelaManutencaoState extends ConsumerState<TelaManutencao> {
     required DateTime? atual,
     required void Function(DateTime?) setar,
   }) async {
-    final digitada = TextEditingController(
-      text: atual == null ? '' : dataBr(atual),
+    final escolhida = await FolhaData.abrir(
+      context,
+      rotulo: rotulo,
+      atual: atual,
     );
-    final agora = DateTime.now();
-    final escolhida = await showModalBottomSheet<DateTime>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-      builder: (ctx) {
-        return Padding(
-          padding: EdgeInsets.fromLTRB(
-            20,
-            16,
-            20,
-            16 + MediaQuery.viewInsetsOf(ctx).bottom + MediaQuery.paddingOf(ctx).bottom,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(rotulo, style: Theme.of(ctx).textTheme.titleMedium),
-              const SizedBox(height: 12),
-              TextField(
-                controller: digitada,
-                keyboardType: TextInputType.datetime,
-                autofocus: true,
-                decoration: const InputDecoration(
-                  labelText: 'Data (13/08/26)',
-                ),
-                onSubmitted: (t) {
-                  final d = parseDataBr(t);
-                  if (d != null) Navigator.pop(ctx, d);
-                },
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  ActionChip(
-                    label: const Text('Hoje'),
-                    onPressed: () => Navigator.pop(ctx, soDia(agora)),
-                  ),
-                  ActionChip(
-                    label: const Text('Há 1 mês'),
-                    onPressed: () =>
-                        Navigator.pop(ctx, acrescentarMeses(agora, -1)),
-                  ),
-                  ActionChip(
-                    label: const Text('Há 4 meses'),
-                    onPressed: () =>
-                        Navigator.pop(ctx, acrescentarMeses(agora, -4)),
-                  ),
-                  ActionChip(
-                    label: const Text('Há 6 meses'),
-                    onPressed: () =>
-                        Navigator.pop(ctx, acrescentarMeses(agora, -6)),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: () async {
-                  final cal = await showDatePicker(
-                    context: ctx,
-                    initialDate: atual ?? agora,
-                    firstDate: DateTime(2000),
-                    lastDate: DateTime(agora.year + 15),
-                  );
-                  if (cal == null || !ctx.mounted) return;
-                  Navigator.pop(ctx, cal);
-                },
-                child: const Text('Calendário'),
-              ),
-              FilledButton(
-                onPressed: () {
-                  final d = parseDataBr(digitada.text);
-                  if (d == null) return;
-                  Navigator.pop(ctx, d);
-                },
-                child: const Text('Usar esta data'),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-    digitada.dispose();
     if (escolhida == null || !mounted) return;
     setState(() => setar(escolhida));
   }
@@ -254,8 +173,7 @@ class _TelaManutencaoState extends ConsumerState<TelaManutencao> {
   }
 
   void _setCnh(DateTime? d) {
-    _cnhProxima =
-        d == null ? null : proximaCnh(d, cincoAnos: _cnhCincoAnos);
+    _cnhProxima = d == null ? null : proximaCnh(d, cincoAnos: _cnhCincoAnos);
   }
 
   Future<void> _salvar() async {
@@ -368,159 +286,163 @@ class _TelaManutencaoState extends ConsumerState<TelaManutencao> {
 
     return EntradaSuave(
       child: ListView(
-      padding: paddingOficina(context),
-      children: [
-        if (estado.sincronizando)
-          const LinearProgressIndicator(minHeight: 2),
-        TituloOficina(
-          'Manutenção',
-          subtitulo: _kmAtual == null
-              ? 'Óleo, pneus e documentos. Informe o km na Ficha para o aviso por km.'
-              : 'Painel ${_br(_kmAtual!)} km. Aviso por data e por km.',
-        ),
-        if (estado.logado && !estado.emConflito) ...[
+        padding: paddingOficina(context),
+        children: [
+          if (estado.sincronizando) const LinearProgressIndicator(minHeight: 2),
+          TituloOficina(
+            'Manutenção',
+            subtitulo: _kmAtual == null
+                ? 'Óleo, pneus e documentos. Informe o km na Ficha para o aviso por km.'
+                : 'Painel ${_br(_kmAtual!)} km. Aviso por data e por km.',
+          ),
+          if (estado.logado && !estado.emConflito) ...[
+            const SizedBox(height: 8),
+            LinhaSync(
+              meta: estado.sync,
+              sincronizando: estado.sincronizando,
+              offline: estado.offline,
+              aoSincronizar: () =>
+                  ref.read(manutencaoControllerProvider.notifier).carregar(),
+            ),
+          ],
+          if (estado.emConflito) ...[
+            const SizedBox(height: 16),
+            CartaoConflito(
+              titulo: 'Datas diferentes no servidor',
+              resumoRemoto: estado.remoto!.oleoProxima == null
+                  ? 'outras datas de oficina'
+                  : 'próximo óleo em ${dataBr(estado.remoto!.oleoProxima!)}',
+              aoManter: () =>
+                  ref.read(manutencaoControllerProvider.notifier).manterLocal(),
+              aoUsarServidor: () =>
+                  ref.read(manutencaoControllerProvider.notifier).usarRemoto(),
+            ),
+          ],
+          if (linhaDoTempo.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            LinhaDoTempo(itens: linhaDoTempo),
+          ],
+          const SizedBox(height: 22),
+          _rotuloGrupo('Óleo e corrente'),
+          _linha('Data da última troca', _oleoUltima, _setOleoUltima),
+          _linha(
+            'Próxima troca (o app sugere seis meses depois)',
+            _oleoProxima,
+            (d) => _oleoProxima = d,
+          ),
+          DuplaCampos(
+            esquerda: _campo(_oleoKmUltima, 'Km do painel na troca'),
+            direita: _campo(_oleoKmIntervalo, 'Trocar a cada quantos km'),
+          ),
+          DuplaCampos(
+            esquerda: _campo(_correnteKmUltima, 'Km do painel na corrente'),
+            direita: _campo(_correnteKmIntervalo, 'Passar óleo a cada (km)'),
+          ),
+          Text(
+            'Passe óleo na corrente de vez em quando (cerca de mil km). Isso lubrifica. A corrente continua a mesma.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
           const SizedBox(height: 8),
-          LinhaSync(
-            meta: estado.sync,
-            sincronizando: estado.sincronizando,
-            offline: estado.offline,
-            aoSincronizar: () =>
-                ref.read(manutencaoControllerProvider.notifier).carregar(),
+          _linha(
+            'Revisão geral, última',
+            _revisaoUltima,
+            (d) => _revisaoUltima = d,
           ),
-        ],
-        if (estado.emConflito) ...[
-          const SizedBox(height: 16),
-          CartaoConflito(
-            titulo: 'Datas diferentes no servidor',
-            resumoRemoto: estado.remoto!.oleoProxima == null
-                ? 'outras datas de oficina'
-                : 'próximo óleo em ${dataBr(estado.remoto!.oleoProxima!)}',
-            aoManter: () =>
-                ref.read(manutencaoControllerProvider.notifier).manterLocal(),
-            aoUsarServidor: () =>
-                ref.read(manutencaoControllerProvider.notifier).usarRemoto(),
+          const SizedBox(height: 8),
+          _rotuloGrupo('Pneus'),
+          _linha('Pneus, última', _pneusUltima, _setPneusUltima),
+          _linha('Pneus, próxima', _pneusProxima, (d) => _pneusProxima = d),
+          const SizedBox(height: 20),
+          TituloOficina(
+            'Documentos',
+            subtitulo: 'IPVA, seguro e licenciamento voltam na mesma data no ano seguinte. CNH dura 10 ou 5 anos. Sem foto da carteira.',
           ),
-        ],
-        if (linhaDoTempo.isNotEmpty) ...[
           const SizedBox(height: 16),
-          LinhaDoTempo(itens: linhaDoTempo),
-        ],
-        const SizedBox(height: 22),
-        _rotuloGrupo('Óleo e corrente'),
-        _linha('Data da última troca', _oleoUltima, _setOleoUltima),
-        _linha(
-          'Próxima troca (o app sugere seis meses depois)',
-          _oleoProxima,
-          (d) => _oleoProxima = d,
-        ),
-        DuplaCampos(
-          esquerda: _campo(_oleoKmUltima, 'Km do painel na troca'),
-          direita: _campo(_oleoKmIntervalo, 'Trocar a cada quantos km'),
-        ),
-        DuplaCampos(
-          esquerda: _campo(_correnteKmUltima, 'Km do painel na corrente'),
-          direita: _campo(_correnteKmIntervalo, 'Passar óleo a cada (km)'),
-        ),
-        Text(
-          'Passe óleo na corrente de vez em quando (cerca de mil km). Isso lubrifica. A corrente continua a mesma.',
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-        const SizedBox(height: 8),
-        _linha('Revisão geral, última', _revisaoUltima, (d) => _revisaoUltima = d),
-        const SizedBox(height: 8),
-        _rotuloGrupo('Pneus'),
-        _linha('Pneus, última', _pneusUltima, _setPneusUltima),
-        _linha('Pneus, próxima', _pneusProxima, (d) => _pneusProxima = d),
-        const SizedBox(height: 20),
-        TituloOficina(
-          'Documentos',
-          subtitulo:
-              'IPVA, seguro e licenciamento voltam na mesma data no ano seguinte. CNH dura 10 ou 5 anos. Sem foto da carteira.',
-        ),
-        const SizedBox(height: 16),
-        _linha(
-          'IPVA, próxima',
-          _ipvaProxima,
-          (d) => _setAnual((v) => _ipvaProxima = v, d),
-        ),
-        _linha(
-          'Seguro, próxima',
-          _seguroProxima,
-          (d) => _setAnual((v) => _seguroProxima = v, d),
-        ),
-        _linha(
-          'Licenciamento, próxima',
-          _licenciamentoProxima,
-          (d) => _setAnual((v) => _licenciamentoProxima = v, d),
-        ),
-        _linha('CNH, vencimento', _cnhProxima, _setCnh),
-        Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: SegmentedButton<bool>(
-            showSelectedIcon: false,
-            segments: const [
-              ButtonSegment(value: false, label: Text('CNH 10 anos')),
-              ButtonSegment(value: true, label: Text('CNH 5 anos')),
-            ],
-            selected: {_cnhCincoAnos},
-            onSelectionChanged: (s) {
-              setState(() {
-                _cnhCincoAnos = s.first;
-                if (_cnhProxima != null) {
-                  _cnhProxima =
-                      proximaCnh(_cnhProxima!, cincoAnos: _cnhCincoAnos);
-                }
-              });
-            },
+          _linha(
+            'IPVA, próxima',
+            _ipvaProxima,
+            (d) => _setAnual((v) => _ipvaProxima = v, d),
           ),
-        ),
-        const SizedBox(height: 8),
-        FilledButton(
-          onPressed: _salvar,
-          child: const Text('Salvar manutenção'),
-        ),
-        const SizedBox(height: 28),
-        TituloOficina(
-          'Oficina',
-          subtitulo: 'O que você pagou na loja (opcional).',
-        ),
-        const SizedBox(height: 16),
-        _campo(_servicoTipo, 'Serviço (óleo, pneu, relação…)'),
-        DuplaCampos(
-          esquerda: _campo(_servicoKm, 'Km no painel agora'),
-          direita: _campo(_servicoReais, 'Valor (R\$)'),
-        ),
-        OutlinedButton(
-          onPressed: _registrarServico,
-          child: const Text('Registrar serviço'),
-        ),
-        if (_servicos.isEmpty) ...[
-          const SizedBox(height: 16),
-          const EstadoVazio(
-            icone: Icons.build_outlined,
-            titulo: 'Nenhum serviço ainda',
-            frase: 'Troca de óleo, pneu, revisão. Fica neste aparelho.',
+          _linha(
+            'Seguro, próxima',
+            _seguroProxima,
+            (d) => _setAnual((v) => _seguroProxima = v, d),
           ),
-        ],
-        if (_servicos.isNotEmpty) ...[
+          _linha(
+            'Licenciamento, próxima',
+            _licenciamentoProxima,
+            (d) => _setAnual((v) => _licenciamentoProxima = v, d),
+          ),
+          _linha('CNH, vencimento', _cnhProxima, _setCnh),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: SegmentedButton<bool>(
+              showSelectedIcon: false,
+              segments: const [
+                ButtonSegment(value: false, label: Text('CNH 10 anos')),
+                ButtonSegment(value: true, label: Text('CNH 5 anos')),
+              ],
+              selected: {_cnhCincoAnos},
+              onSelectionChanged: (s) {
+                setState(() {
+                  _cnhCincoAnos = s.first;
+                  if (_cnhProxima != null) {
+                    _cnhProxima = proximaCnh(
+                      _cnhProxima!,
+                      cincoAnos: _cnhCincoAnos,
+                    );
+                  }
+                });
+              },
+            ),
+          ),
+          const SizedBox(height: 8),
+          FilledButton(
+            onPressed: _salvar,
+            child: const Text('Salvar manutenção'),
+          ),
+          const SizedBox(height: 28),
+          TituloOficina(
+            'Oficina',
+            subtitulo: 'O que você pagou na loja (opcional).',
+          ),
           const SizedBox(height: 16),
-          for (final (i, s) in _servicos.indexed)
-            EntradaSuave(
-              atraso: Duration(milliseconds: 40 * i.clamp(0, 8)),
-              deslocamento: 8,
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: CartaoOficina(
-                  child: Text(
-                    '${_dataCurta(s.em)}  ${s.tipo}\n'
-                    '${_br(s.kmPainel)} km · R\$ ${_br(s.reais, casas: 2)}',
-                    style: Theme.of(context).textTheme.bodyMedium,
+          _campo(_servicoTipo, 'Serviço (óleo, pneu, relação…)'),
+          DuplaCampos(
+            esquerda: _campo(_servicoKm, 'Km no painel agora'),
+            direita: _campo(_servicoReais, 'Valor (R\$)'),
+          ),
+          OutlinedButton(
+            onPressed: _registrarServico,
+            child: const Text('Registrar serviço'),
+          ),
+          if (_servicos.isEmpty) ...[
+            const SizedBox(height: 16),
+            const EstadoVazio(
+              icone: Icons.build_outlined,
+              titulo: 'Nenhum serviço ainda',
+              frase: 'Troca de óleo, pneu, revisão. Fica neste aparelho.',
+            ),
+          ],
+          if (_servicos.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            for (final (i, s) in _servicos.indexed)
+              EntradaSuave(
+                atraso: Duration(milliseconds: 40 * i.clamp(0, 8)),
+                deslocamento: 8,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: CartaoOficina(
+                    child: Text(
+                      '${_dataCurta(s.em)}  ${s.tipo}\n'
+                      '${_br(s.kmPainel)} km · R\$ ${_br(s.reais, casas: 2)}',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
                   ),
                 ),
               ),
-            ),
+          ],
         ],
-      ],
       ),
     );
   }
@@ -530,10 +452,8 @@ class _TelaManutencaoState extends ConsumerState<TelaManutencao> {
       padding: const EdgeInsets.only(bottom: 10),
       child: Text(
         texto.toUpperCase(),
-        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: Oficina.latao,
-              fontSize: 12,
-            ),
+        style: Theme.of(context).textTheme.labelLarge
+            ?.copyWith(color: Oficina.latao, fontSize: 12),
       ),
     );
   }
@@ -551,15 +471,16 @@ class _TelaManutencaoState extends ConsumerState<TelaManutencao> {
         inputFormatters: servico
             ? null
             : [FilteringTextInputFormatter.allow(RegExp(r'[0-9,.]'))],
-        decoration: InputDecoration(
-          labelText: rotulo,
-          counterText: '',
-        ),
+        decoration: InputDecoration(labelText: rotulo, counterText: ''),
       ),
     );
   }
 
-  Widget _linha(String rotulo, DateTime? valor, void Function(DateTime?) setar) {
+  Widget _linha(
+    String rotulo,
+    DateTime? valor,
+    void Function(DateTime?) setar,
+  ) {
     return LinhaData(
       rotulo: rotulo,
       valor: _rotulo(valor),
