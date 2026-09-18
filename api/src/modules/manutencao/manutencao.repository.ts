@@ -69,16 +69,16 @@ export async function salvar(
     `INSERT INTO manutencoes
         (usuario_id, oleo_ultima, oleo_proxima, revisao_ultima, pneus_ultima, pneus_proxima,
          ipva_proxima, seguro_proxima, licenciamento_proxima)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) AS novo
      ON DUPLICATE KEY UPDATE
-        oleo_ultima = VALUES(oleo_ultima),
-        oleo_proxima = VALUES(oleo_proxima),
-        revisao_ultima = VALUES(revisao_ultima),
-        pneus_ultima = VALUES(pneus_ultima),
-        pneus_proxima = VALUES(pneus_proxima),
-        ipva_proxima = VALUES(ipva_proxima),
-        seguro_proxima = VALUES(seguro_proxima),
-        licenciamento_proxima = VALUES(licenciamento_proxima)`,
+        oleo_ultima = novo.oleo_ultima,
+        oleo_proxima = novo.oleo_proxima,
+        revisao_ultima = novo.revisao_ultima,
+        pneus_ultima = novo.pneus_ultima,
+        pneus_proxima = novo.pneus_proxima,
+        ipva_proxima = novo.ipva_proxima,
+        seguro_proxima = novo.seguro_proxima,
+        licenciamento_proxima = novo.licenciamento_proxima`,
     params,
   );
   const [rows] = await getPool().execute<Linha[]>(

@@ -128,6 +128,39 @@ test('login, refresh, ficha e exclusão no MySQL', async (t) => {
     const getAgendaCorpo = await getAgenda.json() as { atualizadoEm: string | null };
     assert.equal(getAgendaCorpo.atualizadoEm, agendaCorpo.atualizadoEm);
 
+    // Segundo PUT exercita o ON DUPLICATE KEY UPDATE da manutenção.
+    const putAgenda2 = await fetch(`${base}/manutencao`, {
+      method: 'PUT',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${sessao.token}`,
+      },
+      body: JSON.stringify({ ...agenda, ipvaProxima: '2027-03-31' }),
+    });
+    assert.equal(putAgenda2.status, 200);
+    const agenda2 = await (await fetch(`${base}/manutencao`, {
+      headers: { authorization: `Bearer ${sessao.token}` },
+    })).json() as { ipvaProxima: string | null };
+    assert.equal(agenda2.ipvaProxima, '2027-03-31');
+
+    // Localização: insere, atualiza, lê.
+    for (const ponto of [{ latitude: -23.55, longitude: -46.63 }, { latitude: -22.9, longitude: -43.2 }]) {
+      const putPonto = await fetch(`${base}/localizacao`, {
+        method: 'PUT',
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${sessao.token}`,
+        },
+        body: JSON.stringify(ponto),
+      });
+      assert.equal(putPonto.status, 200);
+    }
+    const ponto = await (await fetch(`${base}/localizacao`, {
+      headers: { authorization: `Bearer ${sessao.token}` },
+    })).json() as { latitude: number; longitude: number };
+    assert.equal(ponto.latitude, -22.9);
+    assert.equal(ponto.longitude, -43.2);
+
     const renovar = () => fetch(`${base}/auth/refresh`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },

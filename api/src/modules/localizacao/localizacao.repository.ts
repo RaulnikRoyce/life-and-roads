@@ -26,10 +26,10 @@ export async function salvar(
 ): Promise<LocalizacaoDto> {
   await getPool().execute<ResultSetHeader>(
     `INSERT INTO localizacoes (usuario_id, latitude, longitude)
-     VALUES (?, ?, ?)
+     VALUES (?, ?, ?) AS novo
      ON DUPLICATE KEY UPDATE
-        latitude = VALUES(latitude),
-        longitude = VALUES(longitude)`,
+        latitude = novo.latitude,
+        longitude = novo.longitude`,
     [usuarioId, dados.latitude, dados.longitude],
   );
   return dados;

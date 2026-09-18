@@ -73,18 +73,18 @@ export async function salvar(usuarioId: number, dados: FichaDto): Promise<FichaL
     `INSERT INTO fichas
         (usuario_id, marca, modelo, ano, cilindrada, km_litro, km_litro_alcool,
          combustivel, km_atual, tanque_litros, personalizacoes)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) AS novo
      ON DUPLICATE KEY UPDATE
-        marca = VALUES(marca),
-        modelo = VALUES(modelo),
-        ano = VALUES(ano),
-        cilindrada = VALUES(cilindrada),
-        km_litro = VALUES(km_litro),
-        km_litro_alcool = VALUES(km_litro_alcool),
-        combustivel = VALUES(combustivel),
-        km_atual = VALUES(km_atual),
-        tanque_litros = VALUES(tanque_litros),
-        personalizacoes = VALUES(personalizacoes)`,
+        marca = novo.marca,
+        modelo = novo.modelo,
+        ano = novo.ano,
+        cilindrada = novo.cilindrada,
+        km_litro = novo.km_litro,
+        km_litro_alcool = novo.km_litro_alcool,
+        combustivel = novo.combustivel,
+        km_atual = novo.km_atual,
+        tanque_litros = novo.tanque_litros,
+        personalizacoes = novo.personalizacoes`,
     params,
   );
   const [rows] = await getPool().execute<FichaRow[]>(
