@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart' show Brightness;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_and_roads/features/mapa/domain/usecases/acrescentar_pino.dart';
 import 'package:life_and_roads/features/mapa/domain/usecases/remover_pino.dart';
@@ -39,16 +38,10 @@ void main() {
     expect(lista.first.tipo, 'posto');
   });
 
-  test('OSM isolado usa CARTO e o pacote do app', () {
-    for (final url in [CamadaOsm.urlEscuro, CamadaOsm.urlClaro]) {
-      expect(url, contains('cartocdn.com'));
-      expect(url.contains('google'), isFalse);
-    }
+  test('tiles do OpenStreetMap, sem chave, com o pacote do app', () {
+    expect(CamadaOsm.urlTemplate, startsWith('https://tile.openstreetmap.org/'));
+    expect(CamadaOsm.urlTemplate.contains('google'), isFalse);
+    expect(CamadaOsm.urlTemplate.contains('apikey'), isFalse);
     expect(CamadaOsm.userAgent, 'com.raulnik.life_and_roads');
-  });
-
-  test('tile acompanha o tema', () {
-    expect(CamadaOsm.urlParaTema(Brightness.dark), CamadaOsm.urlEscuro);
-    expect(CamadaOsm.urlParaTema(Brightness.light), CamadaOsm.urlClaro);
   });
 }

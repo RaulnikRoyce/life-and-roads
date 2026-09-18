@@ -151,6 +151,6 @@ Backup JSON: versão 2 (listas estruturadas); a restauração ainda lê a versã
 | Serviço | Uso | Condição |
 |---|---|---|
 | OSRM público (`router.project-osrm.org`) | km de estrada em `mapa/rota.dart` | Servidor de demonstração, sem garantia e sem uso comercial. Serve para o beta. Para loja, hospedar um OSRM próprio ou trocar por um provedor com contrato |
-| CARTO basemaps (`basemaps.cartocdn.com`) | tiles do mapa em `camada_osm.dart` | Grátis só para uso não comercial, com atribuição visível (já mostrada). Para loja, plano pago da CARTO ou tiles OSM próprios |
+| OpenStreetMap (`tile.openstreetmap.org`) | tiles do mapa em `camada_osm.dart` | Sem chave, com User-Agent do app e atribuição "© OpenStreetMap" (política de uso do OSM: tráfego moderado, sem pré-download em massa). A CARTO foi trocada em 18/09/2026 porque passou a exigir chave. Tema escuro por inversão de cores no cliente. Para loja, tiles próprios ou provedor com contrato |
 
 Os dois têm timeout e caem para "sem rota" ou mapa vazio. A caderneta não depende deles.

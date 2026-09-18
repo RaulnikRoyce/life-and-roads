@@ -250,7 +250,7 @@ class _TelaDestinoState extends ConsumerState<TelaDestino> {
                 Text(
                   _legenda,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: Oficina.tinta),
+                  style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 10),
                 SizedBox(

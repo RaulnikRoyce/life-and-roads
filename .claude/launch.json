@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "app-web",
+      "runtimeExecutable": "C:/Users/Raulnik/flutter/bin/flutter.bat",
+      "runtimeArgs": ["run", "-d", "web-server", "--web-port", "8080", "--web-hostname", "127.0.0.1", "--suppress-analytics"],
+      "cwd": "app",
+      "port": 8080
+    }
+  ]
+}
