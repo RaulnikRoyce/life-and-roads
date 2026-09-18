@@ -24,6 +24,12 @@ export type Tokens = {
 
 type JwtRefresh = { id?: unknown; typ?: unknown };
 
+/**
+ * E-mail inexistente também paga o bcrypt, senão o tempo de resposta
+ * entrega quem tem conta. Gerado uma vez no boot.
+ */
+const HASH_FANTASMA = bcrypt.hashSync('sem-conta-neste-email', 10);
+
 const criarTokens = (id: number, email: string): Tokens => {
   const secret = getJwtSecret();
   const opcoes = {
@@ -58,10 +64,8 @@ export const autenticar = async (
   senha: string,
 ): Promise<Tokens | null> => {
   const usuario = await repo.buscarPorEmail(email);
-  if (!usuario) return null;
-
-  const senhaValida = await bcrypt.compare(senha, usuario.senha);
-  if (!senhaValida) return null;
+  const senhaValida = await bcrypt.compare(senha, usuario?.senha ?? HASH_FANTASMA);
+  if (!usuario || !senhaValida) return null;
 
   if (!usuario.ativo) {
     throw new AppError(403, 'Conta desativada.');
@@ -123,15 +127,11 @@ export const renovar = async (refreshToken: string): Promise<Tokens> => {
   return tokens;
 };
 
-export const sair = async (
-  usuarioId: number | null,
-  refreshToken?: string,
-): Promise<void> => {
-  if (refreshToken) {
-    const sessao = await repo.buscarSessao(repo.hashRefresh(refreshToken));
-    if (sessao) await repo.revogarSessao(sessao.id);
-  }
-  if (usuarioId) await repo.revogarTodas(usuarioId);
+/** Sai só deste aparelho: revoga o refresh enviado. Os outros seguem. */
+export const sair = async (refreshToken?: string): Promise<void> => {
+  if (!refreshToken) return;
+  const sessao = await repo.buscarSessao(repo.hashRefresh(refreshToken));
+  if (sessao) await repo.revogarSessao(sessao.id);
 };
 
 export const excluirConta = async (usuarioId: number): Promise<void> => {

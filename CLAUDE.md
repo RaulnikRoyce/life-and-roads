@@ -39,4 +39,4 @@ Português comum, sem gíria de posto e sem fórmula na tela (`÷`, `×`, `km/l`
 
 Beta fechado com pilotos, APK `1.2.0+5` instalado e funcionando. `flutter_secure_storage` fica em `^10.3.x` durante o beta (a 11 é breaking e exige passar pela 10 antes). API sem deploy público ainda; `render.yaml` e `docker-compose.yml` prontos.
 
-Auditoria de 17/09/2026 (Claude Code) apontou, em ordem: race no refresh concorrente que derruba a sessão, backup lendo token no lugar antigo, JSON malformado retornando 500, testes de integração da API sem MySQL no CI, data inválida passando no Zod. As correções entram uma por vez, cada uma com seu ADR ou teste.
+Auditoria de 17/09/2026 (Claude Code): os cinco itens principais (race no refresh, backup lendo token antigo, JSON malformado em 500, MySQL no CI, data inválida) e os baixos da API (ano congelado, `/auth/sair`, limpeza de sessões, timing do login, `TRUST_PROXY`, fuso do pool) estão corrigidos e testados. Fica em aberto o conflito falso de sync em aparelho único (a API ainda não expõe `atualizado_em`). `ON DUPLICATE KEY UPDATE ... VALUES()` fica como está por compatibilidade com MariaDB e MySQL < 8.0.20.

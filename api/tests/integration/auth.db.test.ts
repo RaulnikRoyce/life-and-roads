@@ -2,6 +2,7 @@ import { after, test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import app from '../../src/app';
 import { fecharPool, getPool, pingBanco } from '../../src/shared/database/pool';
+import { apagarSessoesVencidas } from '../../src/modules/auth/auth.repository';
 import { migrar } from '../../src/shared/database/migrar';
 
 // Sem isto o pool segura o processo aberto até o idle timeout do mysql2.
@@ -103,6 +104,32 @@ test('login, refresh, ficha e exclusão no MySQL', async (t) => {
     assert.ok(novo.token);
     assert.notEqual(novo.refreshToken, sessao.refreshToken);
     assert.notEqual(pares[1].refreshToken, novo.refreshToken);
+
+    // Sair deste aparelho: só este refresh cai; o outro par segue válido.
+    const loginB = await fetch(`${base}/auth/login`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email, senha: 'senha1234' }),
+    });
+    const aparelhoB = await loginB.json() as { refreshToken: string };
+    const sair = await fetch(`${base}/auth/sair`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ refreshToken: novo.refreshToken }),
+    });
+    assert.equal(sair.status, 200);
+    const depoisDeSair = await fetch(`${base}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ refreshToken: novo.refreshToken }),
+    });
+    assert.equal(depoisDeSair.status, 401);
+    const bSegue = await fetch(`${base}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ refreshToken: aparelhoB.refreshToken }),
+    });
+    assert.equal(bSegue.status, 200);
 
     const del = await fetch(`${base}/auth/conta`, {
       method: 'DELETE',
@@ -300,3 +327,30 @@ test('refresh rotacionado fora da janela é roubo e revoga a conta', async (t) =
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
 });
+
+test('limpeza apaga só sessões vencidas', async (t) => {
+  if (!await bancoPronto(t)) return;
+  const email = `limpeza.${Date.now()}@teste.local`;
+  const pool = getPool();
+  const [u] = await pool.execute<import('mysql2').ResultSetHeader>(
+    'INSERT INTO usuarios (email, senha) VALUES (?, ?)',
+    [email, 'x'],
+  );
+  try {
+    await pool.execute(
+      `INSERT INTO sessoes (usuario_id, token_hash, expira_em) VALUES
+         (?, ?, UTC_TIMESTAMP() - INTERVAL 1 DAY),
+         (?, ?, UTC_TIMESTAMP() + INTERVAL 1 DAY)`,
+      [u.insertId, `vencida-${u.insertId}`, u.insertId, `viva-${u.insertId}`],
+    );
+    await apagarSessoesVencidas();
+    const [rows] = await pool.execute<import('mysql2').RowDataPacket[]>(
+      'SELECT token_hash FROM sessoes WHERE usuario_id = ?',
+      [u.insertId],
+    );
+    assert.deepEqual(rows.map((r) => r.token_hash), [`viva-${u.insertId}`]);
+  } finally {
+    await pool.execute('DELETE FROM usuarios WHERE id = ?', [u.insertId]);
+  }
+});
+

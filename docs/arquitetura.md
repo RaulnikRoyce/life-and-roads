@@ -140,5 +140,17 @@ Backup JSON: versão 2 (listas estruturadas); a restauração ainda lê a versã
 - 300 requisições / 15 min por IP (`/health` livre)
 - Senha com bcrypt (custo 10)
 - JWT access nas rotas de ficha, manutenção e localização
-- Refresh revogável (`POST /auth/refresh`); exclusão em `DELETE /auth/conta`
+- Refresh de uso único com rotação. Reuso dentro de 15 s é retry das abas; fora disso é roubo e derruba a conta (ADR 0017). Sair e troca de senha revogam sem punir os outros aparelhos. Sessões vencidas são apagadas no boot e uma vez por dia
+- Exclusão em `DELETE /auth/conta`
 - Schema Zod recusa placa, chassi, RENAVAM e qualquer campo não listado
+- Erro do `express.json()` (JSON quebrado, corpo grande) responde 400/413, não 500
+- `TRUST_PROXY` diz quantos proxies há na frente (Render 1, compose 0). Sem isso, `X-Forwarded-For` falso escapa do rate limit
+
+## 8. Serviços de terceiros no mapa
+
+| Serviço | Uso | Condição |
+|---|---|---|
+| OSRM público (`router.project-osrm.org`) | km de estrada em `mapa/rota.dart` | Servidor de demonstração, sem garantia e sem uso comercial. Serve para o beta. Para loja, hospedar um OSRM próprio ou trocar por um provedor com contrato |
+| CARTO basemaps (`basemaps.cartocdn.com`) | tiles do mapa em `camada_osm.dart` | Grátis só para uso não comercial, com atribuição visível (já mostrada). Para loja, plano pago da CARTO ou tiles OSM próprios |
+
+Os dois têm timeout e caem para "sem rota" ou mapa vazio. A caderneta não depende deles.

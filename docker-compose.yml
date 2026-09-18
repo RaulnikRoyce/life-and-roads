@@ -35,6 +35,8 @@ services:
       DB_PORT: 3306
       JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET com pelo menos 32 bytes aleatorios}
       CORS_ORIGIN: ${CORS_ORIGIN:-}
+      # Porta exposta direto, sem proxy. Suba para 1 se colocar nginx/caddy na frente.
+      TRUST_PROXY: ${TRUST_PROXY:-0}
     depends_on:
       mysql:
         condition: service_healthy

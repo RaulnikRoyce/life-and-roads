@@ -20,9 +20,14 @@ const app = express();
 const ambiente = appEnv();
 const emProducao = process.env.NODE_ENV === 'production';
 
-if (emProducao) {
-  app.set('trust proxy', 1);
-}
+// Quantos proxies confiáveis há na frente (Render: 1). Exposto direto,
+// como no docker-compose, tem que ser 0, senão X-Forwarded-For falso burla
+// o rate limit.
+const trustProxy = process.env.TRUST_PROXY;
+app.set(
+  'trust proxy',
+  trustProxy !== undefined && trustProxy !== '' ? Number(trustProxy) : (emProducao ? 1 : 0),
+);
 
 const allowedOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',').map((origin) => origin.trim()).filter(Boolean)

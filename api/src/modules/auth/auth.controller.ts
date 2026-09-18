@@ -31,7 +31,7 @@ export const refresh = asyncHandler(async (req, res) => {
 
 export const sair = asyncHandler(async (req, res) => {
   const { refreshToken } = (req.body || {}) as { refreshToken?: string };
-  await authService.sair(req.usuario?.id ?? null, refreshToken);
+  await authService.sair(refreshToken);
   ok(res, { mensagem: 'Sessão encerrada' });
 });
 

@@ -169,3 +169,15 @@ export async function atualizarSenha(
 export async function apagarUsuario(id: number): Promise<void> {
   await getPool().execute('DELETE FROM usuarios WHERE id = ?', [id]);
 }
+
+/**
+ * Apaga sessões vencidas. As revogadas dentro do prazo ficam: são elas que
+ * denunciam reuso de refresh. `expira_em` é gravado em UTC, daí UTC_TIMESTAMP().
+ */
+export async function apagarSessoesVencidas(): Promise<number> {
+  const [r] = await getPool().execute<ResultSetHeader>(
+    'DELETE FROM sessoes WHERE expira_em < UTC_TIMESTAMP()',
+  );
+  return r.affectedRows;
+}
+

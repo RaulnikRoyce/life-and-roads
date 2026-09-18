@@ -25,6 +25,9 @@ export function getPool(): mysql.Pool {
     database: process.env.DB_NAME,
     port: Number(process.env.DB_PORT) || 3306,
     ssl: sslBanco(),
+    // DATETIME é gravado em UTC (expira_em); ler em UTC evita depender do
+    // fuso do processo.
+    timezone: 'Z',
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,

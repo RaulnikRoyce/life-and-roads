@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
-const anoMax = new Date().getFullYear() + 1;
+// Calculado a cada validação: o processo pode virar o ano no ar.
+const anoMax = () => new Date().getFullYear() + 1;
 
 const vazioParaNulo = (valor: unknown) => {
   if (valor === '' || valor === undefined) return null;
@@ -13,7 +14,9 @@ export const fichaSchema = z.object({
   modelo: z.string().trim().min(1, 'Modelo obrigatório').max(60),
   ano: z.preprocess(
     vazioParaNulo,
-    z.number().int().min(1980).max(anoMax).nullable(),
+    z.number().int().min(1980)
+      .refine((v) => v <= anoMax(), 'Ano além do próximo ano-modelo')
+      .nullable(),
   ),
   cilindrada: z.preprocess(
     vazioParaNulo,

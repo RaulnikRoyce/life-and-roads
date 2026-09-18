@@ -51,3 +51,11 @@ test('combustível estranho é recusado', () => {
   const r = fichaSchema.safeParse({ ...valida, combustivel: 'diesel' });
   assert.equal(r.success, false);
 });
+
+test('ano aceita até o próximo ano-modelo e recusa depois', () => {
+  const proximo = new Date().getFullYear() + 1;
+  assert.equal(fichaSchema.safeParse({ ...valida, ano: proximo }).success, true);
+  assert.equal(fichaSchema.safeParse({ ...valida, ano: proximo + 1 }).success, false);
+  assert.equal(fichaSchema.safeParse({ ...valida, ano: 1979 }).success, false);
+});
+
