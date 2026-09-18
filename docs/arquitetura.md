@@ -122,11 +122,13 @@ Caderneta (ficha, foto, agenda, extra, preços, último ponto, históricos, pins
 
 Na primeira abertura, as chaves `abastecimentos_v1`, `servicos_v1`, `pins_v1`, `ficha_moto_v1`, `manutencao_v1`, `manutencao_km_v1`, `foto_moto_v1`, `preco_litro_v1`, `preco_alcool_v1`, `ultimo_ponto_v1` e `manutencao_sync_v1` migram para o banco e somem das prefs.
 
-SharedPreferences (prefixo `flutter.` na Web) fica só com sessão e aparência:
+SharedPreferences (prefixo `flutter.` na Web) fica só com e-mail e aparência:
 
 - `tema_v1`
-- `token_life_and_roads`, `refresh_life_and_roads`, `email_life_and_roads`
+- `email_life_and_roads`
 - `api_base_v1` (override do campo Servidor)
+
+Access e refresh (`token_life_and_roads`, `refresh_life_and_roads`) ficam no `flutter_secure_storage` via `SessaoSegura`, que migra o valor antigo das prefs na primeira leitura. Quem precisa saber se há conta pergunta à `SessaoSegura`, nunca às prefs.
 
 URL padrão da API: `--dart-define=API_BASE=https://...`. Sem define: `http://localhost:3001`.
 

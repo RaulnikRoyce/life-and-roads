@@ -1,10 +1,10 @@
 import 'dart:convert';
 
-import 'package:life_and_roads/api.dart';
 import 'package:life_and_roads/core/backup/lista_backup.dart';
 import 'package:life_and_roads/core/database/armazem_kv.dart';
 import 'package:life_and_roads/core/database/caderneta_banco.dart';
 import 'package:life_and_roads/core/database/chaves_kv.dart';
+import 'package:life_and_roads/core/security/sessao_segura.dart';
 import 'package:life_and_roads/core/sync/ficha_sync_store.dart';
 import 'package:life_and_roads/features/manutencao/data/manutencao_sync_store.dart';
 import 'package:life_and_roads/ficha/foto.dart';
@@ -90,7 +90,8 @@ class BackupCaderneta {
     }
     await prefs.remove(FotoMoto.chave);
 
-    final token = prefs.getString(ApiCaderneta.chaveToken);
+    // Com conta, o que veio do backup precisa subir na próxima abertura.
+    final token = await SessaoSegura().lerToken();
     if (token != null && token.isNotEmpty) {
       await FichaSyncStore().marcarPendente();
       await ManutencaoSyncStore().marcarPendente();
