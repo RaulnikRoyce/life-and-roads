@@ -4,7 +4,7 @@ import 'package:life_and_roads/core/api/openapi/dtos.dart';
 
 class LocalizacaoRemoteDatasource {
   LocalizacaoRemoteDatasource({ClienteOpenApi? cliente})
-      : _cliente = cliente ?? ClienteOpenApi();
+    : _cliente = cliente ?? ClienteOpenApi();
 
   final ClienteOpenApi _cliente;
 

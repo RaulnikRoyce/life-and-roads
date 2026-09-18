@@ -8,6 +8,7 @@ import 'package:life_and_roads/features/mapa/data/ponto_local_datasource.dart';
 import 'package:life_and_roads/features/mapa/data/servico_permissao_gps.dart';
 import 'package:life_and_roads/features/mapa/domain/mapa_repository.dart';
 import 'package:life_and_roads/features/mapa/domain/usecases/acrescentar_pino.dart';
+import 'package:life_and_roads/features/mapa/domain/usecases/autonomia_no_mapa.dart';
 import 'package:life_and_roads/features/mapa/domain/usecases/remover_pino.dart';
 import 'package:life_and_roads/features/mapa/presentation/mapa_estado.dart';
 import 'package:life_and_roads/mapa/pins.dart';
@@ -21,9 +22,7 @@ final pinsLocalDatasourceProvider = Provider<PinsLocalDatasource>(
 );
 
 final localizacaoRemoteDatasourceProvider =
-    Provider<LocalizacaoRemoteDatasource>(
-  (_) => LocalizacaoRemoteDatasource(),
-);
+    Provider<LocalizacaoRemoteDatasource>((_) => LocalizacaoRemoteDatasource());
 
 final permissaoGpsProvider = Provider<ConsultaPermissaoGps>(
   (_) => ServicoPermissaoGps(),
@@ -48,10 +47,14 @@ class MapaController extends Notifier<MapaEstado> {
     state = state.copiarCom(carregando: true, limparAviso: true);
     final ponto = await _repo.carregarPonto();
     final pins = await _repo.carregarPins();
+    final ficha = await ref
+        .read(fichaLocalDatasourceProvider)
+        .ler(recarregar: true);
     state = MapaEstado(
       carregando: false,
       ponto: ponto,
       pins: pins,
+      autonomiaKm: const AutonomiaNoMapa().executar(ficha),
     );
   }
 
@@ -96,5 +99,6 @@ class MapaController extends Notifier<MapaEstado> {
   }
 }
 
-final mapaControllerProvider =
-    NotifierProvider<MapaController, MapaEstado>(MapaController.new);
+final mapaControllerProvider = NotifierProvider<MapaController, MapaEstado>(
+  MapaController.new,
+);

@@ -8,6 +8,7 @@ class MapaEstado {
     this.pins = const [],
     this.rastreando = false,
     this.aviso,
+    this.autonomiaKm,
   });
 
   final bool carregando;
@@ -15,6 +16,9 @@ class MapaEstado {
   final List<PinoMapa> pins;
   final bool rastreando;
   final String? aviso;
+
+  /// Tanque cheio × km/l da ficha. Raio do círculo de alcance.
+  final double? autonomiaKm;
 
   MapaEstado copiarCom({
     bool? carregando,
@@ -24,6 +28,7 @@ class MapaEstado {
     bool? rastreando,
     String? aviso,
     bool limparAviso = false,
+    double? autonomiaKm,
   }) {
     return MapaEstado(
       carregando: carregando ?? this.carregando,
@@ -31,6 +36,7 @@ class MapaEstado {
       pins: pins ?? this.pins,
       rastreando: rastreando ?? this.rastreando,
       aviso: limparAviso ? null : (aviso ?? this.aviso),
+      autonomiaKm: autonomiaKm ?? this.autonomiaKm,
     );
   }
 }

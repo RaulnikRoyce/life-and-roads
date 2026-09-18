@@ -6,6 +6,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:life_and_roads/features/mapa/data/abrir_ponto.dart';
 import 'package:life_and_roads/features/mapa/presentation/camada_osm.dart';
 import 'package:life_and_roads/features/mapa/presentation/mapa_controller.dart';
 import 'package:life_and_roads/mapa/ponto.dart';
@@ -184,9 +185,7 @@ class _TelaDestinoState extends ConsumerState<TelaDestino> {
     final rota = _rota;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Destino'),
-      ),
+      appBar: AppBar(title: const Text('Destino')),
       body: Column(
         children: [
           Expanded(
@@ -261,6 +260,23 @@ class _TelaDestinoState extends ConsumerState<TelaDestino> {
                     child: const Text('Usar estes km'),
                   ),
                 ),
+                if (destino != null) ...[
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        final ok = await abrirNoAppDeMapas(
+                          destino,
+                          rotulo: 'Destino',
+                        );
+                        if (!ok) _aviso('Nenhum app de mapas neste aparelho.');
+                      },
+                      icon: const Icon(Icons.navigation_outlined, size: 18),
+                      label: const Text('Abrir no app de mapas'),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

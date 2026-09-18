@@ -6,6 +6,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:life_and_roads/features/mapa/data/abrir_ponto.dart';
 import 'package:life_and_roads/features/mapa/presentation/camada_osm.dart';
 import 'package:life_and_roads/features/mapa/presentation/mapa_controller.dart';
 import 'package:life_and_roads/mapa/pins.dart';
@@ -65,19 +66,23 @@ class _TelaMapaState extends ConsumerState<TelaMapa> {
 
     await _fluxo?.cancel();
     _ctrl.marcarRastreando(true);
-    _fluxo = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 8,
-      ),
-    ).listen((pos) {
-      final ponto = LatLng(pos.latitude, pos.longitude);
-      _ctrl.aoGps(ponto);
-      _irPara(ponto, 16);
-    }, onError: (_) {
-      _aviso('Não foi possível ler o GPS.');
-      _parar();
-    });
+    _fluxo =
+        Geolocator.getPositionStream(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            distanceFilter: 8,
+          ),
+        ).listen(
+          (pos) {
+            final ponto = LatLng(pos.latitude, pos.longitude);
+            _ctrl.aoGps(ponto);
+            _irPara(ponto, 16);
+          },
+          onError: (_) {
+            _aviso('Não foi possível ler o GPS.');
+            _parar();
+          },
+        );
   }
 
   Future<void> _parar() async {
@@ -100,7 +105,10 @@ class _TelaMapaState extends ConsumerState<TelaMapa> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.local_gas_station, color: Oficina.latao),
+              leading: const Icon(
+                Icons.local_gas_station,
+                color: Oficina.latao,
+              ),
               title: const Text('Posto'),
               onTap: () => Navigator.pop(ctx, 'posto'),
             ),
@@ -115,6 +123,47 @@ class _TelaMapaState extends ConsumerState<TelaMapa> {
     );
     if (tipo == null) return;
     await _ctrl.acrescentarPin(tipo: tipo, ponto: ponto);
+  }
+
+  Future<void> _aoTocarPin(PinoMapa pin) async {
+    final rotulo = pin.tipo == 'posto' ? 'Posto' : 'Oficina';
+    final acao = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Oficina.couro,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(
+                Icons.navigation_outlined,
+                color: Oficina.latao,
+              ),
+              title: Text('Abrir $rotulo no app de mapas'),
+              onTap: () => Navigator.pop(ctx, 'abrir'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline, color: Oficina.latao),
+              title: const Text('Apagar'),
+              onTap: () => Navigator.pop(ctx, 'apagar'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (acao == 'abrir') {
+      final ok = await abrirNoAppDeMapas(pin.ponto, rotulo: rotulo);
+      if (!ok) _aviso('Nenhum app de mapas neste aparelho.');
+      return;
+    }
+    if (acao == 'apagar') await _apagarPin(pin);
+  }
+
+  Future<void> _ondeEstou() async {
+    final ponto = ref.read(mapaControllerProvider).ponto;
+    if (ponto == null) return;
+    final ok = await compartilharOndeEstou(ponto);
+    if (!ok) _aviso('Este aparelho não abriu o compartilhar.');
   }
 
   Future<void> _apagarPin(PinoMapa pin) async {
@@ -155,6 +204,7 @@ class _TelaMapaState extends ConsumerState<TelaMapa> {
     final ponto = estado.ponto;
     final pins = estado.pins;
     final rastreando = estado.rastreando;
+    final autonomia = estado.autonomiaKm;
 
     return Column(
       children: [
@@ -168,6 +218,19 @@ class _TelaMapaState extends ConsumerState<TelaMapa> {
             ),
             children: [
               const CamadaOsm(),
+              if (ponto != null && autonomia != null)
+                CircleLayer(
+                  circles: [
+                    CircleMarker(
+                      point: ponto,
+                      radius: autonomia * 1000,
+                      useRadiusInMeter: true,
+                      color: Oficina.latao.withValues(alpha: 0.10),
+                      borderColor: Oficina.latao.withValues(alpha: 0.6),
+                      borderStrokeWidth: 1.5,
+                    ),
+                  ],
+                ),
               MarkerLayer(
                 markers: [
                   if (ponto != null)
@@ -187,7 +250,7 @@ class _TelaMapaState extends ConsumerState<TelaMapa> {
                       width: 44,
                       height: 44,
                       child: GestureDetector(
-                        onTap: () => _apagarPin(pin),
+                        onTap: () => _aoTocarPin(pin),
                         child: Icon(
                           pin.tipo == 'posto'
                               ? Icons.local_gas_station
@@ -211,20 +274,42 @@ class _TelaMapaState extends ConsumerState<TelaMapa> {
                 Text(
                   ponto == null
                       ? 'Nenhum ponto ainda. Rastrear usa o GPS deste aparelho. '
-                          'Toque longo: posto ou oficina.'
+                            'Toque longo: posto ou oficina.'
                       : 'Último ponto: ${ponto.latitude.toStringAsFixed(5)}, '
-                          '${ponto.longitude.toStringAsFixed(5)}. '
-                          'Toque longo: posto ou oficina. Toque no pino para apagar.',
+                            '${ponto.longitude.toStringAsFixed(5)}. '
+                            'Toque longo: posto ou oficina. Toque no pino para abrir ou apagar.',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
-                const SizedBox(height: 14),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: rastreando ? _parar : _rastrear,
-                    child: Text(rastreando ? 'Parar' : 'Rastrear'),
+                if (ponto != null && autonomia != null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    'O círculo é o alcance com tanque cheio: '
+                    '${autonomia.toStringAsFixed(0)} km em linha reta.',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium,
                   ),
+                ],
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: rastreando ? _parar : _rastrear,
+                        child: Text(rastreando ? 'Parar' : 'Rastrear'),
+                      ),
+                    ),
+                    if (ponto != null) ...[
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _ondeEstou,
+                          icon: const Icon(Icons.ios_share, size: 18),
+                          label: const Text('Onde estou'),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ),
