@@ -5,11 +5,7 @@ import 'package:life_and_roads/features/auth/domain/auth_repository.dart';
 import 'package:life_and_roads/features/auth/domain/sessao.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
-  AuthRepositoryImpl({
-    required AuthLocalDatasource local,
-    required AuthRemoteDatasource remoto,
-  })  : _local = local,
-        _remoto = remoto;
+  AuthRepositoryImpl({required this._local, required this._remoto});
 
   final AuthLocalDatasource _local;
   final AuthRemoteDatasource _remoto;
@@ -40,11 +36,7 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Sessao> entrar(String email, String senha) async {
     final login = await _remoto.login(email, senha);
-    await _local.gravarSessao(
-      login.token,
-      login.email,
-      refresh: login.refresh,
-    );
+    await _local.gravarSessao(login.token, login.email, refresh: login.refresh);
     return Sessao(
       token: login.token,
       email: login.email,
@@ -82,7 +74,9 @@ class AuthRepositoryImpl implements AuthRepository {
       senhaAtual: senhaAtual,
       senhaNova: senhaNova,
     );
-    final email = login.email.isEmpty ? (await _local.lerEmail() ?? '') : login.email;
+    final email = login.email.isEmpty
+        ? (await _local.lerEmail() ?? '')
+        : login.email;
     await _local.gravarSessao(login.token, email, refresh: login.refresh);
     return Sessao(
       token: login.token,

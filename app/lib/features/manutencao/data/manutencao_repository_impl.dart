@@ -15,20 +15,15 @@ import 'package:life_and_roads/manutencao/servicos.dart';
 
 class ManutencaoRepositoryImpl implements ManutencaoRepository {
   ManutencaoRepositoryImpl({
-    required ManutencaoLocalDatasource local,
-    required ManutencaoRemoteDatasource remoto,
-    required AuthRepository auth,
-    required FichaLocalDatasource fichaLocal,
-    required ManutencaoSyncStore sync,
+    required this._local,
+    required this._remoto,
+    required this._auth,
+    required this._fichaLocal,
+    required this._sync,
     AgendaConflitoStore? conflito,
     DetectarConflitoAgenda? detectar,
-  })  : _local = local,
-        _remoto = remoto,
-        _auth = auth,
-        _fichaLocal = fichaLocal,
-        _sync = sync,
-        _conflito = conflito ?? AgendaConflitoStore(),
-        _detectar = detectar ?? DetectarConflitoAgenda();
+  }) : _conflito = conflito ?? AgendaConflitoStore(),
+       _detectar = detectar ?? DetectarConflitoAgenda();
 
   final ManutencaoLocalDatasource _local;
   final ManutencaoRemoteDatasource _remoto;
@@ -100,11 +95,7 @@ class ManutencaoRepositoryImpl implements ManutencaoRepository {
     if (remota == null) {
       if (meta.deveReenviar) {
         final envio = await _enviar(sessao.token!, agenda);
-        return _base(
-          agenda: agenda,
-          extra: extra,
-          offline: envio.offline,
-        );
+        return _base(agenda: agenda, extra: extra, offline: envio.offline);
       }
       return _base(agenda: agenda, extra: extra);
     }
@@ -120,8 +111,8 @@ class ManutencaoRepositoryImpl implements ManutencaoRepository {
     if (_detectar.executar(agenda, remota)) {
       // Servidor no mesmo carimbo que guardamos + pending local = só este
       // aparelho mudou. Sobe sem perguntar (ADR 0018).
-      final soLocalMudou = meta.deveReenviar &&
-          mesmoCarimbo(carimbo, meta.remoteUpdatedAt);
+      final soLocalMudou =
+          meta.deveReenviar && mesmoCarimbo(carimbo, meta.remoteUpdatedAt);
       if (!soLocalMudou) {
         await _sync.marcarConflito();
         await _conflito.gravar(remota);
@@ -132,11 +123,7 @@ class ManutencaoRepositoryImpl implements ManutencaoRepository {
     await _conflito.limpar();
     if (meta.deveReenviar) {
       final envio = await _enviar(sessao.token!, agenda);
-      return _base(
-        agenda: agenda,
-        extra: extra,
-        offline: envio.offline,
-      );
+      return _base(agenda: agenda, extra: extra, offline: envio.offline);
     }
     await _sync.marcarSincronizado(carimbo: carimbo);
     return _base(agenda: agenda, extra: extra);
@@ -207,11 +194,7 @@ class ManutencaoRepositoryImpl implements ManutencaoRepository {
     }
     final envio = await _enviar(sessao.token!, agenda);
     if (envio.ok) await _conflito.limpar();
-    return _base(
-      agenda: agenda,
-      extra: extra,
-      offline: envio.offline,
-    );
+    return _base(agenda: agenda, extra: extra, offline: envio.offline);
   }
 
   @override

@@ -5,11 +5,7 @@ import 'package:life_and_roads/features/viagem/domain/viagem_repository.dart';
 import 'package:life_and_roads/viagem/calculo.dart';
 
 class ViagemRepositoryImpl implements ViagemRepository {
-  ViagemRepositoryImpl({
-    required PrecosLocalDatasource precos,
-    required AbastecimentoLocalDatasource abastecimentos,
-  })  : _precos = precos,
-        _abastecimentos = abastecimentos;
+  ViagemRepositoryImpl({required this._precos, required this._abastecimentos});
 
   final PrecosLocalDatasource _precos;
   final AbastecimentoLocalDatasource _abastecimentos;

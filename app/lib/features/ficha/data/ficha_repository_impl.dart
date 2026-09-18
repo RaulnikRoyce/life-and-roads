@@ -11,18 +11,14 @@ import 'package:life_and_roads/features/ficha/domain/usecases/detectar_conflito_
 
 class FichaRepositoryImpl implements FichaRepository {
   FichaRepositoryImpl({
-    required FichaLocalDatasource local,
-    required FichaRemoteDatasource remoto,
-    required AuthRepository auth,
-    required FichaSyncStore sync,
+    required this._local,
+    required this._remoto,
+    required this._auth,
+    required this._sync,
     FichaConflitoStore? conflito,
     DetectarConflitoFicha? detectar,
-  })  : _local = local,
-        _remoto = remoto,
-        _auth = auth,
-        _sync = sync,
-        _conflito = conflito ?? FichaConflitoStore(),
-        _detectar = detectar ?? DetectarConflitoFicha();
+  }) : _conflito = conflito ?? FichaConflitoStore(),
+       _detectar = detectar ?? DetectarConflitoFicha();
 
   final FichaLocalDatasource _local;
   final FichaRemoteDatasource _remoto;
@@ -108,7 +104,8 @@ class FichaRepositoryImpl implements FichaRepository {
       // Diverge. Se há alteração local pendente e o servidor ainda está no
       // carimbo que guardamos, ninguém mexeu lá: é só o pending deste
       // aparelho. Sobe sem perguntar (ADR 0018). Fora disso, pergunta.
-      final soLocalMudou = meta.deveReenviar &&
+      final soLocalMudou =
+          meta.deveReenviar &&
           mesmoCarimbo(lida?.atualizadoEm, meta.remoteUpdatedAt);
       if (!soLocalMudou) {
         await _sync.marcarConflito();
@@ -147,8 +144,7 @@ class FichaRepositoryImpl implements FichaRepository {
     if (!sessao.logado) {
       return FichaSalva(
         ficha: ficha,
-        mensagem:
-            'Salvo neste aparelho. Use a conta para manter na troca de celular.',
+        mensagem: 'Salvo neste aparelho. Use a conta para manter na troca de celular.',
         sync: await _sync.ler(),
       );
     }
@@ -231,11 +227,7 @@ class FichaRepositoryImpl implements FichaRepository {
     try {
       final carimbo = await _remoto.salvar(token, ficha);
       await _sync.marcarSincronizado(carimbo: carimbo);
-      return (
-        ok: true,
-        offline: false,
-        mensagem: '',
-      );
+      return (ok: true, offline: false, mensagem: '');
     } on FalhaApi catch (e) {
       await _sync.marcarFalhou(e.mensagem);
       return (ok: false, offline: true, mensagem: e.mensagem);

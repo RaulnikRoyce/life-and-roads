@@ -8,14 +8,11 @@ import 'package:life_and_roads/mapa/pins.dart';
 
 class MapaRepositoryImpl implements MapaRepository {
   MapaRepositoryImpl({
-    required PontoLocalDatasource ponto,
-    required PinsLocalDatasource pins,
-    required LocalizacaoRemoteDatasource remoto,
-    required AuthRepository auth,
-  })  : _ponto = ponto,
-        _pins = pins,
-        _remoto = remoto,
-        _auth = auth;
+    required this._ponto,
+    required this._pins,
+    required this._remoto,
+    required this._auth,
+  });
 
   final PontoLocalDatasource _ponto;
   final PinsLocalDatasource _pins;
@@ -45,7 +42,8 @@ class MapaRepositoryImpl implements MapaRepository {
   Future<void> guardarPonto(LatLng ponto, {bool forcarRede = false}) async {
     await _ponto.gravar(ponto);
     final agora = DateTime.now();
-    final cedo = _ultimoEnvio != null &&
+    final cedo =
+        _ultimoEnvio != null &&
         agora.difference(_ultimoEnvio!) < const Duration(seconds: 15);
     if (cedo && !forcarRede) return;
 
