@@ -8,6 +8,8 @@ import 'package:life_and_roads/core/widgets/linha_sync.dart';
 import 'package:life_and_roads/features/manutencao/data/agenda_manutencao_model.dart';
 import 'package:life_and_roads/features/manutencao/domain/agenda_manutencao.dart';
 import 'package:life_and_roads/features/manutencao/domain/usecases/montar_avisos_caderneta.dart';
+import 'package:life_and_roads/features/manutencao/domain/usecases/montar_linha_do_tempo.dart';
+import 'package:life_and_roads/features/manutencao/presentation/widgets/linha_do_tempo.dart';
 import 'package:life_and_roads/features/manutencao/presentation/avisos_controller.dart';
 import 'package:life_and_roads/features/manutencao/presentation/manutencao_controller.dart';
 import 'package:life_and_roads/manutencao/extra.dart';
@@ -355,14 +357,13 @@ class _TelaManutencaoState extends ConsumerState<TelaManutencao> {
     }
 
     final extra = _extraAtual();
-    final alertas = const MontarAvisosCaderneta()
-        .executar(
-          agenda: _agendaAtual(),
-          extra: extra,
-          kmAtual: _kmAtual,
-        )
-        .map((a) => a.texto)
-        .toList();
+    // Um vencimento por linha, do mais urgente ao mais folgado, com a barra
+    // de quanto do intervalo já passou. Substitui o cartão de texto.
+    final linhaDoTempo = const MontarLinhaDoTempo().executar(
+      agenda: _agendaAtual(),
+      extra: extra,
+      kmAtual: _kmAtual,
+    );
 
     return EntradaSuave(
       child: ListView(
@@ -399,15 +400,9 @@ class _TelaManutencaoState extends ConsumerState<TelaManutencao> {
                 ref.read(manutencaoControllerProvider.notifier).usarRemoto(),
           ),
         ],
-        if (alertas.isNotEmpty) ...[
+        if (linhaDoTempo.isNotEmpty) ...[
           const SizedBox(height: 16),
-          CartaoOficina(
-            destaque: true,
-            child: Text(
-              alertas.join('\n'),
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-          ),
+          LinhaDoTempo(itens: linhaDoTempo),
         ],
         const SizedBox(height: 22),
         _rotuloGrupo('Óleo e corrente'),
