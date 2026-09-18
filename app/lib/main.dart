@@ -14,6 +14,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_and_roads/api.dart';
 import 'package:life_and_roads/core/database/caderneta_banco.dart';
 import 'package:life_and_roads/core/database/migracao_prefs.dart';
+import 'package:life_and_roads/core/marca/logo_pintor.dart';
 import 'package:life_and_roads/core/monitor/crash.dart';
 import 'package:life_and_roads/core/permissoes/mensagens_permissao.dart';
 import 'package:life_and_roads/core/widgets/movimento.dart';
@@ -45,36 +46,15 @@ Future<void> main() async {
   runApp(const ProviderScope(child: LifeAndRoadsApp()));
 }
 
-class LifeAndRoadsApp extends StatefulWidget {
+class LifeAndRoadsApp extends ConsumerWidget {
   const LifeAndRoadsApp({super.key, this.pularAbertura = false});
 
   /// Testes das abas entram direto; a abertura continua no aparelho.
   final bool pularAbertura;
 
   @override
-  State<LifeAndRoadsApp> createState() => _LifeAndRoadsAppState();
-}
-
-class _LifeAndRoadsAppState extends State<LifeAndRoadsApp> {
-  ThemeMode _modo = ThemeMode.system;
-  late bool _abertura = !widget.pularAbertura;
-
-  @override
-  void initState() {
-    super.initState();
-    PreferenciaTema.carregar().then((m) {
-      if (mounted) setState(() => _modo = m);
-    });
-  }
-
-  Future<void> _cicloTema() async {
-    final n = PreferenciaTema.seguinte(_modo);
-    await PreferenciaTema.salvar(n);
-    if (mounted) setState(() => _modo = n);
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final modo = ref.watch(temaProvider);
     return MaterialApp(
       title: 'life.and.roads',
       debugShowCheckedModeBanner: false,
@@ -87,7 +67,7 @@ class _LifeAndRoadsAppState extends State<LifeAndRoadsApp> {
       ],
       theme: temaOficinaClaro(),
       darkTheme: temaOficina(),
-      themeMode: _modo,
+      themeMode: modo,
       builder: (context, child) {
         final b = Theme.of(context).brightness;
         final icone =
@@ -103,13 +83,16 @@ class _LifeAndRoadsAppState extends State<LifeAndRoadsApp> {
         );
         return child ?? const SizedBox.shrink();
       },
-      home: _abertura
-          ? TelaAbertura(
-              aoTerminar: () {
-                if (mounted) setState(() => _abertura = false);
-              },
-            )
-          : TelaPrincipal(modoTema: _modo, aoCiclarTema: _cicloTema),
+      // A abertura empurra a rota das abas: a logo voa para a barra (Hero)
+      // enquanto a abertura sai em fade.
+      home: pularAbertura
+          ? const TelaPrincipal()
+          : Builder(
+              builder: (context) => TelaAbertura(
+                aoTerminar: () => Navigator.of(context)
+                    .pushReplacement(rotaPrincipal(const TelaPrincipal())),
+              ),
+            ),
     );
   }
 }
@@ -125,14 +108,7 @@ class _Aba {
 }
 
 class TelaPrincipal extends ConsumerStatefulWidget {
-  const TelaPrincipal({
-    super.key,
-    required this.modoTema,
-    required this.aoCiclarTema,
-  });
-
-  final ThemeMode modoTema;
-  final VoidCallback aoCiclarTema;
+  const TelaPrincipal({super.key});
 
   @override
   ConsumerState<TelaPrincipal> createState() => _TelaPrincipalState();
@@ -197,17 +173,14 @@ class _TelaPrincipalState extends ConsumerState<TelaPrincipal>
       }
     });
 
+    final modo = ref.watch(temaProvider);
     return Scaffold(
       appBar: AppBar(
         title: const Row(
           children: [
-            ClipOval(
-              child: Image(
-                image: AssetImage('assets/lr.png'),
-                width: 36,
-                height: 36,
-                fit: BoxFit.cover,
-              ),
+            Hero(
+              tag: TelaAbertura.heroLogo,
+              child: LogoMarca(tamanho: 36),
             ),
             SizedBox(width: 10),
             Text('life.and.roads'),
@@ -216,9 +189,9 @@ class _TelaPrincipalState extends ConsumerState<TelaPrincipal>
         actions: [
           const BotaoSininho(),
           IconButton(
-            tooltip: PreferenciaTema.rotulo(widget.modoTema),
-            onPressed: widget.aoCiclarTema,
-            icon: Icon(PreferenciaTema.icone(widget.modoTema)),
+            tooltip: PreferenciaTema.rotulo(modo),
+            onPressed: () => ref.read(temaProvider.notifier).ciclar(),
+            icon: Icon(PreferenciaTema.icone(modo)),
           ),
         ],
         bottom: const PreferredSize(

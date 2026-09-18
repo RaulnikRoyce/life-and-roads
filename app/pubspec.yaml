@@ -43,7 +43,8 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/lr.png
+    # lr.png fica só para o flutter_launcher_icons (lido no build); a logo
+    # em tela é vetor (core/marca).
     - assets/catalogo/
 
 flutter_launcher_icons:
