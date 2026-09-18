@@ -12,6 +12,7 @@ import 'package:life_and_roads/features/ficha/domain/ficha_moto.dart';
 import 'package:life_and_roads/features/ficha/presentation/ficha_controller.dart';
 import 'package:life_and_roads/features/mapa/data/servico_permissao_gps.dart';
 import 'package:life_and_roads/features/mapa/presentation/mapa_controller.dart';
+import 'package:life_and_roads/core/widgets/barra_abas.dart';
 import 'package:life_and_roads/main.dart';
 import 'package:life_and_roads/tema.dart';
 import 'package:life_and_roads/tema_pref.dart';
@@ -49,7 +50,7 @@ class _GpsNegado implements ConsultaPermissaoGps {
 }
 
 Finder _aba(String nome) => find.descendant(
-      of: find.byType(NavigationBar),
+      of: find.byType(BarraAbas),
       matching: find.text(nome),
     );
 

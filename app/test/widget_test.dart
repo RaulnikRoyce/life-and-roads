@@ -4,13 +4,14 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:life_and_roads/core/widgets/barra_abas.dart';
 import 'package:life_and_roads/main.dart';
 import 'package:life_and_roads/tela_abertura.dart';
 
 import 'helpers/banco_teste.dart';
 
 Finder _aba(String nome) => find.descendant(
-      of: find.byType(NavigationBar),
+      of: find.byType(BarraAbas),
       matching: find.text(nome),
     );
 

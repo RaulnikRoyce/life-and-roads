@@ -17,6 +17,7 @@ import 'package:life_and_roads/core/database/migracao_prefs.dart';
 import 'package:life_and_roads/core/marca/logo_pintor.dart';
 import 'package:life_and_roads/core/monitor/crash.dart';
 import 'package:life_and_roads/core/permissoes/mensagens_permissao.dart';
+import 'package:life_and_roads/core/widgets/barra_abas.dart';
 import 'package:life_and_roads/core/widgets/movimento.dart';
 import 'package:life_and_roads/features/ficha/presentation/ficha_controller.dart';
 import 'package:life_and_roads/features/ficha/presentation/tela_ficha.dart';
@@ -70,14 +71,12 @@ class LifeAndRoadsApp extends ConsumerWidget {
       themeMode: modo,
       builder: (context, child) {
         final b = Theme.of(context).brightness;
-        final icone =
-            b == Brightness.dark ? Brightness.light : Brightness.dark;
+        final icone = b == Brightness.dark ? Brightness.light : Brightness.dark;
         SystemChrome.setSystemUIOverlayStyle(
           SystemUiOverlayStyle(
             statusBarColor: Colors.transparent,
             statusBarIconBrightness: icone,
-            systemNavigationBarColor:
-                Theme.of(context).scaffoldBackgroundColor,
+            systemNavigationBarColor: Theme.of(context).scaffoldBackgroundColor,
             systemNavigationBarIconBrightness: icone,
           ),
         );
@@ -89,22 +88,13 @@ class LifeAndRoadsApp extends ConsumerWidget {
           ? const TelaPrincipal()
           : Builder(
               builder: (context) => TelaAbertura(
-                aoTerminar: () => Navigator.of(context)
-                    .pushReplacement(rotaPrincipal(const TelaPrincipal())),
+                aoTerminar: () =>
+                    Navigator.of(context)
+                        .pushReplacement(rotaPrincipal(const TelaPrincipal())),
               ),
             ),
     );
   }
-}
-
-class _Aba {
-  const _Aba({
-    required this.titulo,
-    required this.icone,
-  });
-
-  final String titulo;
-  final IconData icone;
 }
 
 class TelaPrincipal extends ConsumerStatefulWidget {
@@ -131,10 +121,10 @@ class _TelaPrincipalState extends ConsumerState<TelaPrincipal>
   ).animate(CurvedAnimation(parent: _entrada, curve: Movimento.curva));
 
   static const _abas = [
-    _Aba(titulo: 'Ficha', icone: Icons.two_wheeler),
-    _Aba(titulo: 'Manutenção', icone: Icons.build),
-    _Aba(titulo: 'Viagem', icone: Icons.route),
-    _Aba(titulo: 'Mapa', icone: Icons.map),
+    Aba(titulo: 'Ficha', icone: Icons.two_wheeler),
+    Aba(titulo: 'Manutenção', icone: Icons.build_outlined, ativo: Icons.build),
+    Aba(titulo: 'Viagem', icone: Icons.route_outlined, ativo: Icons.route),
+    Aba(titulo: 'Mapa', icone: Icons.map_outlined, ativo: Icons.map),
   ];
 
   @override
@@ -178,10 +168,7 @@ class _TelaPrincipalState extends ConsumerState<TelaPrincipal>
       appBar: AppBar(
         title: const Row(
           children: [
-            Hero(
-              tag: TelaAbertura.heroLogo,
-              child: LogoMarca(tamanho: 36),
-            ),
+            Hero(tag: TelaAbertura.heroLogo, child: LogoMarca(tamanho: 36)),
             SizedBox(width: 10),
             Text('life.and.roads'),
           ],
@@ -217,20 +204,13 @@ class _TelaPrincipalState extends ConsumerState<TelaPrincipal>
           ),
         ),
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _indice,
-        onDestinationSelected: (i) {
-          if (i == _indice) return;
+      bottomNavigationBar: BarraAbas(
+        abas: _abas,
+        indice: _indice,
+        aoEscolher: (i) {
           setState(() => _indice = i);
           _entrada.forward(from: 0);
         },
-        destinations: [
-          for (final aba in _abas)
-            NavigationDestination(
-              icon: Icon(aba.icone),
-              label: aba.titulo,
-            ),
-        ],
       ),
     );
   }
