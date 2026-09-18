@@ -22,6 +22,7 @@ import 'package:life_and_roads/ficha/catalogo.dart';
 import 'package:life_and_roads/ficha/foto.dart';
 import 'package:life_and_roads/manutencao/extra.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:life_and_roads/core/widgets/movimento.dart';
 import 'package:life_and_roads/tema.dart';
 import 'package:life_and_roads/viagem/calculo.dart';
 
@@ -83,6 +84,7 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
 
   @override
   void dispose() {
+    _voltaSalvar?.cancel();
     _debounceKm?.cancel();
     _kmAtual.removeListener(_agendarSalvarKm);
     _email.dispose();
@@ -178,13 +180,45 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
     );
   }
 
+  /// 0 parado, 1 salvando, 2 salvo (por 1,2 s).
+  int _faseSalvar = 0;
+  Timer? _voltaSalvar;
+
   Future<void> _salvar() async {
     final tentativa = _tentarFicha();
     if (tentativa.erro != null) {
       _aviso(tentativa.erro!);
       return;
     }
+    setState(() => _faseSalvar = 1);
     await _ctrl.salvar(tentativa.ficha!);
+    if (!mounted) return;
+    setState(() => _faseSalvar = 2);
+    _voltaSalvar?.cancel();
+    _voltaSalvar = Timer(const Duration(milliseconds: 1200), () {
+      if (mounted) setState(() => _faseSalvar = 0);
+    });
+  }
+
+  Widget _botaoSalvar() {
+    final rotulo = switch (_faseSalvar) {
+      1 => 'Salvando',
+      2 => 'Salvo',
+      _ => 'Salvar ficha',
+    };
+    return FilledButton.icon(
+      onPressed: _faseSalvar == 1 ? null : _salvar,
+      icon: AnimatedSwitcher(
+        duration: Movimento.curto,
+        child: _faseSalvar == 2
+            ? const Icon(Icons.check, key: ValueKey('ok'), size: 20)
+            : const SizedBox(key: ValueKey('nada'), width: 0),
+      ),
+      label: AnimatedSwitcher(
+        duration: Movimento.curto,
+        child: Text(rotulo, key: ValueKey(rotulo)),
+      ),
+    );
   }
 
   Future<void> _cadastrar() async {
@@ -405,13 +439,14 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
 
     final estado = ref.watch(fichaControllerProvider);
     if (estado.carregando) {
-      return const Center(child: CircularProgressIndicator());
+      return Esqueleto(linhas: const [26, 16, 196, 22, 16, 16]);
     }
 
     final logado = estado.logado;
     final fichaSalva = estado.salvo;
 
-    return ListView(
+    return EntradaSuave(
+      child: ListView(
       padding: paddingOficina(context),
       children: [
         if (estado.sincronizando) const LinearProgressIndicator(minHeight: 2),
@@ -452,7 +487,7 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
           const SizedBox(height: 14),
           _camposIdentidade(),
           _camposConsumo(),
-          FilledButton(onPressed: _salvar, child: const Text('Salvar ficha')),
+          _botaoSalvar(),
           const SizedBox(height: 12),
           _blocoAjustar(setup: true),
         ],
@@ -481,6 +516,7 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
           aoMostrarTexto: _mostrarTexto,
         ),
       ],
+      ),
     );
   }
 
@@ -667,7 +703,7 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
         ],
         _camposExtra(),
         if (!setup)
-          FilledButton(onPressed: _salvar, child: const Text('Salvar ficha')),
+          _botaoSalvar(),
       ],
     );
   }
@@ -698,14 +734,22 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
           const SizedBox(height: 16),
           Row(
             children: [
-              StatOficina(
-                'PAINEL',
-                km == null ? '-' : '${km.toStringAsFixed(0)} km',
-              ),
-              StatOficina(
-                'GASOLINA',
-                gas == null ? '-' : '${gas.toStringAsFixed(0)} km',
-              ),
+              if (km == null)
+                const StatOficina('PAINEL', '-')
+              else
+                StatOficina.numero(
+                  'PAINEL',
+                  numero: km,
+                  formatar: (v) => '${v.toStringAsFixed(0)} km',
+                ),
+              if (gas == null)
+                const StatOficina('GASOLINA', '-')
+              else
+                StatOficina.numero(
+                  'GASOLINA',
+                  numero: gas,
+                  formatar: (v) => '${v.toStringAsFixed(0)} km',
+                ),
             ],
           ),
           const SizedBox(height: 14),

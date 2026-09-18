@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:life_and_roads/core/sync/status_sync.dart';
 import 'package:life_and_roads/core/sync/texto_sync.dart';
+import 'package:life_and_roads/core/widgets/movimento.dart';
 
 /// Estado do servidor numa linha, com "Sincronizar agora". Só com conta.
 class LinhaSync extends StatelessWidget {
@@ -28,16 +29,27 @@ class LinhaSync extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Icon(
-          pendente ? Icons.cloud_upload_outlined : Icons.cloud_done_outlined,
-          size: 18,
-          color: pendente ? tema.colorScheme.error : tema.colorScheme.primary,
+        Pulso(
+          gatilho: sincronizando,
+          child: Icon(
+            sincronizando
+                ? Icons.cloud_sync_outlined
+                : pendente
+                ? Icons.cloud_upload_outlined
+                : Icons.cloud_done_outlined,
+            size: 18,
+            color: pendente ? tema.colorScheme.error : tema.colorScheme.primary,
+          ),
         ),
         const SizedBox(width: 8),
         Expanded(
-          child: Text(
-            sincronizando ? 'Conferindo com o servidor.' : texto,
-            style: tema.textTheme.bodyMedium,
+          child: AnimatedSwitcher(
+            duration: Movimento.curto,
+            child: Text(
+              sincronizando ? 'Conferindo com o servidor.' : texto,
+              key: ValueKey(sincronizando ? 'conferindo' : texto),
+              style: tema.textTheme.bodyMedium,
+            ),
           ),
         ),
         TextButton.icon(

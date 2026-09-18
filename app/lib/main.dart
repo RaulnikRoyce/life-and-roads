@@ -16,6 +16,7 @@ import 'package:life_and_roads/core/database/caderneta_banco.dart';
 import 'package:life_and_roads/core/database/migracao_prefs.dart';
 import 'package:life_and_roads/core/monitor/crash.dart';
 import 'package:life_and_roads/core/permissoes/mensagens_permissao.dart';
+import 'package:life_and_roads/core/widgets/movimento.dart';
 import 'package:life_and_roads/features/ficha/presentation/ficha_controller.dart';
 import 'package:life_and_roads/features/ficha/presentation/tela_ficha.dart';
 import 'package:life_and_roads/features/manutencao/presentation/avisos_controller.dart';
@@ -137,8 +138,21 @@ class TelaPrincipal extends ConsumerStatefulWidget {
   ConsumerState<TelaPrincipal> createState() => _TelaPrincipalState();
 }
 
-class _TelaPrincipalState extends ConsumerState<TelaPrincipal> {
+class _TelaPrincipalState extends ConsumerState<TelaPrincipal>
+    with SingleTickerProviderStateMixin {
   int _indice = 0;
+
+  /// Entrada da aba: o IndexedStack continua guardando o estado das quatro
+  /// telas; só o que muda é a opacidade e um deslize curto por cima.
+  late final AnimationController _entrada = AnimationController(
+    vsync: this,
+    duration: Movimento.curto,
+    value: 1,
+  );
+  late final Animation<Offset> _deslize = Tween(
+    begin: const Offset(0, 0.015),
+    end: Offset.zero,
+  ).animate(CurvedAnimation(parent: _entrada, curve: Movimento.curva));
 
   static const _abas = [
     _Aba(titulo: 'Ficha', icone: Icons.two_wheeler),
@@ -157,6 +171,12 @@ class _TelaPrincipalState extends ConsumerState<TelaPrincipal> {
             .recarregar(dispararSistema: true);
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _entrada.dispose();
+    super.dispose();
   }
 
   @override
@@ -209,19 +229,27 @@ class _TelaPrincipalState extends ConsumerState<TelaPrincipal> {
           ),
         ),
       ),
-      body: IndexedStack(
-        index: _indice,
-        children: [
-          const TelaFicha(),
-          TelaManutencao(visivel: _indice == 1),
-          TelaViagem(visivel: _indice == 2),
-          const TelaMapa(),
-        ],
+      body: FadeTransition(
+        opacity: _entrada,
+        child: SlideTransition(
+          position: _deslize,
+          child: IndexedStack(
+            index: _indice,
+            children: [
+              const TelaFicha(),
+              TelaManutencao(visivel: _indice == 1),
+              TelaViagem(visivel: _indice == 2),
+              const TelaMapa(),
+            ],
+          ),
+        ),
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _indice,
         onDestinationSelected: (i) {
+          if (i == _indice) return;
           setState(() => _indice = i);
+          _entrada.forward(from: 0);
         },
         destinations: [
           for (final aba in _abas)

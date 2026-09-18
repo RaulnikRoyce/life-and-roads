@@ -14,6 +14,7 @@ import 'package:life_and_roads/manutencao/extra.dart';
 import 'package:life_and_roads/manutencao/lembrete.dart';
 import 'package:life_and_roads/manutencao/regras.dart';
 import 'package:life_and_roads/manutencao/servicos.dart';
+import 'package:life_and_roads/core/widgets/movimento.dart';
 import 'package:life_and_roads/tema.dart';
 
 /// Oficina, km, papelada e CNH. Persistência passa pelo repositório.
@@ -350,7 +351,7 @@ class _TelaManutencaoState extends ConsumerState<TelaManutencao> {
 
     final estado = ref.watch(manutencaoControllerProvider);
     if (estado.carregando) {
-      return const Center(child: CircularProgressIndicator());
+      return Esqueleto(linhas: const [26, 16, 56, 56, 56]);
     }
 
     final extra = _extraAtual();
@@ -363,7 +364,8 @@ class _TelaManutencaoState extends ConsumerState<TelaManutencao> {
         .map((a) => a.texto)
         .toList();
 
-    return ListView(
+    return EntradaSuave(
+      child: ListView(
       padding: paddingOficina(context),
       children: [
         if (estado.sincronizando)
@@ -511,6 +513,7 @@ class _TelaManutencaoState extends ConsumerState<TelaManutencao> {
             ),
         ],
       ],
+      ),
     );
   }
 

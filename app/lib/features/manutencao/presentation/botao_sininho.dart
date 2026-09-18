@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:life_and_roads/core/widgets/movimento.dart';
 import 'package:life_and_roads/features/manutencao/presentation/avisos_controller.dart';
 import 'package:life_and_roads/tema.dart';
 
@@ -13,10 +14,17 @@ class BotaoSininho extends ConsumerWidget {
     return IconButton(
       tooltip: n == 0 ? 'Avisos' : 'Avisos ($n)',
       onPressed: () => _abrir(context, ref),
-      icon: Badge(
-        isLabelVisible: n > 0,
-        label: Text(n > 9 ? '9+' : '$n'),
-        child: const Icon(Icons.notifications_outlined),
+      icon: Pulso(
+        gatilho: n,
+        child: Badge(
+          isLabelVisible: n > 0,
+          label: Text(n > 9 ? '9+' : '$n'),
+          child: Icon(
+            n > 0
+                ? Icons.notifications_active_outlined
+                : Icons.notifications_outlined,
+          ),
+        ),
       ),
     );
   }
@@ -37,10 +45,7 @@ class BotaoSininho extends ConsumerWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      'Avisos',
-                      style: Theme.of(ctx).textTheme.titleMedium,
-                    ),
+                    Text('Avisos', style: Theme.of(ctx).textTheme.titleMedium),
                     const SizedBox(height: 12),
                     if (estado.avisos.isEmpty)
                       Text(

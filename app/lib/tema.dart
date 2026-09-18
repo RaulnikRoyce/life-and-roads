@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:life_and_roads/core/widgets/movimento.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Paleta derivada da logomarca: preto, cinza das faixas, vinho e branco.
@@ -354,10 +355,22 @@ class DuplaCampos extends StatelessWidget {
 }
 
 class StatOficina extends StatelessWidget {
-  const StatOficina(this.rotulo, this.valor, {super.key});
+  const StatOficina(this.rotulo, this.valor, {super.key})
+      : numero = null,
+        formatar = null;
+
+  /// Valor numérico que conta até o número (painel, km/l).
+  const StatOficina.numero(
+    this.rotulo, {
+    required double this.numero,
+    required String Function(double) this.formatar,
+    super.key,
+  }) : valor = '';
 
   final String rotulo;
   final String valor;
+  final double? numero;
+  final String Function(double)? formatar;
 
   @override
   Widget build(BuildContext context) {
@@ -373,11 +386,19 @@ class StatOficina extends StatelessWidget {
                 ),
           ),
           const SizedBox(height: 6),
-          Text(
-            valor,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
+          if (numero != null)
+            NumeroAnimado(
+              valor: numero!,
+              formatar: formatar!,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleMedium,
+            )
+          else
+            Text(
+              valor,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
         ],
       ),
     );

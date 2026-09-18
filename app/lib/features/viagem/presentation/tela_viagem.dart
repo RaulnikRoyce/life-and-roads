@@ -6,6 +6,7 @@ import 'package:life_and_roads/features/viagem/domain/precos_litro.dart';
 import 'package:life_and_roads/features/viagem/domain/usecases/resumo_consumo.dart';
 import 'package:life_and_roads/features/viagem/presentation/viagem_controller.dart';
 import 'package:life_and_roads/features/mapa/presentation/tela_destino.dart';
+import 'package:life_and_roads/core/widgets/movimento.dart';
 import 'package:life_and_roads/tema.dart';
 import 'package:life_and_roads/viagem/calculo.dart';
 
@@ -133,7 +134,7 @@ class _TelaViagemState extends ConsumerState<TelaViagem> {
 
     final estado = ref.watch(viagemControllerProvider);
     if (estado.carregando) {
-      return const Center(child: CircularProgressIndicator());
+      return Esqueleto(linhas: const [26, 16, 48, 56, 56]);
     }
 
     final historico = estado.historico;
@@ -243,7 +244,8 @@ class _TelaViagemState extends ConsumerState<TelaViagem> {
       }
     }
 
-    return ListView(
+    return EntradaSuave(
+      child: ListView(
       padding: paddingOficina(context),
       children: [
         TituloOficina(
@@ -316,12 +318,14 @@ class _TelaViagemState extends ConsumerState<TelaViagem> {
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  '${_br(resultado.litros)} L',
+                NumeroAnimado(
+                  valor: resultado.litros,
+                  formatar: (v) => '${_br(v)} L',
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
-                Text(
-                  'R\$ ${_br(resultado.reais, casas: 2)}',
+                NumeroAnimado(
+                  valor: resultado.reais,
+                  formatar: (v) => 'R\$ ${_br(v, casas: 2)}',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 if (avisoTanque != null) ...[
@@ -367,6 +371,7 @@ class _TelaViagemState extends ConsumerState<TelaViagem> {
           for (final r in historico) _linhaPosto(context, r),
         ],
       ],
+      ),
     );
   }
 
