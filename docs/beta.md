@@ -11,7 +11,7 @@ Versão do app **1.2.1+6**. O CI **não publica** na loja. Gera o APK assinado n
 - `ANDROID_KEY_PASSWORD`
 - `ANDROID_KEY_ALIAS`
 - `API_BASE`, URL HTTPS da API de produção (`https://…`, sem barra no fim). Sem este secret o APK cai em `http://localhost:3001` e a conta na loja não funciona. A caderneta neste aparelho segue.
-- `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_SSL_CA_BASE64`, os mesmos do Render, para o workflow `backup-banco` (dump semanal do MySQL como artifact, ADR 0020).
+- `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_SSL_CA_BASE64`, os mesmos do Render, para o workflow `backup-banco` (dump semanal do MySQL como artifact, ADR 0020). `DB_NAME` é `life_and_roads`, nunca `defaultdb` (ADR 0027).
 
 Não commitar `key.properties` nem `.jks`.
 
