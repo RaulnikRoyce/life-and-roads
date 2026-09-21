@@ -10,10 +10,8 @@ import 'package:life_and_roads/tela_abertura.dart';
 
 import 'helpers/banco_teste.dart';
 
-Finder _aba(String nome) => find.descendant(
-      of: find.byType(BarraAbas),
-      matching: find.text(nome),
-    );
+Finder _aba(String nome) =>
+    find.descendant(of: find.byType(BarraAbas), matching: find.text(nome));
 
 Finder _scroll() => find.byType(Scrollable).hitTestable().first;
 
@@ -58,54 +56,77 @@ void main() {
     expect(find.byType(TelaPrincipal), findsOneWidget);
   });
 
-  testWidgets('ficha mostra o formulário', (tester) async {
+  testWidgets('ficha vazia conduz em três passos e salva', (tester) async {
     await _app(tester);
 
-    expect(find.text('Sua moto'), findsWidgets);
-    expect(find.textContaining('Sem placa'), findsOneWidget);
-    expect(find.text('Adicionar foto'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.text('Esportiva'),
-      200,
-      scrollable: _scroll(),
-    );
+    // Passo 1: a moto. Continuar só libera com marca e modelo.
+    expect(find.text('Qual é a sua moto?'), findsOneWidget);
+    expect(find.text('1 de 3'), findsOneWidget);
     expect(find.text('Esportiva'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.text('Marca'),
-      200,
-      scrollable: _scroll(),
+    expect(find.text('Escolher no catálogo'), findsOneWidget);
+    expect(find.text('Adicionar foto'), findsNothing);
+    expect(find.text('Tanque (litros)'), findsNothing);
+    expect(
+      tester
+          .widget<FilledButton>(find.widgetWithText(FilledButton, 'Continuar'))
+          .enabled,
+      isFalse,
     );
-    expect(find.text('Marca'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.text('Tanque (litros)'),
-      200,
-      scrollable: _scroll(),
-    );
-    expect(find.text('Tanque (litros)'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.text('Mais números'),
-      200,
-      scrollable: _scroll(),
-    );
-    expect(find.text('Mais números'), findsOneWidget);
-    await tester.tap(find.text('Mais números'));
+    await tester.enterText(find.widgetWithText(TextField, 'Marca'), 'Honda');
+    await tester.enterText(find.widgetWithText(TextField, 'Modelo'), 'Bros');
+    await tester.pump();
+    await tester.tap(find.text('Continuar'));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.text('PSI dianteiro'),
-      200,
-      scrollable: _scroll(),
+
+    // Passo 2: o painel. Voltar aparece.
+    expect(find.text('Quanto marca o painel?'), findsOneWidget);
+    expect(find.text('2 de 3'), findsOneWidget);
+    expect(find.text('Voltar'), findsOneWidget);
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Km no painel agora'),
+      '1000',
     );
-    expect(find.text('PSI dianteiro'), findsOneWidget);
+    await tester.pump();
+    await tester.tap(find.text('Continuar'));
+    await tester.pumpAndSettle();
+
+    // Passo 3: combustível. Flex sem álcool avisa que vai estimar 70%.
+    expect(find.text('Gasolina ou flex?'), findsOneWidget);
+    expect(find.text('Começar'), findsOneWidget);
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Km com 1 L de gasolina'),
+      '30',
+    );
+    await tester.pump();
+    expect(find.textContaining('70% da gasolina (21 km)'), findsOneWidget);
+    await tester.tap(find.text('Gasolina'));
+    await tester.pumpAndSettle();
+    expect(find.text('Km com 1 L de álcool'), findsNothing);
+
+    // Backup e conta continuam ao alcance de quem trocou de aparelho.
     await tester.scrollUntilVisible(
       find.text('Backup neste aparelho'),
       200,
       scrollable: _scroll(),
     );
     expect(find.text('Backup neste aparelho'), findsOneWidget);
+
+    // Começar salva e a Ficha vira painel.
+    await tester.scrollUntilVisible(
+      find.text('Começar'),
+      -200,
+      scrollable: _scroll(),
+    );
+    await tester.tap(find.text('Começar'));
+    await tester.pumpAndSettle();
+    expect(find.text('Honda Bros'), findsOneWidget);
+    expect(find.text('Ajustar números'), findsOneWidget);
+    expect(find.text('Qual é a sua moto?'), findsNothing);
   });
 
-  testWidgets('ficha salva mostra o card e esconde o form em Ajustar números',
-      (tester) async {
+  testWidgets('ficha salva mostra o card e esconde o form em Ajustar números', (
+    tester,
+  ) async {
     SharedPreferences.setMockInitialValues({
       'ficha_moto_v1':
           '{"marca":"Honda","modelo":"Bros","kmLitro":"35","kmAtual":"1000"}',
@@ -138,8 +159,7 @@ void main() {
 
   testWidgets('ficha flex mostra o card ÁLCOOL', (tester) async {
     SharedPreferences.setMockInitialValues({
-      'ficha_moto_v1':
-          '{"marca":"Honda","modelo":"CG 160","kmLitro":"41","kmLitroAlcool":"35","kmAtual":"1000"}',
+      'ficha_moto_v1': '{"marca":"Honda","modelo":"CG 160","kmLitro":"41","kmLitroAlcool":"35","kmAtual":"1000"}',
     });
     await tester.pumpWidget(
       const ProviderScope(child: LifeAndRoadsApp(pularAbertura: true)),
@@ -220,10 +240,7 @@ void main() {
     await tester.tap(_aba('Viagem'));
     await tester.pumpAndSettle();
 
-    expect(
-      find.textContaining('Consumo com gasolina'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('Consumo com gasolina'), findsOneWidget);
   });
 
   testWidgets('aba mapa mostra Rastrear', (tester) async {

@@ -17,8 +17,8 @@ import 'package:life_and_roads/features/ficha/presentation/ficha_controller.dart
 import 'package:life_and_roads/features/ficha/presentation/widgets/bloco_backup.dart';
 import 'package:life_and_roads/features/ficha/presentation/widgets/bloco_conta.dart';
 import 'package:life_and_roads/features/ficha/presentation/widgets/campo_oficina.dart';
-import 'package:life_and_roads/features/ficha/presentation/widgets/foto_da_moto.dart';
 import 'package:life_and_roads/features/ficha/presentation/widgets/painel_moto.dart';
+import 'package:life_and_roads/features/ficha/presentation/widgets/primeiros_passos.dart';
 import 'package:life_and_roads/ficha/catalogo.dart';
 import 'package:life_and_roads/ficha/foto.dart';
 import 'package:life_and_roads/manutencao/extra.dart';
@@ -85,7 +85,6 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
 
   @override
   void dispose() {
-    _voltaSalvar?.cancel();
     _debounceKm?.cancel();
     _kmAtual.removeListener(_agendarSalvarKm);
     _email.dispose();
@@ -181,45 +180,15 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
     );
   }
 
-  /// 0 parado, 1 salvando, 2 salvo (por 1,2 s).
-  int _faseSalvar = 0;
-  Timer? _voltaSalvar;
-
+  /// Salva com a validação da entidade; a tela troca para o painel ao
+  /// receber a ficha salva do controller.
   Future<void> _salvar() async {
     final tentativa = _tentarFicha();
     if (tentativa.erro != null) {
       _aviso(tentativa.erro!);
       return;
     }
-    setState(() => _faseSalvar = 1);
     await _ctrl.salvar(tentativa.ficha!);
-    if (!mounted) return;
-    setState(() => _faseSalvar = 2);
-    _voltaSalvar?.cancel();
-    _voltaSalvar = Timer(const Duration(milliseconds: 1200), () {
-      if (mounted) setState(() => _faseSalvar = 0);
-    });
-  }
-
-  Widget _botaoSalvar() {
-    final rotulo = switch (_faseSalvar) {
-      1 => 'Salvando',
-      2 => 'Salvo',
-      _ => 'Salvar ficha',
-    };
-    return FilledButton.icon(
-      onPressed: _faseSalvar == 1 ? null : _salvar,
-      icon: AnimatedSwitcher(
-        duration: Movimento.curto,
-        child: _faseSalvar == 2
-            ? const Icon(Icons.check, key: ValueKey('ok'), size: 20)
-            : const SizedBox(key: ValueKey('nada'), width: 0),
-      ),
-      label: AnimatedSwitcher(
-        duration: Movimento.curto,
-        child: Text(rotulo, key: ValueKey(rotulo)),
-      ),
-    );
   }
 
   Future<void> _cadastrar() async {
@@ -473,10 +442,19 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
           if (fichaSalva)
             _painel()
           else
-            const TituloOficina(
-              'Sua moto',
-              subtitulo:
-                  'Catálogo ou marca e modelo. Sem placa, chassi ou RENAVAM.',
+            PrimeirosPassos(
+              marca: _marca,
+              modelo: _modelo,
+              kmLitro: _kmLitro,
+              kmLitroAlcool: _kmLitroAlcool,
+              kmAtual: _kmAtual,
+              flex: _flex,
+              aoFlex: (flex) => setState(() {
+                _flex = flex;
+                if (!flex) _combustivel = 'gasolina';
+              }),
+              aoCatalogo: _preencherDoCatalogo,
+              aoConcluir: _salvar,
             ),
           ..._naMargem(lateral, [
             if (logado && !estado.emConflito) ...[
@@ -489,19 +467,7 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
                     ref.read(fichaControllerProvider.notifier).carregar(),
               ),
             ],
-            SizedBox(height: fichaSalva ? 12 : 20),
-            if (!fichaSalva) ...[
-              _cartaoResumo(context),
-              const SizedBox(height: 22),
-              _catalogo(),
-              const SizedBox(height: 14),
-              _camposIdentidade(),
-              _camposConsumo(),
-              _botaoSalvar(),
-              const SizedBox(height: 12),
-              _blocoAjustar(setup: true),
-            ],
-            const SizedBox(height: 28),
+            SizedBox(height: fichaSalva ? 40 : 36),
             BlocoBackup(
               aoEnviar: _enviarBackup,
               aoRestaurar: _restaurarDeArquivo,
@@ -813,113 +779,6 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
           max: 200,
         ),
       ],
-    );
-  }
-
-  Widget _blocoAjustar({required bool setup}) {
-    return ExpansionTile(
-      tilePadding: EdgeInsets.zero,
-      childrenPadding: const EdgeInsets.only(bottom: 8),
-      leading: const Icon(Icons.tune, color: Oficina.latao),
-      title: Text(
-        setup ? 'Mais números' : 'Ajustar números',
-        style: Theme.of(context).textTheme.titleMedium,
-      ),
-      subtitle: Text(
-        setup
-            ? 'Ano, pneu e personalização. Opcional agora.'
-            : 'Catálogo, média, tanque e pneu.',
-        style: Theme.of(context).textTheme.bodyMedium,
-      ),
-      children: [
-        if (!setup) ...[
-          _catalogo(),
-          const SizedBox(height: 14),
-          _camposIdentidade(),
-          _camposConsumo(),
-        ],
-        _camposExtra(),
-        if (!setup) _botaoSalvar(),
-      ],
-    );
-  }
-
-  Widget _cartaoResumo(BuildContext context) {
-    final nome = '${_marca.text.trim()} ${_modelo.text.trim()}'.trim();
-    final km = double.tryParse(_kmAtual.text.trim().replaceAll(',', '.'));
-    final gas = double.tryParse(_kmLitro.text.trim().replaceAll(',', '.'));
-    final alcool = double.tryParse(
-      _kmLitroAlcool.text.trim().replaceAll(',', '.'),
-    );
-    final auto = _autonomiaGasolina;
-    return CartaoOficina(
-      destaque: true,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          FotoDaMoto(
-            foto: _foto,
-            aoEscolher: _escolherFoto,
-            aoApagar: _apagarFoto,
-          ),
-          const SizedBox(height: 14),
-          Text(
-            nome.isEmpty ? 'Sua moto' : nome,
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              if (km == null)
-                const StatOficina('PAINEL', '-')
-              else
-                StatOficina.numero(
-                  'PAINEL',
-                  numero: km,
-                  formatar: (v) => '${v.toStringAsFixed(0)} km',
-                ),
-              if (gas == null)
-                const StatOficina('GASOLINA', '-')
-              else
-                StatOficina.numero(
-                  'GASOLINA',
-                  numero: gas,
-                  formatar: (v) => '${v.toStringAsFixed(0)} km',
-                ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              if (_flex)
-                StatOficina(
-                  'ÁLCOOL',
-                  alcool == null ? '-' : '${alcool.toStringAsFixed(0)} km',
-                ),
-              StatOficina(
-                'PNEU',
-                _psiDianteiro.text.trim().isEmpty &&
-                        _psiTraseiro.text.trim().isEmpty
-                    ? '-'
-                    : '${_psiDianteiro.text.trim().isEmpty ? '-' : _psiDianteiro.text.trim()}/'
-                          '${_psiTraseiro.text.trim().isEmpty ? '-' : _psiTraseiro.text.trim()}',
-              ),
-              if (!_flex) const Expanded(child: SizedBox()),
-            ],
-          ),
-          if (auto != null || (_flex && _autonomiaAlcool != null)) ...[
-            const SizedBox(height: 14),
-            Text(
-              [
-                if (auto != null) 'Gasolina ${auto.toStringAsFixed(0)} km',
-                if (_flex && _autonomiaAlcool != null)
-                  'álcool ${_autonomiaAlcool!.toStringAsFixed(0)} km',
-              ].join(' · '),
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          ],
-        ],
-      ),
     );
   }
 
