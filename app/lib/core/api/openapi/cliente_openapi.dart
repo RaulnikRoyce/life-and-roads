@@ -64,4 +64,14 @@ class ClienteOpenApi {
   Future<Map<String, dynamic>> trocarSenha(String token, TrocaSenhaDto troca) {
     return ApiCaderneta.trocarSenha(token, troca.toJson());
   }
+
+  /// Sem token: quem pede esqueceu a senha. 200 com ou sem conta.
+  Future<void> recuperarSenha(RecuperarSenhaDto pedido) {
+    return ApiCaderneta.recuperarSenha(pedido.toJson());
+  }
+
+  /// Sem token. Corpo igual ao do login (`token`, `refreshToken`, `email`).
+  Future<Map<String, dynamic>> redefinirSenha(RedefinirSenhaDto pedido) {
+    return ApiCaderneta.redefinirSenha(pedido.toJson());
+  }
 }

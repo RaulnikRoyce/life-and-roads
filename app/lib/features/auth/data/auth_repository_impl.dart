@@ -84,4 +84,28 @@ class AuthRepositoryImpl implements AuthRepository {
       servidor: ApiCaderneta.base,
     );
   }
+
+  @override
+  Future<void> recuperarSenha(String email) {
+    return _remoto.recuperarSenha(email);
+  }
+
+  @override
+  Future<Sessao> redefinirSenha(
+    String email,
+    String codigo,
+    String senhaNova,
+  ) async {
+    final login = await _remoto.redefinirSenha(
+      email: email,
+      codigo: codigo,
+      senhaNova: senhaNova,
+    );
+    await _local.gravarSessao(login.token, login.email, refresh: login.refresh);
+    return Sessao(
+      token: login.token,
+      email: login.email,
+      servidor: ApiCaderneta.base,
+    );
+  }
 }

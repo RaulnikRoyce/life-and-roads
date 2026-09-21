@@ -12,6 +12,11 @@ import {
   JWT_ISSUER,
 } from '../../shared/config/jwt';
 import { AppError } from '../../shared/errors';
+import { logger } from '../../shared/http/logger';
+import {
+  enviarCodigoRecuperacao,
+  envioDisponivel,
+} from '../../shared/email/enviar_email';
 import * as repo from './auth.repository';
 
 export type Tokens = {
@@ -152,6 +157,89 @@ export const trocarSenha = async (
   if (!senhaValida) {
     throw new AppError(401, 'Senha atual incorreta.');
   }
+  const senhaCriptografada = await bcrypt.hash(senhaNova, 10);
+  await repo.atualizarSenha(usuario.id, senhaCriptografada);
+  await repo.revogarTodas(usuario.id);
+  return emitir(usuario.id, usuario.email);
+};
+
+// Recuperação de senha por código enviado ao e-mail.
+
+const CODIGO_MS = 15 * 60 * 1000;
+const CODIGOS_POR_HORA = 3;
+const TENTATIVAS_POR_CODIGO = 5;
+const ERRO_CODIGO = 'Código inválido ou vencido.';
+
+const gerarCodigo = (): string =>
+  String(crypto.randomInt(0, 1_000_000)).padStart(6, '0');
+
+/** HMAC com o segredo do JWT: quem lê o banco não recupera o código. */
+const hashCodigo = (codigo: string): string =>
+  crypto.createHmac('sha256', getJwtSecret()).update(codigo).digest('hex');
+
+const codigoConfere = (codigo: string, hashGuardado: string): boolean => {
+  const a = Buffer.from(hashCodigo(codigo), 'hex');
+  const b = Buffer.from(hashGuardado, 'hex');
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+};
+
+/**
+ * Responde igual com ou sem conta. O envio não é aguardado, para o tempo
+ * de resposta não denunciar quem tem cadastro.
+ */
+export const recuperarSenha = async (email: string): Promise<void> => {
+  if (!envioDisponivel()) {
+    throw new AppError(503, 'Recuperação de senha não está ligada neste servidor.');
+  }
+  const usuario = await repo.buscarPorEmail(email);
+  if (!usuario || !usuario.ativo) return;
+
+  // A contagem por hora fica dentro da transação, senão pedidos simultâneos
+  // leem o mesmo total e todos passam.
+  const codigo = gerarCodigo();
+  const resultado = await repo.criarCodigoRecuperacao(
+    usuario.id,
+    hashCodigo(codigo),
+    new Date(Date.now() + CODIGO_MS),
+    CODIGOS_POR_HORA,
+  );
+  if (resultado === 'limite') {
+    throw new AppError(429, 'Já foram pedidos 3 códigos na última hora. Aguarde para pedir outro.');
+  }
+  if (resultado !== 'criado') return;
+
+  void enviarCodigoRecuperacao({ para: usuario.email, usuarioId: usuario.id, codigo })
+    .catch((erro) => {
+      logger.error('Falha ao enviar código de recuperação', {
+        usuarioId: usuario.id,
+        detalhe: erro instanceof Error ? erro.message : 'erro',
+      });
+    });
+};
+
+/** Um só erro para toda falha, para não dizer qual parte errou. */
+export const redefinirSenha = async (
+  email: string,
+  codigo: string,
+  senhaNova: string,
+): Promise<Tokens> => {
+  const usuario = await repo.buscarPorEmail(email);
+  if (!usuario || !usuario.ativo) {
+    throw new AppError(401, ERRO_CODIGO);
+  }
+  const ativo = await repo.buscarCodigoAtivo(usuario.id);
+  if (!ativo) {
+    throw new AppError(401, ERRO_CODIGO);
+  }
+  const temTentativa = await repo.consumirTentativa(ativo.id, TENTATIVAS_POR_CODIGO);
+  if (!temTentativa || !codigoConfere(codigo, ativo.codigo_hash)) {
+    throw new AppError(401, ERRO_CODIGO);
+  }
+  const marcado = await repo.marcarCodigoUsado(ativo.id);
+  if (!marcado) {
+    throw new AppError(401, ERRO_CODIGO);
+  }
+
   const senhaCriptografada = await bcrypt.hash(senhaNova, 10);
   await repo.atualizarSenha(usuario.id, senhaCriptografada);
   await repo.revogarTodas(usuario.id);

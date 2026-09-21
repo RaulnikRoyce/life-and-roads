@@ -4,6 +4,8 @@ import { validarSchema } from '../../shared/http/validador';
 import { verificarToken } from '../../shared/http/auth';
 import {
   loginSchema,
+  recuperarSchema,
+  redefinirSchema,
   refreshSchema,
   registrarSchema,
   sairSchema,
@@ -33,6 +35,18 @@ router.post(
   authLimiter,
   validarSchema(senhaSchema),
   authController.senha,
+);
+router.post(
+  '/recuperar',
+  authLimiter,
+  validarSchema(recuperarSchema),
+  authController.recuperar,
+);
+router.post(
+  '/redefinir',
+  authLimiter,
+  validarSchema(redefinirSchema),
+  authController.redefinir,
 );
 router.delete('/conta', verificarToken, authController.excluirConta);
 

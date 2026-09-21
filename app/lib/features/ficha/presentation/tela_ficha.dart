@@ -17,6 +17,7 @@ import 'package:life_and_roads/features/ficha/presentation/ficha_controller.dart
 import 'package:life_and_roads/features/ficha/presentation/widgets/bloco_backup.dart';
 import 'package:life_and_roads/features/ficha/presentation/widgets/bloco_conta.dart';
 import 'package:life_and_roads/features/ficha/presentation/widgets/campo_oficina.dart';
+import 'package:life_and_roads/features/ficha/presentation/widgets/folha_recuperar_senha.dart';
 import 'package:life_and_roads/features/ficha/presentation/widgets/painel_moto.dart';
 import 'package:life_and_roads/features/ficha/presentation/widgets/primeiros_passos.dart';
 import 'package:life_and_roads/ficha/catalogo.dart';
@@ -223,6 +224,36 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
     }
   }
 
+  /// Folha em dois passos. Cada callback devolve o erro do controller
+  /// (null quando deu certo) para a folha mostrar sem depender do snackbar,
+  /// que fica atrás dela. O servidor vai do campo, como em [_entrar].
+  Future<void> _esqueciSenha() {
+    return FolhaRecuperarSenha.abrir(
+      context,
+      emailInicial: _email.text.trim().toLowerCase(),
+      aoEnviar: (email) async {
+        await _ctrl.recuperarSenha(email: email, servidor: _servidor.text);
+        if (!mounted) return null;
+        return ref.read(fichaControllerProvider).erro;
+      },
+      aoRedefinir: (email, codigo, senhaNova) async {
+        await _ctrl.redefinirSenha(
+          email: email,
+          codigo: codigo,
+          senhaNova: senhaNova,
+          servidor: _servidor.text,
+        );
+        if (!mounted) return null;
+        final erro = ref.read(fichaControllerProvider).erro;
+        if (erro == null) {
+          _email.text = email;
+          _senha.clear();
+        }
+        return erro;
+      },
+    );
+  }
+
   Future<void> _excluirConta() async {
     final ok = await showDialog<bool>(
       context: context,
@@ -395,7 +426,10 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
         if (atual.aviso != null && atual.aviso != anterior?.aviso) {
           _aviso(atual.aviso!);
         }
-        if (atual.erro != null && atual.erro != anterior?.erro) {
+        // Com uma folha modal por cima (recuperar senha), ela mesma mostra o
+        // erro; o snackbar ficaria na fila atrás dela e apareceria depois.
+        final telaVisivel = ModalRoute.of(context)?.isCurrent ?? true;
+        if (telaVisivel && atual.erro != null && atual.erro != anterior?.erro) {
           _aviso(atual.erro!);
         }
         if (atual.ficha != null && atual.ficha != anterior?.ficha) {
@@ -488,6 +522,7 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
               aoCadastrar: _cadastrar,
               aoSair: _sair,
               aoTrocarSenha: _trocarSenha,
+              aoEsqueciSenha: _esqueciSenha,
               aoExcluirConta: _excluirConta,
               aoMostrarTexto: _mostrarTexto,
             ),

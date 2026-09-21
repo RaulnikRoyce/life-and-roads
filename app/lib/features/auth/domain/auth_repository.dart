@@ -8,4 +8,10 @@ abstract class AuthRepository {
   Future<Sessao> sair();
   Future<Sessao> excluirConta();
   Future<Sessao> trocarSenha(String senhaAtual, String senhaNova);
+
+  /// Pede o código por e-mail. Não diz se o e-mail tem conta.
+  Future<void> recuperarSenha(String email);
+
+  /// Troca a senha com o código e entra neste aparelho, como [entrar].
+  Future<Sessao> redefinirSenha(String email, String codigo, String senhaNova);
 }

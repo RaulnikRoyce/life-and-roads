@@ -6,7 +6,7 @@ typedef ParSessao = ({String token, String email, String refresh});
 
 class AuthRemoteDatasource {
   AuthRemoteDatasource({ClienteOpenApi? cliente})
-      : _cliente = cliente ?? ClienteOpenApi();
+    : _cliente = cliente ?? ClienteOpenApi();
 
   final ClienteOpenApi _cliente;
 
@@ -37,7 +37,23 @@ class AuthRemoteDatasource {
     return _par(corpo, emailPadrao: '');
   }
 
-  /// Login e troca de senha devolvem o mesmo par. Sem `token` é erro.
+  Future<void> recuperarSenha(String email) {
+    return _cliente.recuperarSenha(RecuperarSenhaDto(email: email));
+  }
+
+  Future<ParSessao> redefinirSenha({
+    required String email,
+    required String codigo,
+    required String senhaNova,
+  }) async {
+    final corpo = await _cliente.redefinirSenha(
+      RedefinirSenhaDto(email: email, codigo: codigo, senhaNova: senhaNova),
+    );
+    return _par(corpo, emailPadrao: email);
+  }
+
+  /// Login, troca e redefinição de senha devolvem o mesmo par. Sem `token`
+  /// é erro.
   ParSessao _par(Map<String, dynamic> corpo, {required String emailPadrao}) {
     final token = '${corpo['token'] ?? ''}';
     if (token.isEmpty) throw FalhaApi('Resposta da API sem token.');

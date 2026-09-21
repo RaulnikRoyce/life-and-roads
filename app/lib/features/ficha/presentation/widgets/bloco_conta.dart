@@ -4,8 +4,8 @@ import 'package:life_and_roads/core/legal/textos.dart';
 import 'package:life_and_roads/features/ficha/presentation/widgets/campo_oficina.dart';
 import 'package:life_and_roads/tema.dart';
 
-/// Seção "Conta (opcional)" da Ficha: entrar, cadastrar, trocar senha,
-/// sair, excluir. Os controllers e as ações ficam com a tela.
+/// Seção "Conta (opcional)" da Ficha: entrar, cadastrar, esqueci a senha,
+/// trocar senha, sair, excluir. Os controllers e as ações ficam com a tela.
 class BlocoConta extends StatelessWidget {
   const BlocoConta({
     super.key,
@@ -21,6 +21,7 @@ class BlocoConta extends StatelessWidget {
     required this.aoCadastrar,
     required this.aoSair,
     required this.aoTrocarSenha,
+    required this.aoEsqueciSenha,
     required this.aoExcluirConta,
     required this.aoMostrarTexto,
   });
@@ -41,6 +42,9 @@ class BlocoConta extends StatelessWidget {
   final VoidCallback aoCadastrar;
   final VoidCallback aoSair;
   final VoidCallback aoTrocarSenha;
+
+  /// Abre a folha de recuperação, com o e-mail digitado aqui.
+  final VoidCallback aoEsqueciSenha;
   final VoidCallback aoExcluirConta;
   final void Function(String titulo, String corpo) aoMostrarTexto;
 
@@ -125,6 +129,13 @@ class BlocoConta extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                onPressed: aoEsqueciSenha,
+                child: const Text('Esqueci a senha'),
+              ),
             ),
           ],
           Align(

@@ -2,8 +2,12 @@ import { after, test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import app from '../../src/app';
 import { fecharPool, getPool, pingBanco } from '../../src/shared/database/pool';
-import { apagarSessoesVencidas } from '../../src/modules/auth/auth.repository';
+import {
+  apagarRecuperacoesVencidas,
+  apagarSessoesVencidas,
+} from '../../src/modules/auth/auth.repository';
 import { migrar } from '../../src/shared/database/migrar';
+import { usarTransporte, type Mensagem } from '../../src/shared/email/enviar_email';
 
 // Sem isto o pool segura o processo aberto até o idle timeout do mysql2.
 after(() => fecharPool());
@@ -19,6 +23,27 @@ const bancoPronto = async (t: TestContext): Promise<boolean> => {
     t.skip('MySQL indisponível neste ambiente');
     return false;
   }
+};
+
+const postJson = (base: string, rota: string, corpo: unknown) => fetch(`${base}${rota}`, {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify(corpo),
+});
+
+/**
+ * O envio não é aguardado pela rota, então o teste espera a mensagem cair
+ * na caixa do transporte falso e tira o código de 6 dígitos do texto.
+ */
+const esperarCodigo = async (caixa: Mensagem[], para: string): Promise<string> => {
+  for (let i = 0; i < 100; i += 1) {
+    const mensagens = caixa.filter((m) => m.para === para);
+    const ultima = mensagens[mensagens.length - 1];
+    const achado = ultima ? /\b(\d{6})\b/.exec(ultima.texto) : null;
+    if (achado) return achado[1];
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  throw new Error(`código não chegou ao transporte falso para ${para}`);
 };
 
 const ficha = {
@@ -424,6 +449,287 @@ test('limpeza apaga só sessões vencidas', async (t) => {
       [u.insertId],
     );
     assert.deepEqual(rows.map((r) => r.token_hash), [`viva-${u.insertId}`]);
+  } finally {
+    await pool.execute('DELETE FROM usuarios WHERE id = ?', [u.insertId]);
+  }
+});
+
+test('recuperação por código redefine a senha e revoga as sessões', async (t) => {
+  if (!await bancoPronto(t)) return;
+  const server = app.listen(0);
+  const address = server.address();
+  const port = typeof address === 'object' && address ? address.port : 0;
+  const base = `http://127.0.0.1:${port}`;
+  const email = `recuperar.${Date.now()}@teste.local`;
+  const caixa: Mensagem[] = [];
+  usarTransporte(async (m) => { caixa.push(m); });
+
+  try {
+    const reg = await postJson(base, '/auth/registrar', { email, senha: 'senha1234' });
+    assert.equal(reg.status, 201);
+    const login = await postJson(base, '/auth/login', { email, senha: 'senha1234' });
+    assert.equal(login.status, 200);
+    const aparelhoA = await login.json() as { refreshToken: string };
+
+    // Sem conta responde igual e não manda nada.
+    const semConta = await postJson(base, '/auth/recuperar', {
+      email: `ninguem.${Date.now()}@teste.local`,
+    });
+    assert.equal(semConta.status, 200);
+    const corpoSemConta = await semConta.json() as { mensagem: string };
+    assert.ok(corpoSemConta.mensagem);
+
+    const pedido = await postJson(base, '/auth/recuperar', { email });
+    assert.equal(pedido.status, 200);
+    const corpoPedido = await pedido.json() as { mensagem: string };
+    assert.equal(corpoPedido.mensagem, corpoSemConta.mensagem);
+    const codigo = await esperarCodigo(caixa, email);
+    assert.equal(caixa.length, 1);
+    assert.equal(caixa[0].assunto, 'Seu código para redefinir a senha');
+
+    const extra = await postJson(base, '/auth/redefinir', {
+      email, codigo, senhaNova: 'senha5678', senhaAtual: 'senha1234',
+    });
+    assert.equal(extra.status, 400);
+
+    const errado = await postJson(base, '/auth/redefinir', {
+      email, codigo: codigo === '000000' ? '000001' : '000000', senhaNova: 'senha5678',
+    });
+    assert.equal(errado.status, 401);
+    const corpoErrado = await errado.json() as { erro: string };
+    assert.equal(corpoErrado.erro, 'Código inválido ou vencido.');
+
+    const redefinir = await postJson(base, '/auth/redefinir', {
+      email, codigo, senhaNova: 'senha5678',
+    });
+    assert.equal(redefinir.status, 200);
+    const nova = await redefinir.json() as {
+      mensagem: string; token: string; refreshToken: string; expiresIn: number;
+      email: string; id: number;
+    };
+    assert.ok(nova.token);
+    assert.ok(nova.refreshToken);
+    assert.equal(nova.expiresIn, 900);
+    assert.equal(nova.email, email);
+    assert.ok(Number.isInteger(nova.id));
+
+    const deNovo = await postJson(base, '/auth/redefinir', {
+      email, codigo, senhaNova: 'senha9999',
+    });
+    assert.equal(deNovo.status, 401);
+
+    const loginAntiga = await postJson(base, '/auth/login', { email, senha: 'senha1234' });
+    assert.equal(loginAntiga.status, 401);
+    const loginNova = await postJson(base, '/auth/login', { email, senha: 'senha5678' });
+    assert.equal(loginNova.status, 200);
+
+    const refreshVelho = await postJson(base, '/auth/refresh', {
+      refreshToken: aparelhoA.refreshToken,
+    });
+    assert.equal(refreshVelho.status, 401);
+    const refreshNovo = await postJson(base, '/auth/refresh', {
+      refreshToken: nova.refreshToken,
+    });
+    assert.equal(refreshNovo.status, 200);
+
+    const del = await fetch(`${base}/auth/conta`, {
+      method: 'DELETE', headers: { authorization: `Bearer ${nova.token}` },
+    });
+    assert.equal(del.status, 200);
+  } finally {
+    usarTransporte(null);
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('código errado 5 vezes esgota; código novo invalida o anterior', async (t) => {
+  if (!await bancoPronto(t)) return;
+  const server = app.listen(0);
+  const address = server.address();
+  const port = typeof address === 'object' && address ? address.port : 0;
+  const base = `http://127.0.0.1:${port}`;
+  const email = `tentativas.${Date.now()}@teste.local`;
+  const caixa: Mensagem[] = [];
+  usarTransporte(async (m) => { caixa.push(m); });
+
+  try {
+    await postJson(base, '/auth/registrar', { email, senha: 'senha1234' });
+    assert.equal((await postJson(base, '/auth/recuperar', { email })).status, 200);
+    const primeiro = await esperarCodigo(caixa, email);
+    const errado = primeiro === '000000' ? '000001' : '000000';
+
+    for (let i = 0; i < 5; i += 1) {
+      const tentativa = await postJson(base, '/auth/redefinir', {
+        email, codigo: errado, senhaNova: 'senha5678',
+      });
+      assert.equal(tentativa.status, 401);
+    }
+    const esgotado = await postJson(base, '/auth/redefinir', {
+      email, codigo: primeiro, senhaNova: 'senha5678',
+    });
+    assert.equal(esgotado.status, 401);
+
+    // Pede outro: o anterior deixa de valer mesmo que ainda tivesse tentativas.
+    caixa.length = 0;
+    assert.equal((await postJson(base, '/auth/recuperar', { email })).status, 200);
+    const segundo = await esperarCodigo(caixa, email);
+    assert.notEqual(segundo, undefined);
+    const anterior = await postJson(base, '/auth/redefinir', {
+      email, codigo: primeiro, senhaNova: 'senha5678',
+    });
+    assert.equal(anterior.status, 401);
+
+    const ok = await postJson(base, '/auth/redefinir', {
+      email, codigo: segundo, senhaNova: 'senha5678',
+    });
+    assert.equal(ok.status, 200);
+    const sessao = await ok.json() as { token: string };
+    const del = await fetch(`${base}/auth/conta`, {
+      method: 'DELETE', headers: { authorization: `Bearer ${sessao.token}` },
+    });
+    assert.equal(del.status, 200);
+  } finally {
+    usarTransporte(null);
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('quarto código na mesma hora responde 429', async (t) => {
+  if (!await bancoPronto(t)) return;
+  const server = app.listen(0);
+  const address = server.address();
+  const port = typeof address === 'object' && address ? address.port : 0;
+  const base = `http://127.0.0.1:${port}`;
+  const email = `limite.${Date.now()}@teste.local`;
+  const caixa: Mensagem[] = [];
+  usarTransporte(async (m) => { caixa.push(m); });
+
+  try {
+    await postJson(base, '/auth/registrar', { email, senha: 'senha1234' });
+    for (let i = 0; i < 3; i += 1) {
+      const pedido = await postJson(base, '/auth/recuperar', { email });
+      assert.equal(pedido.status, 200);
+    }
+    const quarto = await postJson(base, '/auth/recuperar', { email });
+    assert.equal(quarto.status, 429);
+    const corpo = await quarto.json() as { erro: string };
+    assert.ok(corpo.erro);
+
+    // Os três chegaram; só o último vale.
+    for (let i = 0; i < 100 && caixa.length < 3; i += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    assert.equal(caixa.length, 3);
+    const codigos = caixa.map((m) => /\b(\d{6})\b/.exec(m.texto)?.[1]);
+    const usaCodigo = (codigo: string | undefined) => postJson(base, '/auth/redefinir', {
+      email, codigo, senhaNova: 'senha5678',
+    });
+    assert.equal((await usaCodigo(codigos[0])).status, 401);
+    assert.equal((await usaCodigo(codigos[1])).status, 401);
+    const ultimo = await usaCodigo(codigos[2]);
+    assert.equal(ultimo.status, 200);
+
+    const sessao = await ultimo.json() as { token: string };
+    const del = await fetch(`${base}/auth/conta`, {
+      method: 'DELETE', headers: { authorization: `Bearer ${sessao.token}` },
+    });
+    assert.equal(del.status, 200);
+  } finally {
+    usarTransporte(null);
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('pedidos simultâneos respeitam os 3 códigos por hora', async (t) => {
+  if (!await bancoPronto(t)) return;
+  const server = app.listen(0);
+  const address = server.address();
+  const port = typeof address === 'object' && address ? address.port : 0;
+  const base = `http://127.0.0.1:${port}`;
+  const email = `rajada.${Date.now()}@teste.local`;
+  const caixa: Mensagem[] = [];
+  usarTransporte(async (m) => { caixa.push(m); });
+
+  try {
+    assert.equal((await postJson(base, '/auth/registrar', { email, senha: 'senha1234' })).status, 201);
+
+    // Cinco de uma vez: a contagem dentro da transação deixa passar só três.
+    const respostas = await Promise.all(
+      Array.from({ length: 5 }, () => postJson(base, '/auth/recuperar', { email })),
+    );
+    const status = respostas.map((r) => r.status).sort((a, b) => a - b);
+    assert.deepEqual(status, [200, 200, 200, 429, 429]);
+
+    const [rows] = await getPool().execute<import('mysql2').RowDataPacket[]>(
+      `SELECT COUNT(*) AS total FROM recuperacoes_senha r
+         JOIN usuarios u ON u.id = r.usuario_id WHERE u.email = ?`,
+      [email],
+    );
+    assert.equal(Number(rows[0].total), 3);
+
+    for (let i = 0; i < 100 && caixa.length < 3; i += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    assert.equal(caixa.length, 3);
+
+    const sexto = await postJson(base, '/auth/recuperar', { email });
+    assert.equal(sexto.status, 429);
+  } finally {
+    usarTransporte(null);
+    await getPool().execute('DELETE FROM usuarios WHERE email = ?', [email]);
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('produção sem chave de e-mail responde 503 em /auth/recuperar', async (t) => {
+  if (!await bancoPronto(t)) return;
+  const server = app.listen(0);
+  const address = server.address();
+  const port = typeof address === 'object' && address ? address.port : 0;
+  const base = `http://127.0.0.1:${port}`;
+  const ambiente = process.env.NODE_ENV;
+  const chave = process.env.RESEND_API_KEY;
+
+  try {
+    process.env.NODE_ENV = 'production';
+    delete process.env.RESEND_API_KEY;
+    usarTransporte(null);
+    const resposta = await postJson(base, '/auth/recuperar', {
+      email: `producao.${Date.now()}@teste.local`,
+    });
+    assert.equal(resposta.status, 503);
+    const corpo = await resposta.json() as { erro: string };
+    assert.equal(corpo.erro, 'Recuperação de senha não está ligada neste servidor.');
+  } finally {
+    process.env.NODE_ENV = ambiente;
+    if (chave !== undefined) process.env.RESEND_API_KEY = chave;
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('limpeza apaga só recuperações vencidas há mais de um dia', async (t) => {
+  if (!await bancoPronto(t)) return;
+  const email = `limpeza.codigo.${Date.now()}@teste.local`;
+  const pool = getPool();
+  const [u] = await pool.execute<import('mysql2').ResultSetHeader>(
+    'INSERT INTO usuarios (email, senha) VALUES (?, ?)',
+    [email, 'x'],
+  );
+  try {
+    await pool.execute(
+      `INSERT INTO recuperacoes_senha (usuario_id, codigo_hash, expira_em) VALUES
+         (?, 'velha', UTC_TIMESTAMP() - INTERVAL 2 DAY),
+         (?, 'recente', UTC_TIMESTAMP() - INTERVAL 1 HOUR),
+         (?, 'viva', UTC_TIMESTAMP() + INTERVAL 15 MINUTE)`,
+      [u.insertId, u.insertId, u.insertId],
+    );
+    await apagarRecuperacoesVencidas();
+    const [rows] = await pool.execute<import('mysql2').RowDataPacket[]>(
+      'SELECT codigo_hash FROM recuperacoes_senha WHERE usuario_id = ? ORDER BY id',
+      [u.insertId],
+    );
+    assert.deepEqual(rows.map((r) => r.codigo_hash), ['recente', 'viva']);
   } finally {
     await pool.execute('DELETE FROM usuarios WHERE id = ?', [u.insertId]);
   }

@@ -143,7 +143,8 @@ class ApiCaderneta {
           headers: _cabecalhos(),
           body: jsonEncode(credenciais),
         )
-        .timeout(_timeout).then(_viva);
+        .timeout(_timeout)
+        .then(_viva);
     if (r.statusCode != 201) throw _erro(r);
   }
 
@@ -156,7 +157,8 @@ class ApiCaderneta {
           headers: _cabecalhos(),
           body: jsonEncode(credenciais),
         )
-        .timeout(_timeout).then(_viva);
+        .timeout(_timeout)
+        .then(_viva);
     if (r.statusCode != 200) throw _erro(r);
     return _corpo(r);
   }
@@ -199,7 +201,8 @@ class ApiCaderneta {
             headers: _cabecalhos(),
             body: jsonEncode({'refreshToken': refresh}),
           )
-          .timeout(_timeout).then(_viva);
+          .timeout(_timeout)
+          .then(_viva);
       if (r.statusCode != 200) {
         await _sessaoSegura.apagar();
         return null;
@@ -225,7 +228,8 @@ class ApiCaderneta {
             headers: _cabecalhos(),
             body: jsonEncode({'refreshToken': refresh}),
           )
-          .timeout(_timeout).then(_viva);
+          .timeout(_timeout)
+          .then(_viva);
     } catch (_) {
       // local já apaga a sessão
     }
@@ -234,7 +238,10 @@ class ApiCaderneta {
   static Future<Map<String, dynamic>?> buscarFicha(String token) async {
     final r = await _comAuth(
       token,
-      (t) => _cliente.get(Uri.parse('$base/ficha'), headers: _cabecalhos(token: t)),
+      (t) => _cliente.get(
+        Uri.parse('$base/ficha'),
+        headers: _cabecalhos(token: t),
+      ),
     );
     if (r.statusCode == 404) return null;
     if (r.statusCode != 200) throw _erro(r);
@@ -344,6 +351,36 @@ class ApiCaderneta {
     return _corpo(r);
   }
 
+  /// Pede o código de recuperação por e-mail. A API responde 200 com ou
+  /// sem conta para o e-mail; 429 e 503 chegam como [FalhaApi].
+  static Future<void> recuperarSenha(Map<String, dynamic> pedido) async {
+    final r = await _cliente
+        .post(
+          Uri.parse('$base/auth/recuperar'),
+          headers: _cabecalhos(),
+          body: jsonEncode(pedido),
+        )
+        .timeout(_timeout)
+        .then(_viva);
+    if (r.statusCode != 200) throw _erro(r);
+  }
+
+  /// Troca a senha com o código. Devolve o mesmo corpo do login.
+  static Future<Map<String, dynamic>> redefinirSenha(
+    Map<String, dynamic> pedido,
+  ) async {
+    final r = await _cliente
+        .post(
+          Uri.parse('$base/auth/redefinir'),
+          headers: _cabecalhos(),
+          body: jsonEncode(pedido),
+        )
+        .timeout(_timeout)
+        .then(_viva);
+    if (r.statusCode != 200) throw _erro(r);
+    return _corpo(r);
+  }
+
   /// Crash do aparelho. Sem ficha nem e-mail. Falha de rede é ignorada.
   static Future<void> relatarCrash({
     required String tipo,
@@ -367,7 +404,8 @@ class ApiCaderneta {
               'pilha': ?pilha,
             }),
           )
-          .timeout(_timeout).then(_viva);
+          .timeout(_timeout)
+          .then(_viva);
     } catch (_) {}
   }
 }

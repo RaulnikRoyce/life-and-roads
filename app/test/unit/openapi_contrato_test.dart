@@ -35,18 +35,23 @@ void main() {
     expect(_chaves(yaml, 'Localizacao'), LocalizacaoDto.chaves);
     expect(_chaves(yaml, 'Credenciais'), CredenciaisDto.chaves);
     expect(_chaves(yaml, 'TrocaSenha'), TrocaSenhaDto.chaves);
+    expect(_chaves(yaml, 'RecuperarSenha'), RecuperarSenhaDto.chaves);
+    expect(_chaves(yaml, 'RedefinirSenha'), RedefinirSenhaDto.chaves);
   });
 }
 
 List<String> _chaves(String yaml, String schema) {
-  final bloco = RegExp(
-    '    $schema:\\n(?:      .*\\n)+',
-  ).firstMatch(yaml)?.group(0);
+  final bloco = RegExp('    $schema:\\n(?:      .*\\n)+')
+      .firstMatch(yaml)
+      ?.group(0);
   if (bloco == null) return [];
   final props = bloco.split('properties:\n');
   if (props.length < 2) return [];
   return [
-    for (final m in RegExp(r'^        (\w+):', multiLine: true).allMatches(props[1]))
+    for (final m in RegExp(
+      r'^        (\w+):',
+      multiLine: true,
+    ).allMatches(props[1]))
       m.group(1)!,
   ];
 }

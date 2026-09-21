@@ -56,17 +56,17 @@ class FichaDto {
   }
 
   Map<String, dynamic> toJson() => {
-        'marca': marca,
-        'modelo': modelo,
-        'ano': ano,
-        'cilindrada': cilindrada,
-        'kmLitro': kmLitro,
-        'kmLitroAlcool': kmLitroAlcool,
-        'combustivel': combustivel,
-        'kmAtual': kmAtual,
-        'tanqueLitros': tanqueLitros,
-        'personalizacoes': personalizacoes,
-      };
+    'marca': marca,
+    'modelo': modelo,
+    'ano': ano,
+    'cilindrada': cilindrada,
+    'kmLitro': kmLitro,
+    'kmLitroAlcool': kmLitroAlcool,
+    'combustivel': combustivel,
+    'kmAtual': kmAtual,
+    'tanqueLitros': tanqueLitros,
+    'personalizacoes': personalizacoes,
+  };
 }
 
 class ManutencaoDto {
@@ -115,15 +115,15 @@ class ManutencaoDto {
   }
 
   Map<String, dynamic> toJson() => {
-        'oleoUltima': oleoUltima,
-        'oleoProxima': oleoProxima,
-        'revisaoUltima': revisaoUltima,
-        'pneusUltima': pneusUltima,
-        'pneusProxima': pneusProxima,
-        'ipvaProxima': ipvaProxima,
-        'seguroProxima': seguroProxima,
-        'licenciamentoProxima': licenciamentoProxima,
-      };
+    'oleoUltima': oleoUltima,
+    'oleoProxima': oleoProxima,
+    'revisaoUltima': revisaoUltima,
+    'pneusUltima': pneusUltima,
+    'pneusProxima': pneusProxima,
+    'ipvaProxima': ipvaProxima,
+    'seguroProxima': seguroProxima,
+    'licenciamentoProxima': licenciamentoProxima,
+  };
 }
 
 class LocalizacaoDto {
@@ -142,9 +142,9 @@ class LocalizacaoDto {
   }
 
   Map<String, dynamic> toJson() => {
-        'latitude': latitude,
-        'longitude': longitude,
-      };
+    'latitude': latitude,
+    'longitude': longitude,
+  };
 }
 
 class CredenciaisDto {
@@ -159,10 +159,7 @@ class CredenciaisDto {
 }
 
 class TrocaSenhaDto {
-  const TrocaSenhaDto({
-    required this.senhaAtual,
-    required this.senhaNova,
-  });
+  const TrocaSenhaDto({required this.senhaAtual, required this.senhaNova});
 
   static const chaves = ['senhaAtual', 'senhaNova'];
 
@@ -170,9 +167,41 @@ class TrocaSenhaDto {
   final String senhaNova;
 
   Map<String, dynamic> toJson() => {
-        'senhaAtual': senhaAtual,
-        'senhaNova': senhaNova,
-      };
+    'senhaAtual': senhaAtual,
+    'senhaNova': senhaNova,
+  };
+}
+
+/// Pedido do código de recuperação (`POST /auth/recuperar`).
+class RecuperarSenhaDto {
+  const RecuperarSenhaDto({required this.email});
+
+  static const chaves = ['email'];
+
+  final String email;
+
+  Map<String, dynamic> toJson() => {'email': email};
+}
+
+/// Senha nova com o código recebido por e-mail (`POST /auth/redefinir`).
+class RedefinirSenhaDto {
+  const RedefinirSenhaDto({
+    required this.email,
+    required this.codigo,
+    required this.senhaNova,
+  });
+
+  static const chaves = ['email', 'codigo', 'senhaNova'];
+
+  final String email;
+  final String codigo;
+  final String senhaNova;
+
+  Map<String, dynamic> toJson() => {
+    'email': email,
+    'codigo': codigo,
+    'senhaNova': senhaNova,
+  };
 }
 
 double? _numero(Object? valor) {

@@ -10,6 +10,8 @@ Ficam só no aparelho a foto, o PSI, os pins, os abastecimentos, os serviços, o
 
 Crash (só em staging/produção, se ligado no build): tipo de erro, mensagem curta, versão do app, sistema (ex. "android 14") e o começo da pilha de chamadas, **sem** ficha, e-mail ou posição. Fica 90 dias no servidor e depois é apagado.
 
+Recuperação de senha (só quando o piloto pede): o e-mail da conta é enviado ao Resend, provedor de envio de e-mail, para entregar a mensagem com o código de 6 dígitos. O servidor guarda apenas o hash do código, que vale 15 minutos, e apaga o registro na limpeza diária depois de vencido. A mensagem com o código em texto fica no Resend pelo prazo de retenção do serviço e na caixa de e-mail do piloto.
+
 ## Permissões no Android
 
 - Internet, conta opcional e mapa OSM
@@ -21,7 +23,7 @@ Crash (só em staging/produção, se ligado no build): tipo de erro, mensagem cu
 
 No aparelho, apagar o app ou colar um backup vazio. Com conta, no app, Ficha, Conta, **Excluir conta no servidor** (`DELETE /auth/conta`) remove o usuário e os dados remotos (CASCADE) e revoga as sessões.
 
-Access JWT expira em minutos. Refresh é revogado no sair, na exclusão e na troca de senha (`POST /auth/senha`). Este aparelho recebe um par novo. Os outros precisam entrar de novo.
+Access JWT expira em minutos. Refresh é revogado no sair, na exclusão, na troca de senha (`POST /auth/senha`) e na redefinição por código (`POST /auth/redefinir`). Este aparelho recebe um par novo. Os outros precisam entrar de novo.
 
 ## Contato
 

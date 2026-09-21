@@ -146,11 +146,12 @@ Backup JSON: versão 2 (listas estruturadas); a restauração ainda lê a versã
 - Erro do `express.json()` (JSON quebrado, corpo grande) responde 400/413, não 500
 - `TRUST_PROXY` diz quantos proxies há na frente (Render 1, compose 0). Sem isso, `X-Forwarded-For` falso escapa do rate limit
 
-## 8. Serviços de terceiros no mapa
+## 8. Serviços de terceiros
 
 | Serviço | Uso | Condição |
 |---|---|---|
 | OSRM público (`router.project-osrm.org`) | km de estrada em `mapa/rota.dart` | Servidor de demonstração, sem garantia e sem uso comercial. Serve para o beta. Para loja, hospedar um OSRM próprio ou trocar por um provedor com contrato |
 | OpenStreetMap (`tile.openstreetmap.org`) | tiles do mapa em `camada_osm.dart` | Sem chave, com User-Agent do app e atribuição "© OpenStreetMap" (política de uso do OSM: tráfego moderado, sem pré-download em massa). A CARTO foi trocada em 18/09/2026 porque passou a exigir chave. Tema escuro por inversão de cores no cliente. Para loja, tiles próprios ou provedor com contrato |
+| Resend (`api.resend.com`) | envio do código de recuperação de senha em `shared/email/enviar_email.ts` (ADR 0029) | Recebe o endereço de e-mail da conta e o código de 6 dígitos, só quando alguém pede `POST /auth/recuperar` para um e-mail com conta. Chamada HTTPS com `fetch`, sem SDK. A rota `POST /auth/recuperar` responde sem esperar o envio terminar; falha do Resend vai para o log. Precisa de `RESEND_API_KEY` no Render e do domínio `raulnikroyce.dev` verificado no Resend. Sem a chave, a rota responde 503 em produção e, fora dela, o código vai para o log |
 
-Os dois têm timeout e caem para "sem rota" ou mapa vazio. A caderneta não depende deles.
+OSRM e OpenStreetMap têm timeout e caem para "sem rota" ou mapa vazio. A caderneta não depende deles. O Resend só entra na recuperação de senha; sem ele, essa rota responde 503 e o resto da API segue.

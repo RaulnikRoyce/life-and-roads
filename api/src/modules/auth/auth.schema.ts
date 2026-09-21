@@ -4,13 +4,15 @@ const senhaForte = z.string()
   .min(8, 'Senha deve ter no mínimo 8 caracteres')
   .max(72, 'Senha longa demais');
 
+const emailValido = z.string().trim().toLowerCase().email('E-mail inválido').max(255);
+
 export const loginSchema = z.object({
-  email: z.string().trim().toLowerCase().email('E-mail inválido').max(255),
+  email: emailValido,
   senha: senhaForte,
 });
 
 export const registrarSchema = z.object({
-  email: z.string().trim().toLowerCase().email('E-mail inválido').max(255),
+  email: emailValido,
   senha: senhaForte,
 });
 
@@ -32,3 +34,17 @@ export const senhaSchema = z
     message: 'A senha nova tem que ser diferente da atual',
     path: ['senhaNova'],
   });
+
+export const recuperarSchema = z
+  .object({
+    email: emailValido,
+  })
+  .strict();
+
+export const redefinirSchema = z
+  .object({
+    email: emailValido,
+    codigo: z.string().trim().regex(/^[0-9]{6}$/, 'Código deve ter 6 dígitos'),
+    senhaNova: senhaForte,
+  })
+  .strict();

@@ -15,6 +15,13 @@ Versão do app **1.2.1+6**. O CI **não publica** na loja. Gera o APK assinado n
 
 Não commitar `key.properties` nem `.jks`.
 
+## Variáveis do Render (API de produção)
+
+Ficam no painel do Render, no serviço da API, ao lado das `DB_*`. Não são secrets do GitHub.
+
+- `RESEND_API_KEY`, opcional. Chave da conta no Resend, usada para enviar o código de recuperação de senha (ADR 0029). Sem ela, `POST /auth/recuperar` responde 503 em produção e o piloto que esqueceu a senha não tem como redefinir. O resto da API segue normal.
+- `EMAIL_REMETENTE`, opcional. Remetente dos e-mails, no formato `life.and.roads <no-reply@raulnikroyce.dev>`, que é o padrão quando a variável está vazia. O domínio precisa estar verificado no Resend.
+
 ## Ficha da Play (teste fechado)
 
 | Campo | Valor |

@@ -55,3 +55,22 @@ export const senha = asyncHandler(async (req, res) => {
     ...tokens,
   });
 });
+
+export const recuperar = asyncHandler(async (req, res) => {
+  const { email } = req.body as { email: string };
+  await authService.recuperarSenha(email);
+  ok(res, { mensagem: 'Se houver conta com este e-mail, o código foi enviado.' });
+});
+
+export const redefinir = asyncHandler(async (req, res) => {
+  const { email, codigo, senhaNova } = req.body as {
+    email: string;
+    codigo: string;
+    senhaNova: string;
+  };
+  const tokens = await authService.redefinirSenha(email, codigo, senhaNova);
+  res.json({
+    mensagem: 'Senha redefinida',
+    ...tokens,
+  });
+});

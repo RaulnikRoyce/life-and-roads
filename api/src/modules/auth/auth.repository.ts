@@ -181,3 +181,117 @@ export async function apagarSessoesVencidas(): Promise<number> {
   return r.affectedRows;
 }
 
+// Recuperação de senha por código. Só o HMAC do código vai para o banco.
+
+export type Recuperacao = {
+  id: number;
+  usuario_id: number;
+  codigo_hash: string;
+  tentativas: number;
+};
+
+type RecuperacaoRow = RowDataPacket & Recuperacao;
+
+const paraMysql = (data: Date): string =>
+  data.toISOString().slice(0, 19).replace('T', ' ');
+
+/**
+ * Grava um código novo e marca os anteriores da conta como usados. Eles
+ * ficam na tabela porque a contagem por hora precisa do histórico.
+ *
+ * A contagem roda dentro da transação, depois de travar a linha do usuário
+ * com FOR UPDATE. Pedidos simultâneos para a mesma conta entram um de cada
+ * vez, e cada um conta já vendo o que o anterior gravou.
+ *
+ * - `criado`: gravou.
+ * - `limite`: a conta já tem `maximoPorHora` códigos criados na última hora.
+ * - `sem_conta`: usuário sumiu ou foi desativado entre a busca e a gravação.
+ */
+export async function criarCodigoRecuperacao(
+  usuarioId: number,
+  codigoHash: string,
+  expiraEm: Date,
+  maximoPorHora: number,
+): Promise<'criado' | 'limite' | 'sem_conta'> {
+  const conexao = await getPool().getConnection();
+  try {
+    await conexao.beginTransaction();
+    const [donos] = await conexao.execute<RowDataPacket[]>(
+      'SELECT id FROM usuarios WHERE id = ? AND ativo = 1 FOR UPDATE',
+      [usuarioId],
+    );
+    if (donos.length === 0) {
+      await conexao.rollback();
+      return 'sem_conta';
+    }
+    const [contagem] = await conexao.execute<RowDataPacket[]>(
+      `SELECT COUNT(*) AS total FROM recuperacoes_senha
+        WHERE usuario_id = ? AND criado_em >= NOW() - INTERVAL 1 HOUR`,
+      [usuarioId],
+    );
+    if (Number(contagem[0]?.total ?? 0) >= maximoPorHora) {
+      await conexao.rollback();
+      return 'limite';
+    }
+    await conexao.execute(
+      `UPDATE recuperacoes_senha SET usada_em = UTC_TIMESTAMP()
+        WHERE usuario_id = ? AND usada_em IS NULL`,
+      [usuarioId],
+    );
+    await conexao.execute(
+      `INSERT INTO recuperacoes_senha (usuario_id, codigo_hash, expira_em)
+       VALUES (?, ?, ?)`,
+      [usuarioId, codigoHash, paraMysql(expiraEm)],
+    );
+    await conexao.commit();
+    return 'criado';
+  } catch (erro) {
+    await conexao.rollback();
+    throw erro;
+  } finally {
+    conexao.release();
+  }
+}
+
+/** Código mais recente da conta ainda não usado e dentro do prazo. */
+export async function buscarCodigoAtivo(usuarioId: number): Promise<Recuperacao | null> {
+  const [rows] = await getPool().execute<RecuperacaoRow[]>(
+    `SELECT id, usuario_id, codigo_hash, tentativas FROM recuperacoes_senha
+      WHERE usuario_id = ? AND usada_em IS NULL AND expira_em > UTC_TIMESTAMP()
+      ORDER BY id DESC LIMIT 1`,
+    [usuarioId],
+  );
+  return rows[0] ?? null;
+}
+
+/**
+ * Gasta uma tentativa antes de conferir o código, no próprio UPDATE, para
+ * pedidos simultâneos não passarem do limite. `false` quando esgotou.
+ */
+export async function consumirTentativa(id: number, maximo: number): Promise<boolean> {
+  const [r] = await getPool().execute<ResultSetHeader>(
+    `UPDATE recuperacoes_senha SET tentativas = tentativas + 1
+      WHERE id = ? AND usada_em IS NULL AND tentativas < ?`,
+    [id, maximo],
+  );
+  return r.affectedRows === 1;
+}
+
+/** Uso único: `false` se outro pedido já marcou este código. */
+export async function marcarCodigoUsado(id: number): Promise<boolean> {
+  const [r] = await getPool().execute<ResultSetHeader>(
+    `UPDATE recuperacoes_senha SET usada_em = UTC_TIMESTAMP()
+      WHERE id = ? AND usada_em IS NULL`,
+    [id],
+  );
+  return r.affectedRows === 1;
+}
+
+/** Apaga códigos vencidos há mais de um dia. Os da última hora ficam para a contagem. */
+export async function apagarRecuperacoesVencidas(): Promise<number> {
+  const [r] = await getPool().execute<ResultSetHeader>(
+    'DELETE FROM recuperacoes_senha WHERE expira_em < UTC_TIMESTAMP() - INTERVAL 1 DAY',
+  );
+  return r.affectedRows;
+}
+

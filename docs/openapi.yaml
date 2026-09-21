@@ -148,6 +148,48 @@ paths:
           description: payload extra, senha curta ou igual à atual
         '401':
           description: token ausente ou senha atual incorreta
+  /auth/recuperar:
+    post:
+      summary: Envia um código de 6 dígitos por e-mail para redefinir a senha
+      description: |
+        Responde 200 mesmo sem conta para o e-mail, para não entregar quem
+        tem cadastro. O código vale 15 min, é de uso único e invalida os
+        anteriores da mesma conta. No máximo 3 códigos por hora por e-mail,
+        além do limite por IP. Sem RESEND_API_KEY no servidor, responde 503.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecuperarSenha'
+      responses:
+        '200':
+          description: se houver conta, o código foi enviado
+        '429':
+          description: limite de códigos ou de tentativas por IP
+        '503':
+          description: envio de e-mail não configurado neste servidor
+  /auth/redefinir:
+    post:
+      summary: Troca a senha com o código recebido por e-mail
+      description: >
+        Confere e-mail, código (até 5 tentativas por código), validade e uso.
+        Grava bcrypt da senha nova, marca o código como usado, revoga todas
+        as sessões e devolve um par novo para este aparelho, como o login.
+        Erro único para código errado, vencido, usado ou e-mail sem conta.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RedefinirSenha'
+      responses:
+        '200':
+          description: senha redefinida; token e refreshToken novos
+        '400':
+          description: payload extra, código fora do formato ou senha curta
+        '401':
+          description: código inválido ou vencido
   /auth/conta:
     delete:
       summary: Exclui a conta e os dados remotos (CASCADE)
@@ -262,6 +304,27 @@ components:
           type: string
           minLength: 8
           maxLength: 72
+        senhaNova:
+          type: string
+          minLength: 8
+          maxLength: 72
+    RecuperarSenha:
+      type: object
+      additionalProperties: false
+      required: [email]
+      properties:
+        email:
+          type: string
+    RedefinirSenha:
+      type: object
+      additionalProperties: false
+      required: [email, codigo, senhaNova]
+      properties:
+        email:
+          type: string
+        codigo:
+          type: string
+          pattern: '^[0-9]{6}$'
         senhaNova:
           type: string
           minLength: 8

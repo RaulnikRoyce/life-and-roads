@@ -5,6 +5,7 @@ import 'package:life_and_roads/features/auth/data/auth_local_datasource.dart';
 import 'package:life_and_roads/features/auth/data/auth_remote_datasource.dart';
 import 'package:life_and_roads/features/auth/data/auth_repository_impl.dart';
 import 'package:life_and_roads/features/auth/domain/auth_repository.dart';
+import 'package:life_and_roads/features/auth/domain/usecases/redefinir_senha.dart';
 import 'package:life_and_roads/features/auth/domain/usecases/trocar_senha.dart';
 import 'package:life_and_roads/features/ficha/data/ficha_local_datasource.dart';
 import 'package:life_and_roads/features/ficha/data/ficha_remote_datasource.dart';
@@ -53,6 +54,7 @@ class FichaController extends Notifier<FichaEstado> {
   AuthRepository get _auth => ref.read(authRepositoryProvider);
   FichaRepository get _ficha => ref.read(fichaRepositoryProvider);
   static const _trocarSenha = TrocarSenha();
+  static const _redefinirSenha = RedefinirSenha();
 
   @override
   FichaEstado build() => const FichaEstado();
@@ -250,6 +252,80 @@ class FichaController extends Notifier<FichaEstado> {
         erro: 'API fora do ar. A senha não foi alterada.',
         offline: true,
         limparAviso: true,
+      );
+    }
+  }
+
+  /// Passo 1 da recuperação: pede o código por e-mail. Sem aviso de sucesso
+  /// no estado porque a folha aberta cobre o snackbar; ela mesma diz que o
+  /// código foi. `erro == null` depois do await significa que foi.
+  /// Recebe o servidor do campo, como [entrar], para o pedido não ir à base
+  /// carregada no boot quando o piloto ainda não entrou.
+  Future<void> recuperarSenha({
+    required String email,
+    required String servidor,
+  }) async {
+    state = state.copiarCom(limparErro: true, limparAviso: true);
+    final erro = _redefinirSenha.validarEmail(email);
+    if (erro != null) {
+      state = state.copiarCom(erro: erro);
+      return;
+    }
+    await _auth.definirServidor(servidor);
+    try {
+      await _auth.recuperarSenha(email);
+      state = state.copiarCom(offline: false);
+    } on FalhaApi catch (e) {
+      state = state.copiarCom(erro: e.mensagem);
+    } catch (_) {
+      state = state.copiarCom(
+        erro: 'API fora do ar. O código não foi enviado.',
+        offline: true,
+      );
+    }
+  }
+
+  /// Passo 2: senha nova com o código. No sucesso a API entrega um par novo
+  /// e o estado fica logado como depois de [entrar], com a ficha do servidor.
+  Future<void> redefinirSenha({
+    required String email,
+    required String codigo,
+    required String senhaNova,
+    required String servidor,
+  }) async {
+    state = state.copiarCom(limparErro: true, limparAviso: true);
+    final erro = _redefinirSenha.validar(
+      email: email,
+      codigo: codigo,
+      senhaNova: senhaNova,
+    );
+    if (erro != null) {
+      state = state.copiarCom(erro: erro);
+      return;
+    }
+    await _auth.definirServidor(servidor);
+    try {
+      final sessao = await _auth.redefinirSenha(email, codigo, senhaNova);
+      final carregada = await _ficha.carregar();
+      state = FichaEstado(
+        carregando: false,
+        ficha: carregada.ficha,
+        remoto: carregada.remoto,
+        token: sessao.token,
+        email: sessao.email,
+        servidor: sessao.servidor,
+        aviso: carregada.sync.emConflito
+            ? 'A ficha do servidor é diferente desta. Escolha o que fica.'
+            : 'Senha redefinida. Os outros aparelhos precisam entrar de novo.',
+        offline: carregada.offline,
+        sync: carregada.sync,
+      );
+    } on FalhaApi catch (e) {
+      state = state.copiarCom(erro: e.mensagem);
+    } catch (_) {
+      state = state.copiarCom(
+        erro: 'API fora do ar. A senha não foi alterada.',
+        offline: true,
       );
     }
   }

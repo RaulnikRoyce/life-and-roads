@@ -11,7 +11,10 @@ import type { Server } from 'http';
 import { carregarEnv } from './shared/config/env';
 import { fecharPool, versaoBanco } from './shared/database/pool';
 import { migrar } from './shared/database/migrar';
-import { apagarSessoesVencidas } from './modules/auth/auth.repository';
+import {
+  apagarRecuperacoesVencidas,
+  apagarSessoesVencidas,
+} from './modules/auth/auth.repository';
 import { apagarEventosAntigos } from './modules/monitor/monitor.repository';
 import { logger } from './shared/http/logger';
 import app from './app';
@@ -30,6 +33,8 @@ const limparSessoes = async (): Promise<void> => {
   try {
     const apagadas = await apagarSessoesVencidas();
     if (apagadas > 0) logger.info('sessoes_vencidas_apagadas', { apagadas });
+    const codigos = await apagarRecuperacoesVencidas();
+    if (codigos > 0) logger.info('codigos_recuperacao_apagados', { apagados: codigos });
     const eventos = await apagarEventosAntigos();
     if (eventos > 0) logger.info('eventos_cliente_apagados', { apagados: eventos });
   } catch (erro) {
