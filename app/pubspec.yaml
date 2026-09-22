@@ -15,19 +15,19 @@ dependencies:
   shared_preferences: ^2.5.3
   flutter_secure_storage: ^10.3.1
   http: ^1.5.0
-  flutter_local_notifications: ^19.5.0
-  timezone: ^0.10.1
+  flutter_local_notifications: ^22.3.1
+  timezone: ^0.11.1
   flutter_map: ^8.2.2
-  latlong2: ^0.9.1
-  geolocator: ^14.0.2
+  latlong2: ^0.10.1
+  geolocator: ^14.0.3
   google_fonts: ^6.3.2
   image_picker: ^1.2.0
   flutter_riverpod: ^2.6.1
-  drift: ^2.28.0
-  drift_flutter: ^0.2.7
+  drift: ^2.35.0
+  drift_flutter: ^0.3.1
   path_provider: ^2.1.5
   path: ^1.9.1
-  sqlite3: ^2.7.0
+  sqlite3: ^3.5.2
   share_plus: ^13.3.0
   file_picker: ^13.1.0
   url_launcher: ^6.3.2
@@ -37,8 +37,8 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.4
-  drift_dev: ^2.28.0
-  build_runner: ^2.4.15
+  drift_dev: ^2.35.0
+  build_runner: ^2.16.1
 
 flutter:
   uses-material-design: true
