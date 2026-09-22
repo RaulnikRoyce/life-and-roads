@@ -55,17 +55,22 @@ class RegistroAbastecimento {
   final double kmPorLitro;
   final double reaisPorKm;
 
+  /// O primeiro abastecimento não tem intervalo anterior: km rodados e
+  /// consumo ficam em zero (as colunas do banco são obrigatórias). Só os
+  /// registros com intervalo entram nas médias e no gráfico.
+  bool get temConsumo => kmRodados > 0 && kmPorLitro > 0;
+
   Map<String, dynamic> paraJson() => {
-        'em': em,
-        'combustivel': combustivel.name,
-        'kmPainel': kmPainel,
-        'kmRodados': kmRodados,
-        'litros': litros,
-        'precoLitro': precoLitro,
-        'reais': reais,
-        'kmPorLitro': kmPorLitro,
-        'reaisPorKm': reaisPorKm,
-      };
+    'em': em,
+    'combustivel': combustivel.name,
+    'kmPainel': kmPainel,
+    'kmRodados': kmRodados,
+    'litros': litros,
+    'precoLitro': precoLitro,
+    'reais': reais,
+    'kmPorLitro': kmPorLitro,
+    'reaisPorKm': reaisPorKm,
+  };
 
   static RegistroAbastecimento? deJson(Object? bruto) {
     if (bruto is! Map) return null;
@@ -83,8 +88,8 @@ class RegistroAbastecimento {
       return null;
     }
     final reais = _num(mapa['reais']) ?? litros * preco;
-    final rpk = _num(mapa['reaisPorKm']) ?? (kmRodados <= 0 ? null : reais / kmRodados);
-    if (rpk == null) return null;
+    final rpk =
+        _num(mapa['reaisPorKm']) ?? (kmRodados <= 0 ? 0.0 : reais / kmRodados);
     final em = '${mapa['em'] ?? ''}'.trim();
     return RegistroAbastecimento(
       em: em.isEmpty ? DateTime.now().toIso8601String() : em,
@@ -176,10 +181,7 @@ double? reaisDoAbastecimento({
   return litros * precoLitro;
 }
 
-double? reaisPorKm({
-  required double reais,
-  required double kmRodados,
-}) {
+double? reaisPorKm({required double reais, required double kmRodados}) {
   if (reais <= 0 || kmRodados <= 0) return null;
   return reais / kmRodados;
 }
@@ -251,23 +253,53 @@ double? kmDaProximaTroca({
 }
 
 /// Positivo = km que faltam; negativo = km atrasados.
-int? kmAteATroca({
-  required double kmAtual,
-  required double kmProxima,
-}) {
+int? kmAteATroca({required double kmAtual, required double kmProxima}) {
   if (kmAtual < 0 || kmProxima <= 0) return null;
   return (kmProxima - kmAtual).round();
 }
 
-/// Soma dos reais ÷ soma dos km do histórico. Um número, não planilha.
+/// Soma dos reais ÷ soma dos km dos registros com intervalo. Um número,
+/// não planilha. O primeiro abastecimento fica de fora.
 double? custoMedioPorKm(Iterable<RegistroAbastecimento> lista) {
   var km = 0.0;
   var reais = 0.0;
   for (final r in lista) {
+    if (!r.temConsumo) continue;
     km += r.kmRodados;
     reais += r.reais;
   }
   return reaisPorKm(reais: reais, kmRodados: km);
+}
+
+/// O combustível que rodou o intervalo do registro [indice] é o que estava
+/// no tanque, ou seja, o do abastecimento anterior. O histórico vem do mais
+/// novo para o mais antigo. Null para o mais antigo (sem anterior).
+Combustivel? combustivelDoIntervalo(
+  List<RegistroAbastecimento> historico,
+  int indice,
+) {
+  if (indice < 0 || indice + 1 >= historico.length) return null;
+  return historico[indice + 1].combustivel;
+}
+
+/// Média ponderada do consumo com [noTanque]: soma dos km dividida pela
+/// soma dos litros de todos os intervalos rodados com esse combustível.
+/// Cada abastecimento novo refina o número. Null sem intervalo.
+double? mediaKmPorLitro(
+  List<RegistroAbastecimento> historico,
+  Combustivel noTanque,
+) {
+  var km = 0.0;
+  var litros = 0.0;
+  for (var i = 0; i < historico.length; i++) {
+    final r = historico[i];
+    if (!r.temConsumo) continue;
+    if (combustivelDoIntervalo(historico, i) != noTanque) continue;
+    km += r.kmRodados;
+    litros += r.litros;
+  }
+  if (km <= 0 || litros <= 0) return null;
+  return km / litros;
 }
 
 /// Distância em linha reta (Haversine). Null se coordenadas inválidas,
@@ -282,7 +314,8 @@ double? kmLinhaReta({
   const raioKm = 6371.0;
   final dLat = _rad(latB - latA);
   final dLng = _rad(lngB - lngA);
-  final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+  final a =
+      math.sin(dLat / 2) * math.sin(dLat / 2) +
       math.cos(_rad(latA)) *
           math.cos(_rad(latB)) *
           math.sin(dLng / 2) *
@@ -297,6 +330,30 @@ bool _coordOk(double lat, double lng) =>
     lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
 
 double _rad(double graus) => graus * math.pi / 180;
+
+/// Primeiro abastecimento: sem anterior não há intervalo. Guarda o km do
+/// painel, os litros e o valor; consumo e custo por km ficam em zero.
+RegistroAbastecimento? primeiroRegistroDoPosto({
+  required double litros,
+  required double precoLitro,
+  required double kmPainel,
+  required Combustivel combustivel,
+  DateTime? agora,
+}) {
+  final reais = reaisDoAbastecimento(litros: litros, precoLitro: precoLitro);
+  if (reais == null) return null;
+  return RegistroAbastecimento(
+    em: (agora ?? DateTime.now()).toIso8601String(),
+    combustivel: combustivel,
+    kmPainel: kmPainel,
+    kmRodados: 0,
+    litros: litros,
+    precoLitro: precoLitro,
+    reais: reais,
+    kmPorLitro: 0,
+    reaisPorKm: 0,
+  );
+}
 
 RegistroAbastecimento? registroDoPosto({
   required ConsumoAbastecimento consumo,

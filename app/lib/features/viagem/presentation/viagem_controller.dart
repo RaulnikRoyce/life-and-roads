@@ -134,6 +134,7 @@ class ViagemController extends Notifier<ViagemEstado> {
         : _numero(precos.gasolina);
     final montado = _montar.executar(
       ficha: state.ficha,
+      historico: state.historico,
       kmPainel: kmPainel,
       litros: litros,
       preco: preco,

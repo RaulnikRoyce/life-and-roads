@@ -107,7 +107,9 @@ class _TelaPostoState extends ConsumerState<TelaPosto> {
     return abrirFolhaOficina(
       context,
       titulo: 'Registrar abastecimento',
-      subtitulo: 'Combustível, km do painel e litros.',
+      subtitulo:
+          'Combustível, km do painel e litros. Encha o tanque, o consumo '
+          'sai da distância desde o abastecimento anterior.',
       campos: (_) => [
         // A folha é outra rota; o Consumer a redesenha quando o combustível
         // muda no controller.
@@ -175,11 +177,13 @@ class _TelaPostoState extends ConsumerState<TelaPosto> {
     // pela ficha com a bomba mais barata de hoje.
     double? custoPorKm;
     String origem;
-    if (historico.isNotEmpty) {
+    // Só intervalos entre postos contam; o primeiro registro não tem.
+    final intervalos = historico.where((r) => r.temConsumo).length;
+    if (intervalos > 0) {
       custoPorKm = custoMedioPorKm(historico);
-      origem = historico.length == 1
-          ? 'pelo último posto'
-          : 'média de ${historico.length} postos';
+      origem = intervalos == 1
+          ? 'pelo último intervalo'
+          : 'média de $intervalos intervalos';
     } else if (custoGas != null || custoAlcool != null) {
       custoPorKm = custoGas == null
           ? custoAlcool
@@ -225,9 +229,8 @@ class _TelaPostoState extends ConsumerState<TelaPosto> {
             origem: origem,
             fraseVencedor: fraseVencedor,
             postos: historico.length,
-            kmComUmLitro: historico.isNotEmpty
-                ? historico.first.kmPorLitro
-                : kg,
+            kmComUmLitro:
+                mediaKmPorLitro(historico, Combustivel.gasolina) ?? kg,
             autonomiaKm: autonomia,
             barras: const ResumoConsumo().executar(historico).barras,
           ),
@@ -312,15 +315,28 @@ class _TelaPostoState extends ConsumerState<TelaPosto> {
               EntradaSuave(
                 atraso: Duration(milliseconds: 40 * i.clamp(0, 8)),
                 deslocamento: 8,
-                child: _linhaPosto(r, divisor),
+                child: _linhaPosto(
+                  r,
+                  divisor,
+                  rodouCom: combustivelDoIntervalo(historico, i),
+                ),
               ),
         ],
       ),
     );
   }
 
-  Widget _linhaPosto(RegistroAbastecimento r, Color divisor) {
+  /// [rodouCom] é o combustível que estava no tanque no intervalo (o do
+  /// posto anterior); só aparece quando difere do abastecido.
+  Widget _linhaPosto(
+    RegistroAbastecimento r,
+    Color divisor, {
+    required Combustivel? rodouCom,
+  }) {
     final tema = Theme.of(context);
+    final rodou = rodouCom == null || rodouCom == r.combustivel
+        ? ''
+        : ', rodou com ${rotuloCombustivel(rodouCom).toLowerCase()}';
     return Column(
       children: [
         Divider(height: 1, thickness: 1, color: divisor),
@@ -353,14 +369,18 @@ class _TelaPostoState extends ConsumerState<TelaPosto> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      '${_br(r.kmRodados, casas: 0)} km · ${_br(r.litros)} L · '
-                      '${PainelPosto.km(r.kmPorLitro)} km com 1 L',
+                      r.temConsumo
+                          ? '${_br(r.kmRodados, casas: 0)} km · ${_br(r.litros)} L · '
+                                '${PainelPosto.km(r.kmPorLitro)} km com 1 L$rodou'
+                          : '${_br(r.litros)} L · primeiro registro',
                       textAlign: TextAlign.end,
                       style: tema.textTheme.bodyMedium,
                     ),
                     Text(
-                      'R\$ ${_br(r.reais, casas: 2)} · '
-                      'R\$ ${_br(r.reaisPorKm, casas: 2)} por km',
+                      r.temConsumo
+                          ? 'R\$ ${_br(r.reais, casas: 2)} · '
+                                'R\$ ${_br(r.reaisPorKm, casas: 2)} por km'
+                          : 'R\$ ${_br(r.reais, casas: 2)}',
                       textAlign: TextAlign.end,
                       style: tema.textTheme.bodyMedium,
                     ),
