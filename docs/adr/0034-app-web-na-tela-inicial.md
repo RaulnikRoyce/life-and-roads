@@ -19,7 +19,9 @@ O endereço é **`app.raulnikroyce.dev`**, domínio próprio apontado por CNAME 
 
 Um job `pages` no CI compila e publica, disparado por tag `v*` junto com o APK, para manter a mesma disciplina, e por botão manual, para publicar um teste sem cortar versão. O `manifest.json` e os ícones deixam o padrão do Flutter e passam a usar a marca, com o fundo `#121212` que o Android já usa na abertura. O `index.html` recupera `apple-mobile-web-app-capable`, que some nos modelos novos do Flutter e ainda é o caminho garantido nos Safari anteriores ao 15.4.
 
-Isto **não** põe iOS no recorte. App web já existia como plataforma. O que muda é que ele deixa de ser ferramenta de desenvolvimento e vira coisa que piloto usa, e por isso vira decisão registrada.
+Publicar o app web, por si, **não** põe iOS no recorte. App web já existia como plataforma. O que muda é que ele deixa de ser ferramenta de desenvolvimento e vira coisa que piloto usa, e por isso vira decisão registrada.
+
+**Emenda, no mesmo dia.** Depois de ver o app funcionando, o Raulnik decidiu que iOS sai de "fora do recorte" e passa a ser questão de quando, com alvo em app de verdade na App Store. O `CLAUDE.md` foi atualizado com essa decisão e com os passos que faltam. O app web deixa de ser o destino e passa a ser o degrau intermediário, que segue valendo enquanto a conta paga da Apple não existir e depois, para quem não quiser instalar da loja.
 
 ## O que o piloto perde no app web
 
