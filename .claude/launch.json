@@ -7,6 +7,13 @@
       "runtimeArgs": ["run", "-d", "web-server", "--web-port", "8080", "--web-hostname", "127.0.0.1", "--suppress-analytics"],
       "cwd": "app",
       "port": 8080
+    },
+    {
+      "name": "app-web-release",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8090", "--bind", "127.0.0.1", "--directory", "build/web"],
+      "cwd": "app",
+      "port": 8090
     }
   ]
 }

@@ -5,6 +5,8 @@ on:
     branches: [main]
     tags: ['v*']
   pull_request:
+  # Botão manual, para publicar o app web sem cortar uma versão.
+  workflow_dispatch:
 
 jobs:
   api:
@@ -135,3 +137,49 @@ jobs:
             gh release create "$GITHUB_REF_NAME" --prerelease --title "$TITULO" --notes "$NOTAS"
           fi
           gh release upload "$GITHUB_REF_NAME" "$APK" --clobber
+
+  # A caderneta na tela inicial do celular, pelo app web. É o caminho do
+  # iPhone sem Mac e sem conta paga da Apple (ADR 0034). Sai em tag, junto
+  # com o APK, e no botão manual.
+  pages:
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    needs: [api, app]
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.publicar.outputs.page_url }}
+    # Uma publicação por vez, sem cancelar a que já está subindo.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v6
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      # Domínio próprio (app.raulnikroyce.dev), então o app fica na raiz. Se
+      # um dia voltar para raulnikroyce.github.io, vira "/life-and-roads/".
+      - name: Build web
+        env:
+          API_BASE: ${{ secrets.API_BASE }}
+        run: |
+          VERSAO="${GITHUB_REF_NAME#v}"
+          flutter build web --release \
+            --base-href / \
+            --dart-define=ENV=production \
+            --dart-define=CRASH_REPORTING=true \
+            --dart-define=APP_VERSION="$VERSAO+${GITHUB_RUN_NUMBER}" \
+            --dart-define=API_BASE="$API_BASE"
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: app/build/web
+      - id: publicar
+        uses: actions/deploy-pages@v5

@@ -53,3 +53,10 @@ flutter_launcher_icons:
   image_path: assets/lr.png
   adaptive_icon_background: "#000000"
   adaptive_icon_foreground: assets/lr.png
+  # O ícone da tela inicial do iPhone e do Android sai daqui. Sem isto, quem
+  # instalar o app web recebe o logo padrão do Flutter.
+  web:
+    generate: true
+    image_path: assets/lr.png
+    background_color: "#121212"
+    theme_color: "#121212"
