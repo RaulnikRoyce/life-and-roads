@@ -64,6 +64,23 @@ app.use((req, res, next) => {
   next();
 });
 
+// Imagens da marca para o e-mail (logo). Cache de um dia e liberação para
+// carregar de outro domínio, porque o helmet fecha isso por padrão e o
+// cliente de e-mail é outra origem.
+app.use(
+  '/marca',
+  (_req, res, next) => {
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    next();
+  },
+  express.static(path.join(process.cwd(), 'public', 'marca'), {
+    maxAge: '1d',
+    immutable: false,
+    index: false,
+    fallthrough: true,
+  }),
+);
+
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 300,

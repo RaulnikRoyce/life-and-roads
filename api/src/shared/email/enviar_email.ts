@@ -1,9 +1,12 @@
 import { logger } from '../http/logger';
+import { htmlDoCodigo, textoDoCodigo } from './modelo_codigo';
 
 export type Mensagem = {
   para: string;
   assunto: string;
   texto: string;
+  /** Versão formatada; o texto puro segue como alternativa. */
+  html?: string;
 };
 
 export type Transporte = (mensagem: Mensagem) => Promise<void>;
@@ -39,20 +42,13 @@ const enviarPeloResend = async (chave: string, mensagem: Mensagem): Promise<void
       to: [mensagem.para],
       subject: mensagem.assunto,
       text: mensagem.texto,
+      ...(mensagem.html ? { html: mensagem.html } : {}),
     }),
   });
   if (!resposta.ok) {
     throw new Error(`Resend respondeu ${resposta.status}`);
   }
 };
-
-const textoDoCodigo = (codigo: string): string => [
-  `Seu código para redefinir a senha no life.and.roads é ${codigo}.`,
-  '',
-  'O código vale 15 minutos e serve uma única vez.',
-  '',
-  'Se não foi você quem pediu, ignore este e-mail. Sua senha continua a mesma.',
-].join('\n');
 
 /**
  * Envia o código de recuperação. Transporte injetado > Resend > log local.
@@ -67,6 +63,7 @@ export const enviarCodigoRecuperacao = async (dados: {
     para: dados.para,
     assunto: 'Seu código para redefinir a senha',
     texto: textoDoCodigo(dados.codigo),
+    html: htmlDoCodigo(dados.codigo),
   };
 
   if (transporteInjetado) {
