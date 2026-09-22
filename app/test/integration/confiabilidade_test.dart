@@ -117,7 +117,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(_aba('Mapa'));
+    await tester.tap(_aba('Viagem'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Rastrear'));
     await tester.pumpAndSettle();

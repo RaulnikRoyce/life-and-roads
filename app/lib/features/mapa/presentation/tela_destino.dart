@@ -103,8 +103,8 @@ class _TelaDestinoState extends ConsumerState<TelaDestino> {
     if (origem == null) {
       _aviso(
         kIsWeb
-            ? 'Sem origem. Permita a localização no Chrome ou rastreie no Mapa.'
-            : 'Sem origem. Ligue o GPS ou rastreie no Mapa primeiro.',
+            ? 'Sem origem. Permita a localização no Chrome ou rastreie na aba Viagem.'
+            : 'Sem origem. Ligue o GPS ou rastreie na aba Viagem primeiro.',
       );
       return;
     }
@@ -165,7 +165,7 @@ class _TelaDestinoState extends ConsumerState<TelaDestino> {
     if (_origem == null) {
       return _buscandoGps
           ? 'Procurando o GPS…'
-          : 'Sem origem. Rastreie no Mapa ou permita a localização.';
+          : 'Sem origem. Rastreie na aba Viagem ou permita a localização.';
     }
     if (_buscandoRota) return 'Buscando a estrada…';
     if (_destino == null) {

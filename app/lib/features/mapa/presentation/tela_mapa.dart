@@ -9,13 +9,20 @@ import 'package:latlong2/latlong.dart';
 import 'package:life_and_roads/features/mapa/data/abrir_ponto.dart';
 import 'package:life_and_roads/features/mapa/presentation/camada_osm.dart';
 import 'package:life_and_roads/features/mapa/presentation/mapa_controller.dart';
+import 'package:life_and_roads/features/mapa/presentation/widgets/cartao_viagem.dart';
+import 'package:life_and_roads/features/viagem/presentation/viagem_controller.dart';
 import 'package:life_and_roads/mapa/pins.dart';
 import 'package:life_and_roads/mapa/ponto.dart';
 import 'package:life_and_roads/tema.dart';
 
-/// O celular é o rastreador. OSM isolado. Só o último ponto.
+/// Aba Viagem. O celular é o rastreador, OSM isolado, só o último ponto.
+/// Em cima do mapa, o [CartaoViagem] com as ações e a calculadora.
 class TelaMapa extends ConsumerStatefulWidget {
-  const TelaMapa({super.key});
+  const TelaMapa({super.key, this.visivel = true});
+
+  /// IndexedStack deixa a tela montada. Ao entrar na aba, a calculadora
+  /// relê a ficha (consumo e tanque podem ter mudado na aba Ficha).
+  final bool visivel;
 
   @override
   ConsumerState<TelaMapa> createState() => _TelaMapaState();
@@ -33,6 +40,14 @@ class _TelaMapaState extends ConsumerState<TelaMapa> {
     Future<void>.microtask(() {
       if (mounted) _ctrl.carregar();
     });
+  }
+
+  @override
+  void didUpdateWidget(TelaMapa oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.visivel && !oldWidget.visivel) {
+      ref.read(viagemControllerProvider.notifier).relerFicha();
+    }
   }
 
   @override
@@ -203,9 +218,9 @@ class _TelaMapaState extends ConsumerState<TelaMapa> {
     final rastreando = estado.rastreando;
     final autonomia = estado.autonomiaKm;
 
-    return Column(
+    return Stack(
       children: [
-        Expanded(
+        Positioned.fill(
           child: FlutterMap(
             mapController: _mapa,
             options: MapOptions(
@@ -262,57 +277,21 @@ class _TelaMapaState extends ConsumerState<TelaMapa> {
                     ),
                 ],
               ),
-              const CreditoOsm(),
+              // O cartão cobre o canto de baixo; o crédito sobe.
+              const CreditoOsm(alinhamento: Alignment.topRight),
             ],
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-          child: CartaoOficina(
-            child: Column(
-              children: [
-                Text(
-                  ponto == null
-                      ? 'Nenhum ponto ainda. Rastrear usa o GPS deste aparelho. '
-                            'Toque longo: posto ou oficina.'
-                      : 'Último ponto: ${ponto.latitude.toStringAsFixed(5)}, '
-                            '${ponto.longitude.toStringAsFixed(5)}. '
-                            'Toque longo: posto ou oficina. Toque no pino para abrir ou apagar.',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                if (ponto != null && autonomia != null) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    'O círculo é o alcance com tanque cheio: '
-                    '${autonomia.toStringAsFixed(0)} km em linha reta.',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ],
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      child: FilledButton(
-                        onPressed: rastreando ? _parar : _rastrear,
-                        child: Text(rastreando ? 'Parar' : 'Rastrear'),
-                      ),
-                    ),
-                    if (ponto != null) ...[
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: _ondeEstou,
-                          icon: const Icon(Icons.ios_share, size: 18),
-                          label: const Text('Onde estou'),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ],
-            ),
+        // O Align passa a altura do Stack ao cartão, que limita a 60%.
+        Align(
+          alignment: Alignment.bottomCenter,
+          child: CartaoViagem(
+            rastreando: rastreando,
+            temPonto: ponto != null,
+            autonomiaKm: autonomia,
+            aoRastrear: _rastrear,
+            aoParar: _parar,
+            aoOndeEstou: _ondeEstou,
           ),
         ),
       ],

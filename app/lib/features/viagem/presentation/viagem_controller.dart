@@ -18,8 +18,8 @@ final precosLocalDatasourceProvider = Provider<PrecosLocalDatasource>(
 
 final abastecimentoLocalDatasourceProvider =
     Provider<AbastecimentoLocalDatasource>(
-  (_) => AbastecimentoLocalDatasource(),
-);
+      (_) => AbastecimentoLocalDatasource(),
+    );
 
 final viagemRepositoryProvider = Provider<ViagemRepository>(
   (ref) => ViagemRepositoryImpl(
@@ -69,10 +69,7 @@ class ViagemController extends Notifier<ViagemEstado> {
 
   Future<void> relerFicha() async {
     final ficha = await _fichaLocal.ler(recarregar: true);
-    state = state.copiarCom(
-      ficha: ficha,
-      limparFicha: ficha == null,
-    );
+    state = state.copiarCom(ficha: ficha, limparFicha: ficha == null);
   }
 
   void definirCombustivel(Combustivel c) {
@@ -89,6 +86,12 @@ class ViagemController extends Notifier<ViagemEstado> {
 
   void limparResultado() {
     state = state.copiarCom(limparResultado: true);
+  }
+
+  /// O que o piloto digita nos campos de preço da aba Posto. Só o estado;
+  /// o disco é gravado no [calcular] e no [registrarAbastecimento].
+  void definirPrecos(PrecosLitro precos) {
+    state = state.copiarCom(precos: precos);
   }
 
   Future<void> calcular({
@@ -143,8 +146,7 @@ class ViagemController extends Notifier<ViagemEstado> {
 
     final salva = await _fichaRepo.salvar(montado.ficha!);
     await _viagem.gravarPrecos(precos);
-    final historico =
-        await _viagem.acrescentarAbastecimento(montado.registro!);
+    final historico = await _viagem.acrescentarAbastecimento(montado.registro!);
     state = state.copiarCom(
       ficha: salva.ficha,
       precos: precos,

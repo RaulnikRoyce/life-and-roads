@@ -12,8 +12,8 @@ A caderneta funciona offline, sem conta. O login replica ficha, datas de manuten
 |---|---|
 | **Ficha** | marca, modelo, km, tanque, média (álcool só se flex), PSI, foto, catálogo Cidade / Estrada / Esportiva |
 | **Manutenção** | óleo, pneus, revisão, corrente, IPVA, seguro, licenciamento, CNH (só a data), oficina |
-| **Viagem** | litros e reais da rota, álcool versus gasolina (R$/km), km digitado ou marcado no mapa |
-| **Mapa** | GPS, último ponto, pins de posto e oficina (toque longo) |
+| **Posto** | custo por km real, abastecimentos e postos, preços do dia |
+| **Viagem** | GPS, último ponto, pinos, trajeto com km de estrada e cálculo da viagem |
 
 Backup fica na Ficha, em **Backup neste aparelho**: envia o arquivo pelo compartilhar do Android e restaura pelo seletor de arquivos. Fora da v1 ficam iOS, frota, PDF, navegação passo a passo e envio da foto.
 
@@ -54,8 +54,8 @@ O build release exige `android/key.properties` + `upload-keystore.jks` (fora do 
 - Com conta: abrir o app depois de mais de 15 min sem cair da sessão; linha "No servidor" com hora
 - Ficha com catálogo (3 silhuetas por categoria), foto local e backup JSON
 - Manutenção com óleo, pneus, documentos e lembretes
-- Viagem com estimativa, flex (R$/km) e registro de abastecimento
-- Mapa com rastreio, pins e destino com km de estrada (internet)
+- Posto com custo por km real, preços do dia e registro de abastecimento
+- Viagem com rastreio, pinos, destino com km de estrada (internet) e cálculo da viagem
 - Conta opcional e conflito local versus servidor
 - Textos em português comum (sem gíria de posto)
 

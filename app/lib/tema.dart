@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:life_and_roads/core/widgets/movimento.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Paleta derivada da logomarca: preto, cinza das faixas, vinho e branco.
@@ -30,8 +29,9 @@ ThemeData _temaOficina({required bool escuro}) {
   final mute = escuro ? Oficina.mute : const Color(0xFF6E6E6E);
   final onPrimary = escuro ? Oficina.creme : Colors.white;
   final outline = escuro ? const Color(0xFF3A3A3A) : const Color(0xFFD4CEC4);
-  final outlinedSide =
-      escuro ? const Color(0xFF4A3030) : const Color(0xFFC4B8B0);
+  final outlinedSide = escuro
+      ? const Color(0xFF4A3030)
+      : const Color(0xFFC4B8B0);
 
   final esquema = ColorScheme(
     brightness: escuro ? Brightness.dark : Brightness.light,
@@ -66,11 +66,7 @@ ThemeData _temaOficina({required bool escuro}) {
       height: 1.25,
       color: texto,
     ),
-    bodyLarge: GoogleFonts.sourceSans3(
-      fontSize: 16,
-      height: 1.4,
-      color: tinta,
-    ),
+    bodyLarge: GoogleFonts.sourceSans3(fontSize: 16, height: 1.4, color: tinta),
     bodyMedium: GoogleFonts.sourceSans3(
       fontSize: 14,
       height: 1.45,
@@ -147,10 +143,7 @@ ThemeData _temaOficina({required bool escuro}) {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(Oficina.raio),
         ),
-        textStyle: GoogleFonts.oswald(
-          fontSize: 15,
-          letterSpacing: 0.6,
-        ),
+        textStyle: GoogleFonts.oswald(fontSize: 15, letterSpacing: 0.6),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
@@ -185,9 +178,7 @@ ThemeData _temaOficina({required bool escuro}) {
       backgroundColor: cartao,
       contentTextStyle: GoogleFonts.sourceSans3(color: texto),
       behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ),
     dropdownMenuTheme: DropdownMenuThemeData(
       inputDecorationTheme: InputDecorationTheme(
@@ -264,14 +255,11 @@ EdgeInsets paddingOficina(BuildContext context) {
   return EdgeInsets.fromLTRB(lateral, 8, lateral, 32);
 }
 
-bool telaEstreita(BuildContext context) => MediaQuery.sizeOf(context).width < 480;
+bool telaEstreita(BuildContext context) =>
+    MediaQuery.sizeOf(context).width < 480;
 
 class CartaoOficina extends StatelessWidget {
-  const CartaoOficina({
-    required this.child,
-    super.key,
-    this.destaque = false,
-  });
+  const CartaoOficina({required this.child, super.key, this.destaque = false});
 
   final Widget child;
   final bool destaque;
@@ -307,11 +295,7 @@ class CartaoOficina extends StatelessWidget {
 }
 
 class DuplaCampos extends StatelessWidget {
-  const DuplaCampos({
-    required this.esquerda,
-    required this.direita,
-    super.key,
-  });
+  const DuplaCampos({required this.esquerda, required this.direita, super.key});
 
   final Widget esquerda;
   final Widget direita;
@@ -328,57 +312,6 @@ class DuplaCampos extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(child: direita),
       ],
-    );
-  }
-}
-
-class StatOficina extends StatelessWidget {
-  const StatOficina(this.rotulo, this.valor, {super.key})
-      : numero = null,
-        formatar = null;
-
-  /// Valor numérico que conta até o número (painel, km/l).
-  const StatOficina.numero(
-    this.rotulo, {
-    required double this.numero,
-    required String Function(double) this.formatar,
-    super.key,
-  }) : valor = '';
-
-  final String rotulo;
-  final String valor;
-  final double? numero;
-  final String Function(double)? formatar;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
-        children: [
-          Text(
-            rotulo,
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  fontSize: 11,
-                  letterSpacing: 1.1,
-                  color: Oficina.mute,
-                ),
-          ),
-          const SizedBox(height: 6),
-          if (numero != null)
-            NumeroAnimado(
-              valor: numero!,
-              formatar: formatar!,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleMedium,
-            )
-          else
-            Text(
-              valor,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-        ],
-      ),
     );
   }
 }
@@ -418,9 +351,8 @@ class LinhaData extends StatelessWidget {
                     children: [
                       Text(
                         rotulo,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Oficina.mute,
-                            ),
+                        style: Theme.of(context).textTheme.bodyMedium
+                            ?.copyWith(color: Oficina.mute),
                       ),
                       const SizedBox(height: 4),
                       Text(

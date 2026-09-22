@@ -40,8 +40,9 @@ void main() {
 
     expect(_aba('Ficha'), findsOneWidget);
     expect(_aba('Manutenção'), findsOneWidget);
+    expect(_aba('Posto'), findsOneWidget);
     expect(_aba('Viagem'), findsOneWidget);
-    expect(_aba('Mapa'), findsOneWidget);
+    expect(_aba('Mapa'), findsNothing);
   });
 
   testWidgets('abertura mostra a logo e o crédito', (tester) async {
@@ -239,31 +240,44 @@ void main() {
     expect(find.text('Nenhum serviço ainda'), findsOneWidget);
   });
 
-  testWidgets('aba viagem mostra o cálculo', (tester) async {
+  testWidgets('aba posto mostra o painel e o abastecimento', (tester) async {
     await tester.pumpWidget(
       const ProviderScope(child: LifeAndRoadsApp(pularAbertura: true)),
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(_aba('Viagem'));
+    await tester.tap(_aba('Posto'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Calcular'), findsOneWidget);
-    expect(find.text('Marcar no mapa'), findsOneWidget);
-    expect(find.text('Gasolina'), findsWidgets);
-    expect(find.text('Álcool'), findsWidgets);
+    // A calculadora saiu desta aba.
+    expect(find.text('Calcular'), findsNothing);
+    expect(find.text('Marcar no mapa'), findsNothing);
+
+    expect(find.text('POR KM'), findsOneWidget);
     expect(find.text('Preço gasolina (R\$)'), findsOneWidget);
+    expect(find.text('Registrar abastecimento'), findsOneWidget);
+    expect(find.text('Nenhum abastecimento ainda'), findsOneWidget);
+    // Km e litros ficam na folha, não na tela.
+    expect(find.text('Litros abastecidos'), findsNothing);
+
     await tester.scrollUntilVisible(
       find.text('Registrar abastecimento'),
       200,
       scrollable: _scroll(),
     );
-    expect(find.text('Registrar abastecimento'), findsOneWidget);
+    await tester.tap(find.text('Registrar abastecimento'));
+    await tester.pumpAndSettle();
     expect(find.text('Litros abastecidos'), findsOneWidget);
     expect(find.text('Km no painel agora'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Registrar'), findsOneWidget);
+
+    // Fechar pela barreira, sem registrar.
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pumpAndSettle();
+    expect(find.text('Litros abastecidos'), findsNothing);
   });
 
-  testWidgets('aba viagem relê o km/l da ficha ao abrir', (tester) async {
+  testWidgets('aba posto relê a ficha ao abrir', (tester) async {
     await tester.pumpWidget(
       const ProviderScope(child: LifeAndRoadsApp(pularAbertura: true)),
     );
@@ -275,23 +289,97 @@ void main() {
       '{"marca":"Honda","modelo":"NXR 160 Bros","kmLitro":"35","kmLitroAlcool":"28","kmAtual":"32130","tanqueLitros":"12"}',
     );
 
-    await tester.tap(_aba('Viagem'));
+    await tester.tap(_aba('Posto'));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('Consumo com gasolina'), findsOneWidget);
+    // Pastilha COM 1 L com o kmLitro da ficha e o km gravado.
+    expect(find.text('35 km'), findsOneWidget);
+    expect(find.text('Último km gravado: 32.130.'), findsOneWidget);
   });
 
-  testWidgets('aba mapa mostra Rastrear', (tester) async {
+  testWidgets('aba viagem mostra Rastrear', (tester) async {
     await tester.pumpWidget(
       const ProviderScope(child: LifeAndRoadsApp(pularAbertura: true)),
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(_aba('Mapa'));
+    await tester.tap(_aba('Viagem'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
 
     expect(find.text('Rastrear'), findsOneWidget);
     expect(find.textContaining('Toque longo'), findsOneWidget);
+  });
+
+  testWidgets('aba viagem abre o cálculo', (tester) async {
+    await tester.pumpWidget(
+      const ProviderScope(child: LifeAndRoadsApp(pularAbertura: true)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(_aba('Viagem'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    // Recolhido: só as ações e a ajuda.
+    expect(find.text('Km da viagem'), findsNothing);
+
+    await tester.tap(find.text('Calcular viagem'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(find.text('Km da viagem'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Calcular'), findsOneWidget);
+    expect(find.text('Gasolina'), findsOneWidget);
+    expect(find.text('Álcool'), findsOneWidget);
+    expect(find.text('Informe os preços na aba Posto.'), findsOneWidget);
+
+    // O mapa não termina animações em teste; sem pumpAndSettle. O cartão
+    // cresce durante Movimento.medio com o cabeçalho ainda fora da caixa;
+    // o pump com duração avança o relógio até ele caber e receber o toque.
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.byIcon(Icons.expand_more));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('Km da viagem'), findsNothing);
+    expect(find.text('Calcular viagem'), findsOneWidget);
+  });
+
+  testWidgets('preço digitado no Posto chega à Viagem', (tester) async {
+    await tester.pumpWidget(
+      const ProviderScope(child: LifeAndRoadsApp(pularAbertura: true)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(_aba('Posto'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Preço gasolina (R\$)'),
+      '5,89',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Preço álcool (R\$)'),
+      '3,99',
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(_aba('Viagem'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    await tester.tap(find.text('Calcular viagem'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(
+      find.text(
+        'Preços de hoje: gasolina R\$ 5,89, álcool R\$ 3,99. '
+        'Ajuste na aba Posto.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Informe os preços na aba Posto.'), findsNothing);
   });
 }

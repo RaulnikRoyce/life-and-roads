@@ -25,12 +25,20 @@ class CamadaOsm extends StatelessWidget {
 
 /// Atribuição exigida pelo OSM.
 class CreditoOsm extends StatelessWidget {
-  const CreditoOsm({super.key, this.texto = 'OpenStreetMap'});
+  const CreditoOsm({
+    super.key,
+    this.texto = 'OpenStreetMap',
+    this.alinhamento = Alignment.bottomRight,
+  });
 
   final String texto;
 
+  /// Canto do mapa. A aba Viagem usa o de cima, porque o cartão flutuante
+  /// cobre o de baixo.
+  final Alignment alinhamento;
+
   @override
   Widget build(BuildContext context) {
-    return SimpleAttributionWidget(source: Text(texto));
+    return SimpleAttributionWidget(source: Text(texto), alignment: alinhamento);
   }
 }

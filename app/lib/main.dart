@@ -1,7 +1,7 @@
 /// Ponto de entrada do life.and.roads.
 ///
-/// Quatro abas (Ficha, Manutenção, Viagem, Mapa) em [IndexedStack], para o
-/// estado de cada tela sobreviver à troca. Viagem e Manutenção relêem a
+/// Quatro abas (Ficha, Manutenção, Posto, Viagem) em [IndexedStack], para o
+/// estado de cada tela sobreviver à troca. Posto e Manutenção relêem a
 /// ficha ao ficarem visíveis.
 library;
 
@@ -28,7 +28,7 @@ import 'package:life_and_roads/features/mapa/presentation/tela_mapa.dart';
 import 'package:life_and_roads/tema.dart';
 import 'package:life_and_roads/tema_pref.dart';
 import 'package:life_and_roads/tela_abertura.dart';
-import 'package:life_and_roads/features/viagem/presentation/tela_viagem.dart';
+import 'package:life_and_roads/features/viagem/presentation/tela_posto.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -123,8 +123,12 @@ class _TelaPrincipalState extends ConsumerState<TelaPrincipal>
   static const _abas = [
     Aba(titulo: 'Ficha', icone: Icons.two_wheeler),
     Aba(titulo: 'Manutenção', icone: Icons.build_outlined, ativo: Icons.build),
+    Aba(
+      titulo: 'Posto',
+      icone: Icons.local_gas_station_outlined,
+      ativo: Icons.local_gas_station,
+    ),
     Aba(titulo: 'Viagem', icone: Icons.route_outlined, ativo: Icons.route),
-    Aba(titulo: 'Mapa', icone: Icons.map_outlined, ativo: Icons.map),
   ];
 
   @override
@@ -198,8 +202,8 @@ class _TelaPrincipalState extends ConsumerState<TelaPrincipal>
             children: [
               const TelaFicha(),
               TelaManutencao(visivel: _indice == 1),
-              TelaViagem(visivel: _indice == 2),
-              const TelaMapa(),
+              TelaPosto(visivel: _indice == 2),
+              TelaMapa(visivel: _indice == 3),
             ],
           ),
         ),
