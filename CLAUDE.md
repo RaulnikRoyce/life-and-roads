@@ -39,7 +39,7 @@ Português comum, sem gíria de posto e sem fórmula na tela (`÷`, `×`, `R$/km
 
 ## Estado (set/2026)
 
-Beta fechado com pilotos. Release `1.3.0+7` (tag `v1.3.0`, 22/09/2026, ADR 0031) com a primeira abertura em três passos, recuperação de senha, Manutenção, Posto e Viagem como painéis e o consumo entre abastecimentos; a `1.2.1+6` (18/09) ainda pode estar em alguns aparelhos. `flutter_secure_storage` fica em `^10.3.x` durante o beta (a 11 é breaking e exige passar pela 10 antes). 
+Beta aberto ao motoclube Bodes do Asfalto Mata Mineira desde 22/09/2026; antes disso era fechado, só com pilotos conhecidos. Release `1.4.0+8` (tag `v1.4.0`, 22/09/2026, ADR 0035) com o catálogo de 116 motos e busca, o backup automático, o convite de conta e o app web; a tag publica APK e `app.raulnikroyce.dev` no mesmo empurrão, então as duas plataformas andam juntas a partir daqui. Antes dela, a `1.3.0+7` (ADR 0031) e a `1.2.1+6` (18/09) ainda podem estar em alguns aparelhos. `flutter_secure_storage` fica em `^10.3.x` durante o beta (a 11 é breaking e exige passar pela 10 antes). 
 
 Auditoria de 17/09/2026 (Claude Code): os cinco itens principais (race no refresh, backup lendo token antigo, JSON malformado em 500, MySQL no CI, data inválida) e os baixos da API (ano congelado, `/auth/sair`, limpeza de sessões, timing do login, `TRUST_PROXY`, fuso do pool) estão corrigidos e testados. O conflito falso de sync em aparelho único foi resolvido com o carimbo `atualizadoEm` (ADR 0018). Upserts usam a sintaxe `VALUES (...) AS novo ON DUPLICATE KEY UPDATE col = novo.col` (MySQL ≥ 8.0.20; produção é 8.4.8 na Aiven, compose e CI usam `mysql:8.0`). Não usar `VALUES(col)`, que está obsoleto.
 
