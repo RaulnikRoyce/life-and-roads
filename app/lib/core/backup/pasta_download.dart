@@ -12,12 +12,19 @@ class PastaDownload {
 
   static const canal = MethodChannel('life_and_roads/download');
 
+  /// Se este aparelho tem pasta Download para gravar sozinho.
+  ///
+  /// A tela lê isto para não prometer ao piloto de iPhone uma cópia que só
+  /// acontece no Android.
+  static bool get disponivel =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+
   /// Devolve o caminho visível ao piloto, ou null quando não deu.
   Future<String?> salvar({
     required String nome,
     required String conteudo,
   }) async {
-    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return null;
+    if (!disponivel) return null;
     try {
       return await canal.invokeMethod<String>('salvar', {
         'nome': nome,

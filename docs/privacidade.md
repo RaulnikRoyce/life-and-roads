@@ -8,7 +8,9 @@ Com login, e-mail, senha (bcrypt), ficha (sem PSI), datas de manutenção e o ú
 
 Ficam só no aparelho a foto, o PSI, os pins, os abastecimentos, os serviços, o backup, placa, chassi e RENAVAM.
 
-Backup automático: a cada mudança na caderneta o app grava uma cópia em `Download/life.and.roads/caderneta.json`, no próprio aparelho. Esse arquivo fica visível no gerenciador de arquivos e sobrevive a desinstalar o app, de propósito, para o piloto não perder a caderneta ao trocar de celular. Nada é enviado; quem decide compartilhar é o piloto, pelo botão Enviar backup.
+Backup automático, **só no app de Android**: a cada mudança na caderneta o app grava uma cópia em `Download/life.and.roads/caderneta.json`, no próprio aparelho. Esse arquivo fica visível no gerenciador de arquivos e sobrevive a desinstalar o app, de propósito, para o piloto não perder a caderneta ao trocar de celular. Nada é enviado; quem decide compartilhar é o piloto, pelo botão Enviar backup.
+
+No app web instalado na tela inicial não existe essa cópia automática, porque o navegador não escreve em pasta do aparelho sem o piloto confirmar. Ali a caderneta fica guardada dentro do próprio navegador e sai só pelo botão Enviar backup. Vale saber que apagar os dados do site, ou o app da tela inicial, apaga a caderneta junto.
 
 Crash (só em staging/produção, se ligado no build): tipo de erro, mensagem curta, versão do app, sistema (ex. "android 14") e o começo da pilha de chamadas, **sem** ficha, e-mail ou posição. Fica 90 dias no servidor e depois é apagado.
 

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_and_roads/core/backup/backup_automatico.dart';
 import 'package:life_and_roads/core/backup/pasta_download.dart';
+import 'package:life_and_roads/features/ficha/presentation/widgets/bloco_backup.dart';
 
 /// Guarda o que seria gravado, no lugar do canal nativo.
 class _PastaFalsa implements PastaDownload {
@@ -181,6 +182,28 @@ void main() {
         await const PastaDownload().salvar(nome: 'a.json', conteudo: '{}'),
         isNull,
       );
+    });
+  });
+
+  group('texto do bloco de backup', () {
+    test('sem pasta Download, não promete cópia em Download', () {
+      final t = BlocoBackup.texto(temPasta: false, em: DateTime.now());
+      expect(t, isNot(contains('Download')));
+      expect(t, contains('Guarde uma cópia'));
+    });
+
+    test('com pasta e sem carimbo, promete a cópia', () {
+      final t = BlocoBackup.texto(temPasta: true);
+      expect(t, contains('Uma cópia fica em Download'));
+    });
+
+    test('com pasta e com carimbo, diz quando salvou', () {
+      final t = BlocoBackup.texto(
+        temPasta: true,
+        em: DateTime.now().subtract(const Duration(minutes: 5)),
+      );
+      expect(t, contains('Salvo sozinho em Download'));
+      expect(t, contains('há 5 min'));
     });
   });
 }

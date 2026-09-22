@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:life_and_roads/core/backup/pasta_download.dart';
 import 'package:life_and_roads/tema.dart';
 
 /// Seção "Backup neste aparelho" da Ficha. Só botões; quem faz é a tela.
@@ -19,6 +20,20 @@ class BlocoBackup extends StatelessWidget {
 
   /// Quando o backup automático gravou pela última vez. Null se nunca.
   final DateTime? automatico;
+
+  /// Texto do bloco, nos três estados que existem.
+  ///
+  /// Sem pasta Download (iPhone, navegador) o app não promete cópia
+  /// nenhuma, porque ali ela não acontece.
+  static String texto({required bool temPasta, DateTime? em}) {
+    const fim = 'Envie para o Drive ou o WhatsApp e restaure de lá.';
+    if (!temPasta) return 'Guarde uma cópia da caderneta fora do aparelho. $fim';
+    if (em == null) {
+      return 'Uma cópia fica em Download, na pasta life.and.roads. $fim';
+    }
+    return 'Salvo sozinho em Download, na pasta life.and.roads, '
+        '${_quando(em)}. $fim';
+  }
 
   static String _quando(DateTime d) {
     final agora = DateTime.now();
@@ -44,12 +59,7 @@ class BlocoBackup extends StatelessWidget {
           style: Theme.of(context).textTheme.titleMedium,
         ),
         subtitle: Text(
-          automatico == null
-              ? 'Uma cópia fica em Download, na pasta life.and.roads. Envie '
-                    'para o Drive ou o WhatsApp e restaure de lá.'
-              : 'Salvo sozinho em Download, na pasta life.and.roads, '
-                    '${_quando(automatico!)}. Envie para o Drive ou o '
-                    'WhatsApp e restaure de lá.',
+          texto(temPasta: PastaDownload.disponivel, em: automatico),
           style: Theme.of(context).textTheme.bodyMedium,
         ),
         children: [
