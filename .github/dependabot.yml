@@ -1,0 +1,43 @@
+# Um PR por semana por ecossistema, na segunda de manhã (horário de Brasília).
+# Atualizações menores vêm agrupadas; major vem sozinha, para ler o changelog.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /api
+    schedule:
+      interval: weekly
+      day: monday
+      time: '07:00'
+      timezone: America/Sao_Paulo
+    open-pull-requests-limit: 3
+    groups:
+      menores:
+        update-types: [minor, patch]
+    labels: [dependencias, api]
+
+  - package-ecosystem: pub
+    directory: /app
+    schedule:
+      interval: weekly
+      day: monday
+      time: '07:00'
+      timezone: America/Sao_Paulo
+    open-pull-requests-limit: 3
+    groups:
+      menores:
+        update-types: [minor, patch]
+    # A 11 é breaking e exige passar pela 10 antes; fica na 10 durante o beta.
+    ignore:
+      - dependency-name: flutter_secure_storage
+        update-types: [version-update:semver-major]
+    labels: [dependencias, app]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '07:00'
+      timezone: America/Sao_Paulo
+    open-pull-requests-limit: 2
+    labels: [dependencias, ci]

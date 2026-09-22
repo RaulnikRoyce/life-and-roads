@@ -43,6 +43,8 @@ jobs:
           cache: npm
           cache-dependency-path: api/package-lock.json
       - run: npm ci
+      # Só dependências de produção; alta ou crítica derruba o job.
+      - run: npm audit --omit=dev --audit-level=high
       - run: npm run typecheck
       - run: npm test
 
