@@ -70,6 +70,7 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
 
   /// Carimbo do backup que grava sozinho em Download.
   DateTime? _backupAutomaticoEm;
+  BackupAutomatico? _backup;
 
   /// Convite de conta: some quando o piloto dispensa.
   bool _conviteDispensado = true;
@@ -100,6 +101,12 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
       if (mounted) setState(() => _foto = bytes);
     });
     _relerBackupAutomatico();
+    // O backup grava alguns segundos depois de salvar, e esta tela vive
+    // num IndexedStack que não reconstrói ao trocar de aba. Sem escutar,
+    // o carimbo só apareceria na próxima abertura.
+    final backup = ref.read(backupAutomaticoProvider);
+    backup.ultimo.addListener(_aoGravarBackup);
+    _backup = backup;
     ArmazemKv.lerTexto(ChavesKv.conviteContaDispensado).then((v) {
       if (mounted) setState(() => _conviteDispensado = v == 'sim');
     });
@@ -108,6 +115,7 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
   @override
   void dispose() {
     _debounceKm?.cancel();
+    _backup?.ultimo.removeListener(_aoGravarBackup);
     _kmAtual.removeListener(_agendarSalvarKm);
     _email.dispose();
     _senha.dispose();
@@ -161,6 +169,11 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
   Future<void> _relerBackupAutomatico() async {
     final em = await BackupAutomatico.ultimoEm();
     if (mounted) setState(() => _backupAutomaticoEm = em);
+  }
+
+  void _aoGravarBackup() {
+    final em = _backup?.ultimo.value;
+    if (mounted && em != null) setState(() => _backupAutomaticoEm = em);
   }
 
   void _aoMudarAutonomia() {

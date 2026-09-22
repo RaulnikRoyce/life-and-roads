@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:life_and_roads/backup.dart';
@@ -30,6 +31,11 @@ class BackupAutomatico {
 
   static const nomeArquivo = 'caderneta.json';
 
+  /// Avisa quando o backup gravou, para a Ficha trocar o texto sem esperar
+  /// a próxima abertura do app. Começa nulo e a tela lê o carimbo do
+  /// aparelho por conta própria.
+  final ultimo = ValueNotifier<DateTime?>(null);
+
   Timer? _timer;
   bool _gravando = false;
 
@@ -49,12 +55,14 @@ class BackupAutomatico {
         conteudo: await _exportar(),
       );
       if (caminho != null) {
+        final agora = DateTime.now();
+        ultimo.value = agora;
         // O carimbo é só para a tela dizer "salvo há 5 min". Falhar aqui
         // não desfaz o backup, que já está gravado.
         try {
           await ArmazemKv.gravarTexto(
             ChavesKv.backupAutomaticoEm,
-            DateTime.now().toIso8601String(),
+            agora.toIso8601String(),
           );
         } catch (_) {}
       }
@@ -75,6 +83,7 @@ class BackupAutomatico {
   void descartar() {
     _timer?.cancel();
     _timer = null;
+    ultimo.dispose();
   }
 }
 

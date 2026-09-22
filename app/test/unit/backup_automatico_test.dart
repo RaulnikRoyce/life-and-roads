@@ -43,6 +43,29 @@ void main() {
     expect(pasta.gravados.single.conteudo, '{"v":2}');
   });
 
+  test('avisa quem escuta quando grava, para a Ficha trocar o texto', () async {
+    final pasta = _PastaFalsa();
+    final auto = BackupAutomatico(pasta: pasta, exportar: () async => '{}');
+    final vistos = <DateTime?>[];
+    auto.ultimo.addListener(() => vistos.add(auto.ultimo.value));
+
+    expect(auto.ultimo.value, isNull, reason: 'começa sem carimbo');
+    await auto.gravarAgora();
+    expect(vistos.length, 1);
+    expect(vistos.single, isNotNull);
+  });
+
+  test('backup que não gravou não avisa ninguém', () async {
+    final pasta = _PastaFalsa()..devolve = null;
+    final auto = BackupAutomatico(pasta: pasta, exportar: () async => '{}');
+    var avisos = 0;
+    auto.ultimo.addListener(() => avisos++);
+
+    await auto.gravarAgora();
+    expect(avisos, 0);
+    expect(auto.ultimo.value, isNull);
+  });
+
   test('gravarAgora devolve o caminho mesmo sem o banco do carimbo', () async {
     final pasta = _PastaFalsa();
     final auto = BackupAutomatico(pasta: pasta, exportar: () async => '{}');

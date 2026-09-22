@@ -27,7 +27,9 @@ Ao dispensar, o app pergunta o motivo, com quatro respostas de um toque e um cam
 
 - O arquivo em `Download` é visível no gerenciador de arquivos e sobrevive a desinstalar o app, de propósito. Quem pegar o celular desbloqueado lê a caderneta, o mesmo que já valia para qualquer arquivo exportado.
 - O nome do arquivo é sempre o mesmo, e a gravação regrava por cima, para não virar `caderneta(1).json`.
-- O carimbo do último backup aparece na Ficha. Se gravar o carimbo falhar, o backup continua valendo.
-- Este projeto passa a ter código nativo. O build de depuração compila nesta máquina desde 22/09/2026 (Android Studio instalado), então dá para conferir o Kotlin antes de subir.
+- O carimbo do último backup aparece na Ficha e troca na hora, porque a tela escuta o `BackupAutomatico`. Ler só na abertura não servia, já que a gravação acontece segundos depois de salvar e a Ficha vive num `IndexedStack` que não reconstrói ao trocar de aba. Se gravar o carimbo falhar, o backup continua valendo.
+- Este projeto passa a ter código nativo. O build de depuração compila nesta máquina desde 22/09/2026 (Android Studio instalado), e um emulador local (AVD `life_and_roads`, Android 16) permite conferir a gravação em `Download` antes de subir.
+- Conferido no emulador em 22/09/2026: o arquivo nasce em `Download/life.and.roads/caderneta.json`, salvar de novo regrava o mesmo arquivo em vez de criar `caderneta(1).json`, e o arquivo continua legível depois de desinstalar o app.
+- O arquivo nasce com uns 475 KB porque a ficha carrega a foto da moto em base64, que o catálogo preenche sozinho. Isso já valia para o backup manual.
 - `docs/privacidade.md` ganhou o backup automático e o motivo de recusa.
 - O contrato de `/monitor/evento` aceita um `tipo` a mais. Nada existente mudou.
