@@ -171,7 +171,7 @@ void main() {
     expect(find.text('GASOLINA'), findsOneWidget);
   });
 
-  testWidgets('aba manutenção mostra óleo e pneus', (tester) async {
+  testWidgets('aba manutenção mostra o painel e os grupos', (tester) async {
     await tester.pumpWidget(
       const ProviderScope(child: LifeAndRoadsApp(pularAbertura: true)),
     );
@@ -180,25 +180,63 @@ void main() {
     await tester.tap(_aba('Manutenção'));
     await tester.pumpAndSettle();
 
+    // Agenda vazia: o anel fica só com o trilho e o formulário não aparece.
+    expect(find.text('Sem vencimentos'), findsOneWidget);
+    expect(find.byIcon(Icons.notifications_outlined), findsOneWidget);
+    expect(find.text('Data da última troca'), findsNothing);
+    expect(find.text('Salvar manutenção'), findsNothing);
+
+    // O grupo abre a folha com os campos de sempre.
+    await tester.scrollUntilVisible(
+      find.text('ÓLEO E CORRENTE'),
+      200,
+      scrollable: _scroll(),
+    );
+    await tester.tap(find.text('ÓLEO E CORRENTE'));
+    await tester.pumpAndSettle();
     expect(find.text('Data da última troca'), findsOneWidget);
     expect(
       find.text('Próxima troca (o app sugere seis meses depois)'),
       findsOneWidget,
     );
     expect(find.text('Km do painel na troca'), findsOneWidget);
-    expect(find.byIcon(Icons.notifications_outlined), findsOneWidget);
+    // O botão fica no fim da folha; com a folha aberta, o primeiro
+    // Scrollable tocável é o dela.
     await tester.scrollUntilVisible(
-      find.text('CNH, vencimento'),
+      find.text('Salvar'),
       200,
       scrollable: _scroll(),
     );
+    expect(find.widgetWithText(FilledButton, 'Salvar'), findsOneWidget);
+
+    // Fechar pela barreira, sem salvar.
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pumpAndSettle();
+    expect(find.text('Data da última troca'), findsNothing);
+
+    for (final grupo in ['PNEUS', 'DOCUMENTOS', 'CNH']) {
+      await tester.scrollUntilVisible(
+        find.text(grupo),
+        200,
+        scrollable: _scroll(),
+      );
+      expect(find.text(grupo), findsOneWidget);
+    }
+    await tester.tap(find.text('CNH'));
+    await tester.pumpAndSettle();
     expect(find.text('CNH, vencimento'), findsOneWidget);
+    expect(find.text('CNH 10 anos'), findsOneWidget);
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pumpAndSettle();
+    expect(find.text('CNH, vencimento'), findsNothing);
+
     await tester.scrollUntilVisible(
       find.text('Registrar serviço'),
       200,
       scrollable: _scroll(),
     );
     expect(find.text('Registrar serviço'), findsOneWidget);
+    expect(find.text('Nenhum serviço ainda'), findsOneWidget);
   });
 
   testWidgets('aba viagem mostra o cálculo', (tester) async {
