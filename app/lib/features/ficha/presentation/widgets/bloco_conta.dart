@@ -24,7 +24,11 @@ class BlocoConta extends StatelessWidget {
     required this.aoEsqueciSenha,
     required this.aoExcluirConta,
     required this.aoMostrarTexto,
+    this.chave,
   });
+
+  /// Muda quando a tela quer reabrir o bloco já expandido.
+  final Key? chave;
 
   final bool logado;
   final String? email;
@@ -53,6 +57,8 @@ class BlocoConta extends StatelessWidget {
     return Theme(
       data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
       child: ExpansionTile(
+        key: chave,
+        initiallyExpanded: chave != null,
         tilePadding: EdgeInsets.zero,
         childrenPadding: const EdgeInsets.only(bottom: 8),
         leading: const Icon(Icons.lock_outline, color: Oficina.latao),

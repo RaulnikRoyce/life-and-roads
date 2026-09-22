@@ -381,4 +381,56 @@ void main() {
     );
     expect(find.text('Informe os preços na aba Posto.'), findsNothing);
   });
+  testWidgets('sem ficha não há convite de conta', (tester) async {
+    await _app(tester);
+    expect(find.text('Guarde a caderneta na sua conta'), findsNothing);
+  });
+
+  testWidgets('com ficha e sem conta, o convite aparece e dispensa', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({
+      'ficha_moto_v1':
+          '{"marca":"Honda","modelo":"Bros","kmLitro":"35","kmAtual":"1000"}',
+    });
+    await tester.pumpWidget(
+      const ProviderScope(child: LifeAndRoadsApp(pularAbertura: true)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('Guarde a caderneta na sua conta'),
+      200,
+      scrollable: _scroll(),
+    );
+    expect(find.text('Criar conta'), findsOneWidget);
+
+    // Dispensar tira o convite e pergunta o motivo, que é opcional.
+    await tester.ensureVisible(find.text('Agora não'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Agora não'));
+    await tester.pumpAndSettle();
+    expect(find.text('Por que não agora?'), findsOneWidget);
+    expect(
+      tester
+          .widget<FilledButton>(find.widgetWithText(FilledButton, 'Enviar'))
+          .enabled,
+      isFalse,
+      reason: 'sem motivo escolhido, nada a enviar',
+    );
+
+    await tester.tap(find.text('Não quero dar meu e-mail'));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<FilledButton>(find.widgetWithText(FilledButton, 'Enviar'))
+          .enabled,
+      isTrue,
+    );
+
+    await tester.tap(find.text('Prefiro não dizer'));
+    await tester.pumpAndSettle();
+    expect(find.text('Por que não agora?'), findsNothing);
+    expect(find.text('Guarde a caderneta na sua conta'), findsNothing);
+  });
 }

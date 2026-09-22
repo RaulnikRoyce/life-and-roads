@@ -33,6 +33,15 @@ void relatar(String tipo, String mensagem, {StackTrace? pilha}) {
   );
 }
 
+/// Motivo que o piloto escreveu ao dispensar o convite de criar conta.
+///
+/// Vai pela mesma rota anônima do crash, sem e-mail, sem id e sem nada da
+/// caderneta. Falha de rede é ignorada, como no crash.
+void relatarRecusaDeConta(String motivo) {
+  if (!Ambiente.relataCrash) return;
+  relatar('conta_recusada', motivo);
+}
+
 /// Limite do contrato (`/monitor/evento`). Corta no fim, mantém o começo,
 /// que é onde a pilha diz onde quebrou.
 String cortar(String texto, int max) =>

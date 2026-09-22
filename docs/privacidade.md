@@ -12,6 +12,8 @@ Backup automático: a cada mudança na caderneta o app grava uma cópia em `Down
 
 Crash (só em staging/produção, se ligado no build): tipo de erro, mensagem curta, versão do app, sistema (ex. "android 14") e o começo da pilha de chamadas, **sem** ficha, e-mail ou posição. Fica 90 dias no servidor e depois é apagado.
 
+Motivo de não criar conta (só se o piloto escrever e enviar): o texto que ele digita ao dispensar o convite vai pela mesma rota anônima do crash, sem e-mail, sem identificador e sem nada da caderneta. Serve para entender o que falta no app. Responder é opcional, e dispensar o convite funciona igual sem resposta. Fica 90 dias no servidor, como os crashes.
+
 Recuperação de senha (só quando o piloto pede): o e-mail da conta é enviado ao Resend, provedor de envio de e-mail, para entregar a mensagem com o código de 6 dígitos. O servidor guarda apenas o hash do código, que vale 15 minutos, e apaga o registro na limpeza diária depois de vencido. A mensagem com o código em texto fica no Resend pelo prazo de retenção do serviço e na caixa de e-mail do piloto.
 
 ## Permissões no Android

@@ -15,6 +15,9 @@ class ChavesKv {
   /// Quando o backup automático gravou pela última vez (ISO).
   static const backupAutomaticoEm = 'backup_auto_em_v1';
 
+  /// O piloto dispensou o convite de criar conta.
+  static const conviteContaDispensado = 'convite_conta_nao_v1';
+
   static const textos = [
     ficha,
     agenda,

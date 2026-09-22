@@ -5,6 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_and_roads/backup.dart';
+import 'package:life_and_roads/core/database/armazem_kv.dart';
+import 'package:life_and_roads/core/database/chaves_kv.dart';
+import 'package:life_and_roads/core/backup/backup_automatico.dart';
 import 'package:life_and_roads/core/permissoes/mensagens_permissao.dart';
 import 'package:life_and_roads/core/widgets/cartao_conflito.dart';
 import 'package:life_and_roads/core/widgets/linha_sync.dart';
@@ -17,6 +20,9 @@ import 'package:life_and_roads/features/ficha/presentation/ficha_controller.dart
 import 'package:life_and_roads/features/ficha/presentation/widgets/bloco_backup.dart';
 import 'package:life_and_roads/features/ficha/presentation/widgets/bloco_conta.dart';
 import 'package:life_and_roads/features/ficha/presentation/widgets/busca_modelo.dart';
+import 'package:life_and_roads/core/monitor/crash.dart';
+import 'package:life_and_roads/features/ficha/presentation/widgets/convite_conta.dart';
+import 'package:life_and_roads/features/ficha/presentation/widgets/folha_recusa_conta.dart';
 import 'package:life_and_roads/features/ficha/presentation/widgets/campo_oficina.dart';
 import 'package:life_and_roads/features/ficha/presentation/widgets/folha_recuperar_senha.dart';
 import 'package:life_and_roads/features/ficha/presentation/widgets/painel_moto.dart';
@@ -61,6 +67,16 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
   String? _dicaCatalogo;
   bool _flex = true;
   ModeloCatalogo? _escolhidoCatalogo;
+
+  /// Carimbo do backup que grava sozinho em Download.
+  DateTime? _backupAutomaticoEm;
+
+  /// Convite de conta: some quando o piloto dispensa.
+  bool _conviteDispensado = true;
+
+  /// Recebe valor quando o convite é aceito: abre o bloco Conta e rola
+  /// até ele. A chave também identifica o bloco na árvore.
+  GlobalKey? _chaveConta;
   Timer? _debounceKm;
   bool _aplicando = false;
   bool _salvandoKm = false;
@@ -82,6 +98,10 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
     });
     FotoMoto.carregar().then((bytes) {
       if (mounted) setState(() => _foto = bytes);
+    });
+    _relerBackupAutomatico();
+    ArmazemKv.lerTexto(ChavesKv.conviteContaDispensado).then((v) {
+      if (mounted) setState(() => _conviteDispensado = v == 'sim');
     });
   }
 
@@ -106,6 +126,41 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
     _psiDianteiro.dispose();
     _psiTraseiro.dispose();
     super.dispose();
+  }
+
+  /// Aceitou o convite: some com ele, abre a conta e rola até lá.
+  Future<void> _irParaConta() async {
+    final chave = GlobalKey();
+    setState(() {
+      _conviteDispensado = true;
+      _chaveConta = chave;
+    });
+    await ArmazemKv.gravarTexto(ChavesKv.conviteContaDispensado, 'sim');
+    await WidgetsBinding.instance.endOfFrame;
+    final alvo = chave.currentContext;
+    // O mounted que importa é o do bloco alvo, não o desta tela.
+    if (alvo == null || !alvo.mounted) return;
+    await Scrollable.ensureVisible(
+      alvo,
+      duration: Movimento.medio,
+      curve: Movimento.curva,
+      alignment: 0.2,
+    );
+  }
+
+  Future<void> _dispensarConvite() async {
+    setState(() => _conviteDispensado = true);
+    await ArmazemKv.gravarTexto(ChavesKv.conviteContaDispensado, 'sim');
+    if (!mounted) return;
+    final motivo = await FolhaRecusaConta.abrir(context);
+    if (motivo == null || motivo.isEmpty) return;
+    relatarRecusaDeConta(motivo);
+    if (mounted) _aviso('Obrigado. Isso ajuda a melhorar o app.');
+  }
+
+  Future<void> _relerBackupAutomatico() async {
+    final em = await BackupAutomatico.ultimoEm();
+    if (mounted) setState(() => _backupAutomaticoEm = em);
   }
 
   void _aoMudarAutonomia() {
@@ -503,7 +558,17 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
               ),
             ],
             SizedBox(height: fichaSalva ? 40 : 36),
+            // Só com a ficha pronta e sem conta: antes disso não há o que
+            // perder, e o convite viraria barreira na porta.
+            if (fichaSalva && !logado && !_conviteDispensado) ...[
+              ConviteConta(
+                aoCriar: _irParaConta,
+                aoDispensar: _dispensarConvite,
+              ),
+              const SizedBox(height: 12),
+            ],
             BlocoBackup(
+              automatico: _backupAutomaticoEm,
               aoEnviar: _enviarBackup,
               aoRestaurar: _restaurarDeArquivo,
               aoCopiar: _copiarBackup,
@@ -511,6 +576,7 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
             ),
             const SizedBox(height: 12),
             BlocoConta(
+              chave: _chaveConta,
               logado: logado,
               email: estado.email,
               reenviar: estado.sync.deveReenviar,
