@@ -8,6 +8,8 @@ Com login, e-mail, senha (bcrypt), ficha (sem PSI), datas de manutenção e o ú
 
 Ficam só no aparelho a foto, o PSI, os pins, os abastecimentos, os serviços, o backup, placa, chassi e RENAVAM.
 
+Backup automático: a cada mudança na caderneta o app grava uma cópia em `Download/life.and.roads/caderneta.json`, no próprio aparelho. Esse arquivo fica visível no gerenciador de arquivos e sobrevive a desinstalar o app, de propósito, para o piloto não perder a caderneta ao trocar de celular. Nada é enviado; quem decide compartilhar é o piloto, pelo botão Enviar backup.
+
 Crash (só em staging/produção, se ligado no build): tipo de erro, mensagem curta, versão do app, sistema (ex. "android 14") e o começo da pilha de chamadas, **sem** ficha, e-mail ou posição. Fica 90 dias no servidor e depois é apagado.
 
 Recuperação de senha (só quando o piloto pede): o e-mail da conta é enviado ao Resend, provedor de envio de e-mail, para entregar a mensagem com o código de 6 dígitos. O servidor guarda apenas o hash do código, que vale 15 minutos, e apaga o registro na limpeza diária depois de vencido. A mensagem com o código em texto fica no Resend pelo prazo de retenção do serviço e na caixa de e-mail do piloto.

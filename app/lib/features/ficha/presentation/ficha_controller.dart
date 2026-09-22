@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:life_and_roads/core/backup/backup_automatico.dart';
 import 'package:life_and_roads/api.dart';
 import 'package:life_and_roads/core/sync/ficha_sync_store.dart';
 import 'package:life_and_roads/features/auth/data/auth_local_datasource.dart';
@@ -106,6 +107,7 @@ class FichaController extends Notifier<FichaEstado> {
   Future<void> salvar(FichaMoto ficha, {bool silencioso = false}) async {
     _geracao++;
     final resultado = await _ficha.salvar(ficha);
+    ref.read(backupAutomaticoProvider).agendar();
     state = state.copiarCom(
       ficha: resultado.ficha,
       aviso: silencioso ? null : resultado.mensagem,

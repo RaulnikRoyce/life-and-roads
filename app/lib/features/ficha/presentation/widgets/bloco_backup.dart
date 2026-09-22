@@ -9,12 +9,27 @@ class BlocoBackup extends StatelessWidget {
     required this.aoRestaurar,
     required this.aoCopiar,
     required this.aoColar,
+    this.automatico,
   });
 
   final VoidCallback aoEnviar;
   final VoidCallback aoRestaurar;
   final VoidCallback aoCopiar;
   final VoidCallback aoColar;
+
+  /// Quando o backup automático gravou pela última vez. Null se nunca.
+  final DateTime? automatico;
+
+  static String _quando(DateTime d) {
+    final agora = DateTime.now();
+    final minutos = agora.difference(d).inMinutes;
+    if (minutos < 1) return 'agora';
+    if (minutos < 60) return 'há $minutos min';
+    final horas = agora.difference(d).inHours;
+    if (horas < 24) return 'há $horas h';
+    final dias = agora.difference(d).inDays;
+    return dias == 1 ? 'ontem' : 'há $dias dias';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,8 +44,12 @@ class BlocoBackup extends StatelessWidget {
           style: Theme.of(context).textTheme.titleMedium,
         ),
         subtitle: Text(
-          'Envie o arquivo para o Drive ou o WhatsApp e restaure de lá. '
-          'Sem login e sem placa.',
+          automatico == null
+              ? 'Uma cópia fica em Download, na pasta life.and.roads. Envie '
+                    'para o Drive ou o WhatsApp e restaure de lá.'
+              : 'Salvo sozinho em Download, na pasta life.and.roads, '
+                    '${_quando(automatico!)}. Envie para o Drive ou o '
+                    'WhatsApp e restaure de lá.',
           style: Theme.of(context).textTheme.bodyMedium,
         ),
         children: [

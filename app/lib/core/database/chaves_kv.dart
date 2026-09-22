@@ -12,6 +12,9 @@ class ChavesKv {
   static const agendaConflito = 'agenda_conflito_v1';
   static const avisosLidos = 'avisos_lidos_v1';
 
+  /// Quando o backup automático gravou pela última vez (ISO).
+  static const backupAutomaticoEm = 'backup_auto_em_v1';
+
   static const textos = [
     ficha,
     agenda,

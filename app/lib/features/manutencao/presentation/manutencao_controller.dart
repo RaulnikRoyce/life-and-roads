@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:life_and_roads/core/backup/backup_automatico.dart';
 import 'package:life_and_roads/features/auth/domain/auth_repository.dart';
 import 'package:life_and_roads/features/ficha/presentation/ficha_controller.dart';
 import 'package:life_and_roads/features/manutencao/data/manutencao_local_datasource.dart';
@@ -96,6 +97,7 @@ class ManutencaoController extends Notifier<ManutencaoEstado> {
       return;
     }
     final resultado = await _repo.salvar(agenda, extra);
+    ref.read(backupAutomaticoProvider).agendar();
     state = state.copiarCom(
       agenda: resultado.agenda,
       extra: resultado.extra,
@@ -148,5 +150,5 @@ class ManutencaoController extends Notifier<ManutencaoEstado> {
 
 final manutencaoControllerProvider =
     NotifierProvider<ManutencaoController, ManutencaoEstado>(
-  ManutencaoController.new,
-);
+      ManutencaoController.new,
+    );
