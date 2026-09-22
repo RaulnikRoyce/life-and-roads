@@ -12,9 +12,13 @@ const opcional = (max: number) => z.preprocess(
   z.string().trim().max(max).nullable(),
 );
 
-// Só contexto técnico. Nada de e-mail, ficha ou posição.
+// Só contexto técnico e o que o piloto escreveu de propósito. Nada de
+// e-mail, ficha ou posição.
+//
+// `conta_recusada` é o motivo que o piloto dá ao dispensar o convite de
+// criar conta. Chega sem nada que o ligue a ele.
 const eventoSchema = z.object({
-  tipo: z.enum(['flutter_error', 'flutter_zone']),
+  tipo: z.enum(['flutter_error', 'flutter_zone', 'conta_recusada']),
   mensagem: z.string().trim().min(1).max(500),
   ambiente: z.enum(['development', 'staging', 'production']).optional(),
   versaoApp: opcional(40).optional(),
@@ -38,7 +42,8 @@ router.post(
   validarSchema(eventoSchema),
   asyncHandler(async (req, res) => {
     const corpo = req.body as z.infer<typeof eventoSchema>;
-    logger.error('crash_cliente', {
+    const aviso = corpo.tipo === 'conta_recusada';
+    logger[aviso ? 'info' : 'error'](aviso ? 'conta_recusada' : 'crash_cliente', {
       request_id: req.requestId,
       tipo: corpo.tipo,
       mensagem: corpo.mensagem,

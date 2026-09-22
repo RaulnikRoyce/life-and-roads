@@ -24,7 +24,7 @@ paths:
           description: banco indisponível
   /monitor/evento:
     post:
-      summary: Crash do app (mensagem curta, sem PII)
+      summary: Crash do app ou recusa do convite de conta (curto, sem PII)
       requestBody:
         required: true
         content:
@@ -36,7 +36,7 @@ paths:
               properties:
                 tipo:
                   type: string
-                  enum: [flutter_error, flutter_zone]
+                  enum: [flutter_error, flutter_zone, conta_recusada]
                 mensagem:
                   type: string
                   maxLength: 500

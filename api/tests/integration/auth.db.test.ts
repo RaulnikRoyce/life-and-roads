@@ -775,6 +775,27 @@ test('crash com contexto vai para eventos_cliente; campo extra é recusado', asy
       body: JSON.stringify({ tipo: 'flutter_error', mensagem: 'x', email: 'a@b.c' }),
     });
     assert.equal(extra.status, 400);
+
+    // Recusa do convite de conta: mesmo caminho, sem nada que ligue ao piloto.
+    const recusa = await fetch(`${base}/monitor/evento`, {
+      method: 'POST',
+      headers: json,
+      body: JSON.stringify({
+        tipo: 'conta_recusada',
+        mensagem: 'não quero dar meu e-mail',
+        ambiente: 'production',
+        versaoApp: '1.3.0+7',
+        pilha: `motivo-${marca}`,
+      }),
+    });
+    assert.equal(recusa.status, 200);
+    const [recusas] = await getPool().execute<import('mysql2').RowDataPacket[]>(
+      'SELECT tipo, mensagem FROM eventos_cliente WHERE pilha = ?',
+      [`motivo-${marca}`],
+    );
+    assert.equal(recusas.length, 1);
+    assert.equal(recusas[0].tipo, 'conta_recusada');
+    assert.equal(recusas[0].mensagem, 'não quero dar meu e-mail');
   } finally {
     await getPool().execute('DELETE FROM eventos_cliente WHERE pilha LIKE ?', [`%${marca}%`]);
     await new Promise<void>((resolve) => server.close(() => resolve()));
