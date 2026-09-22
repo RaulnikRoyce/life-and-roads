@@ -1,6 +1,6 @@
 # life.and.roads
 
-**Beta de testes · v1.2.1 (build 6)**
+**Beta de testes · v1.3.0 (build 7)**
 
 Caderneta digital de **uma motocicleta**. Ficha, manutenção, viagem e último ponto no mapa.
 
@@ -23,7 +23,7 @@ Esta é a versão fechada para o período de testes com pilotos. Não é release
 
 | Item | Detalhe |
 |---|---|
-| Versão | `1.2.1+6` (`versionName` 1.2.1, `versionCode` 6) |
+| Versão | `1.3.0+7` (`versionName` 1.3.0, `versionCode` 7) |
 | APK release | `app/build/app/outputs/flutter-apk/app-release.apk` (65 MB). Exige `android/key.properties` + keystore; sem eles o Gradle recusa o build release |
 | Plataforma | Android (APK). Chrome serve para prints e smoke test com Drift web |
 | Conta | opcional. Campo **Servidor** com `http://IP-do-PC:3001` no celular |

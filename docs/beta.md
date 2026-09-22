@@ -2,7 +2,7 @@
 
 Pacote `com.raulnik.life_and_roads`. Uma moto, quatro abas, API opcional.
 
-Versão do app **1.2.1+6**. O CI **não publica** na loja. Gera o APK assinado num tag `v*` (ex. `v1.2.1`). O upload para o teste fechado é **manual**.
+Versão do app **1.3.0+7**. O CI **não publica** na loja. Gera o APK assinado num tag `v*` (ex. `v1.3.0`). O upload para o teste fechado é **manual**.
 
 ## Secrets do GitHub (só no CI)
 
