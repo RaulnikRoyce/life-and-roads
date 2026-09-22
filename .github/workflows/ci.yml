@@ -123,18 +123,26 @@ jobs:
           name: app-release
           path: app/build/app/outputs/flutter-apk/app-release.apk
       # Release da tag com o .apk anexado: link direto, sem zip, sem prazo.
+      #
+      # O arquivo não leva a versão no nome de propósito. Assim o endereço
+      # releases/latest/download/life-and-roads-beta-aberto.apk vale para
+      # sempre e entrega a versão mais nova, que é o link que vai no convite
+      # ao motoclube. A versão fica no título e nas notas da Release.
+      #
+      # Sem --prerelease pelo mesmo motivo: o GitHub não serve prerelease em
+      # releases/latest, e o link quebrava.
       - name: Release com o APK
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="${GITHUB_REF_NAME#v}"
-          APK="life-and-roads-${TAG}.apk"
+          APK="life-and-roads-beta-aberto.apk"
           cp build/app/outputs/flutter-apk/app-release.apk "$APK"
           SHA=$(sha256sum "$APK" | cut -d' ' -f1)
           TITULO="life.and.roads $TAG (build ${GITHUB_RUN_NUMBER})"
-          NOTAS="APK assinado do beta fechado. Instala por cima da versão anterior sem perder a caderneta. SHA-256: $SHA"
+          NOTAS="APK assinado do beta aberto, versão $TAG. Instala por cima da versão anterior sem perder a caderneta. SHA-256: $SHA"
           if ! gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            gh release create "$GITHUB_REF_NAME" --prerelease --title "$TITULO" --notes "$NOTAS"
+            gh release create "$GITHUB_REF_NAME" --latest --title "$TITULO" --notes "$NOTAS"
           fi
           gh release upload "$GITHUB_REF_NAME" "$APK" --clobber
 
@@ -167,11 +175,19 @@ jobs:
       - run: flutter pub get
       # Domínio próprio (app.raulnikroyce.dev), então o app fica na raiz. Se
       # um dia voltar para raulnikroyce.github.io, vira "/life-and-roads/".
+      # Em tag a versão vem dela; no botão manual a referência é "main", que
+      # viraria o nome da versão nos relatórios de erro. Aí lê do pubspec.
       - name: Build web
         env:
           API_BASE: ${{ secrets.API_BASE }}
         run: |
-          VERSAO="${GITHUB_REF_NAME#v}"
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            VERSAO="${GITHUB_REF_NAME#v}"
+          else
+            VERSAO=$(sed -n 's/^version: *\([^+]*\).*/\1/p' pubspec.yaml)
+          fi
+          test -n "$VERSAO"
+          echo "publicando o app web como $VERSAO+${GITHUB_RUN_NUMBER}"
           flutter build web --release \
             --base-href / \
             --dart-define=ENV=production \
