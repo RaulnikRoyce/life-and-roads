@@ -225,6 +225,7 @@ class _PrimeirosPassosState extends State<PrimeirosPassos> {
             style: const ButtonStyle(visualDensity: VisualDensity.compact),
             segments: const [
               ButtonSegment(value: UsoCatalogo.cidade, label: Text('Cidade')),
+              ButtonSegment(value: UsoCatalogo.trail, label: Text('Trail')),
               ButtonSegment(value: UsoCatalogo.estrada, label: Text('Estrada')),
               ButtonSegment(
                 value: UsoCatalogo.esporte,

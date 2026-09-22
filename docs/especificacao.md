@@ -26,7 +26,7 @@ Uma caderneta digital para um único veículo, com persistência local e sincron
 | ID | Requisito | Aba |
 |---|---|---|
 | RF01 | Cadastrar ficha sem placa, chassi ou RENAVAM | Ficha |
-| RF02 | Aplicar modelo do catálogo (cidade, estrada, esportiva ou todos) | Ficha |
+| RF02 | Aplicar modelo do catálogo (cidade, trail, esportiva ou todos) | Ficha |
 | RF03 | Foto local da moto (fica neste aparelho) | Ficha |
 | RF04 | Backup JSON copiar/colar neste aparelho | Ficha |
 | RF05 | Conta opcional (e-mail + senha) | Ficha |

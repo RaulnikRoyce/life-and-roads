@@ -671,6 +671,7 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
             style: const ButtonStyle(visualDensity: VisualDensity.compact),
             segments: const [
               ButtonSegment(value: 'cidade', label: Text('Cidade')),
+              ButtonSegment(value: 'trail', label: Text('Trail')),
               ButtonSegment(value: 'estrada', label: Text('Estrada')),
               ButtonSegment(value: 'esporte', label: Text('Esportiva')),
               ButtonSegment(value: 'todas', label: Text('Todas')),
@@ -678,6 +679,8 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
             selected: {
               _usoCatalogo == UsoCatalogo.cidade
                   ? 'cidade'
+                  : _usoCatalogo == UsoCatalogo.trail
+                  ? 'trail'
                   : _usoCatalogo == UsoCatalogo.estrada
                   ? 'estrada'
                   : _usoCatalogo == UsoCatalogo.esporte
@@ -689,6 +692,8 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
                 final v = s.first;
                 _usoCatalogo = v == 'cidade'
                     ? UsoCatalogo.cidade
+                    : v == 'trail'
+                    ? UsoCatalogo.trail
                     : v == 'estrada'
                     ? UsoCatalogo.estrada
                     : v == 'esporte'
@@ -714,7 +719,7 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
         ),
         const SizedBox(height: 10),
         Text(
-          'Cidade, estrada, esportiva ou todas. Valores de uso misto, ajuste com a sua média.',
+          'Cidade, trail, estrada, esportiva ou todas. Valores de uso misto, ajuste com a sua média.',
           style: Theme.of(context).textTheme.bodyMedium,
         ),
         if (_dicaCatalogo != null && _dicaCatalogo!.isNotEmpty) ...[
