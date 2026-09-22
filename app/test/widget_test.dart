@@ -63,8 +63,7 @@ void main() {
     // Passo 1: a moto. Continuar só libera com marca e modelo.
     expect(find.text('Qual é a sua moto?'), findsOneWidget);
     expect(find.text('1 de 3'), findsOneWidget);
-    expect(find.text('Esportiva'), findsOneWidget);
-    expect(find.text('Escolher no catálogo'), findsOneWidget);
+    expect(find.text('Buscar a moto no catálogo'), findsOneWidget);
     expect(find.text('Adicionar foto'), findsNothing);
     expect(find.text('Tanque (litros)'), findsNothing);
     expect(

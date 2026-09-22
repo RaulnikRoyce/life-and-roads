@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:life_and_roads/core/widgets/movimento.dart';
+import 'package:life_and_roads/features/ficha/presentation/widgets/busca_modelo.dart';
 import 'package:life_and_roads/features/ficha/presentation/widgets/campo_oficina.dart';
 import 'package:life_and_roads/ficha/catalogo.dart';
 import 'package:life_and_roads/tema.dart';
@@ -46,7 +47,6 @@ class PrimeirosPassos extends StatefulWidget {
 class _PrimeirosPassosState extends State<PrimeirosPassos> {
   int _passo = 0;
   bool _avancando = true;
-  UsoCatalogo? _uso;
   ModeloCatalogo? _escolhido;
 
   /// Álcool que estava no campo quando o piloto marcou Gasolina; volta se
@@ -213,43 +213,14 @@ class _PrimeirosPassosState extends State<PrimeirosPassos> {
 
   Widget _passoMoto() {
     final tema = Theme.of(context);
-    final lista = catalogoFiltrado(_uso);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.centerLeft,
-          child: SegmentedButton<UsoCatalogo?>(
-            showSelectedIcon: false,
-            style: const ButtonStyle(visualDensity: VisualDensity.compact),
-            segments: const [
-              ButtonSegment(value: UsoCatalogo.cidade, label: Text('Cidade')),
-              ButtonSegment(value: UsoCatalogo.trail, label: Text('Trail')),
-              ButtonSegment(value: UsoCatalogo.estrada, label: Text('Estrada')),
-              ButtonSegment(
-                value: UsoCatalogo.esporte,
-                label: Text('Esportiva'),
-              ),
-              ButtonSegment(value: null, label: Text('Todas')),
-            ],
-            selected: {_uso},
-            onSelectionChanged: (s) => setState(() => _uso = s.first),
-          ),
-        ),
-        const SizedBox(height: 12),
-        DropdownMenu<ModeloCatalogo>(
-          key: ValueKey(_uso),
-          label: const Text('Escolher no catálogo'),
-          expandedInsets: EdgeInsets.zero,
-          enableFilter: true,
-          requestFocusOnTap: true,
-          initialSelection: _escolhido,
-          dropdownMenuEntries: [
-            for (final m in lista) DropdownMenuEntry(value: m, label: m.rotulo),
-          ],
-          onSelected: (m) {
-            if (m == null) return;
+        CampoBuscaModelo(
+          escolhido: _escolhido,
+          aoTocar: () async {
+            final m = await BuscaModelo.abrir(context);
+            if (m == null || !mounted) return;
             setState(() => _escolhido = m);
             widget.aoCatalogo(m);
           },
@@ -258,8 +229,8 @@ class _PrimeirosPassosState extends State<PrimeirosPassos> {
         Text(
           _escolhido?.dica.isNotEmpty == true
               ? _escolhido!.dica
-              : 'Escolher no catálogo já preenche consumo, tanque e pneus. '
-                    'Valores de uso misto, ajuste depois com a sua média.',
+              : 'A busca preenche consumo, tanque e pneus. Valores de uso '
+                    'misto, ajuste depois com a sua média.',
           style: tema.textTheme.bodyMedium,
         ),
         const SizedBox(height: 18),

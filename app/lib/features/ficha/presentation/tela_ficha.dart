@@ -16,6 +16,7 @@ import 'package:life_and_roads/features/ficha/domain/usecases/importar_caderneta
 import 'package:life_and_roads/features/ficha/presentation/ficha_controller.dart';
 import 'package:life_and_roads/features/ficha/presentation/widgets/bloco_backup.dart';
 import 'package:life_and_roads/features/ficha/presentation/widgets/bloco_conta.dart';
+import 'package:life_and_roads/features/ficha/presentation/widgets/busca_modelo.dart';
 import 'package:life_and_roads/features/ficha/presentation/widgets/campo_oficina.dart';
 import 'package:life_and_roads/features/ficha/presentation/widgets/folha_recuperar_senha.dart';
 import 'package:life_and_roads/features/ficha/presentation/widgets/painel_moto.dart';
@@ -59,7 +60,7 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
   Uint8List? _foto;
   String? _dicaCatalogo;
   bool _flex = true;
-  UsoCatalogo? _usoCatalogo;
+  ModeloCatalogo? _escolhidoCatalogo;
   Timer? _debounceKm;
   bool _aplicando = false;
   bool _salvandoKm = false;
@@ -659,73 +660,26 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
   }
 
   Widget _catalogo() {
-    final lista = catalogoFiltrado(_usoCatalogo);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.centerLeft,
-          child: SegmentedButton<String>(
-            showSelectedIcon: false,
-            style: const ButtonStyle(visualDensity: VisualDensity.compact),
-            segments: const [
-              ButtonSegment(value: 'cidade', label: Text('Cidade')),
-              ButtonSegment(value: 'trail', label: Text('Trail')),
-              ButtonSegment(value: 'estrada', label: Text('Estrada')),
-              ButtonSegment(value: 'esporte', label: Text('Esportiva')),
-              ButtonSegment(value: 'todas', label: Text('Todas')),
-            ],
-            selected: {
-              _usoCatalogo == UsoCatalogo.cidade
-                  ? 'cidade'
-                  : _usoCatalogo == UsoCatalogo.trail
-                  ? 'trail'
-                  : _usoCatalogo == UsoCatalogo.estrada
-                  ? 'estrada'
-                  : _usoCatalogo == UsoCatalogo.esporte
-                  ? 'esporte'
-                  : 'todas',
-            },
-            onSelectionChanged: (s) {
-              setState(() {
-                final v = s.first;
-                _usoCatalogo = v == 'cidade'
-                    ? UsoCatalogo.cidade
-                    : v == 'trail'
-                    ? UsoCatalogo.trail
-                    : v == 'estrada'
-                    ? UsoCatalogo.estrada
-                    : v == 'esporte'
-                    ? UsoCatalogo.esporte
-                    : null;
-              });
-            },
-          ),
-        ),
-        const SizedBox(height: 12),
-        DropdownMenu<ModeloCatalogo>(
-          key: ValueKey(_usoCatalogo),
-          label: const Text('Modelo comum (opcional)'),
-          expandedInsets: EdgeInsets.zero,
-          enableFilter: true,
-          requestFocusOnTap: true,
-          dropdownMenuEntries: [
-            for (final m in lista) DropdownMenuEntry(value: m, label: m.rotulo),
-          ],
-          onSelected: (m) {
-            if (m != null) _preencherDoCatalogo(m);
+        CampoBuscaModelo(
+          escolhido: _escolhidoCatalogo,
+          aoTocar: () async {
+            final m = await BuscaModelo.abrir(context);
+            if (m == null || !mounted) return;
+            setState(() => _escolhidoCatalogo = m);
+            await _preencherDoCatalogo(m);
           },
         ),
         const SizedBox(height: 10),
         Text(
-          'Cidade, trail, estrada, esportiva ou todas. Valores de uso misto, ajuste com a sua média.',
+          _dicaCatalogo?.isNotEmpty == true
+              ? _dicaCatalogo!
+              : 'A busca preenche consumo, tanque e pneus. Valores de uso '
+                    'misto, ajuste com a sua média.',
           style: Theme.of(context).textTheme.bodyMedium,
         ),
-        if (_dicaCatalogo != null && _dicaCatalogo!.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Text(_dicaCatalogo!, style: Theme.of(context).textTheme.bodyMedium),
-        ],
       ],
     );
   }
