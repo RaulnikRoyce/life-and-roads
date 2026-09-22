@@ -2,7 +2,7 @@
 
 Pacote `com.raulnik.life_and_roads`. Uma moto, quatro abas, API opcional.
 
-Versão do app **1.3.0+7**. O CI **não publica** na loja. Gera o APK assinado num tag `v*` (ex. `v1.3.0`). O upload para o teste fechado é **manual**.
+Versão do app **1.3.0+7**. O CI **não publica** na loja. Gera o APK assinado num tag `v*` (ex. `v1.3.0`) e anexa o `.apk` na Release da tag no GitHub (link direto, sem zip, sem prazo; o repositório é privado, então o link pede login). O upload para o teste fechado é **manual**.
 
 ## Secrets do GitHub (só no CI)
 
@@ -47,7 +47,7 @@ Ficam no painel do Render, no serviço da API, ao lado das `DB_*`. Não são sec
 
 1. `docker compose up --build` e `GET /ready` = ok.
 2. API de produção no ar com HTTPS. Secret `API_BASE` preenchido.
-3. Tag `v1.2.0`, artifact `app-release` no GitHub Actions.
+3. Tag `v1.3.0`; o `.apk` fica anexado na Release da tag (e também como artifact `app-release` do run, por 90 dias).
 4. Track **Closed testing**, lista de e-mails testers.
 5. Data safety conferida (acima).
 6. Sem placa, FIPE, frota.
