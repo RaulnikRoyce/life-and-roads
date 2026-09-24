@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:life_and_roads/core/backup/caderneta_mudou.dart';
 import 'package:life_and_roads/features/ficha/presentation/ficha_controller.dart';
 import 'package:life_and_roads/features/mapa/data/localizacao_remote_datasource.dart';
 import 'package:life_and_roads/features/mapa/data/mapa_repository_impl.dart';
@@ -88,6 +89,7 @@ class MapaController extends Notifier<MapaEstado> {
     );
     if (lista == null) return;
     final salvos = await _repo.salvarPins(lista);
+    ref.read(cadernetaMudouProvider).avisar();
     state = state.copiarCom(pins: salvos);
   }
 
@@ -95,6 +97,7 @@ class MapaController extends Notifier<MapaEstado> {
     const use = RemoverPino();
     final lista = use.executar(atuais: state.pins, alvo: pin);
     final salvos = await _repo.salvarPins(lista);
+    ref.read(cadernetaMudouProvider).avisar();
     state = state.copiarCom(pins: salvos);
   }
 }

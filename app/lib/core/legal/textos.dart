@@ -1,3 +1,9 @@
+/// Data do texto dos Termos de uso e da Privacidade que o app mostra.
+/// É o que vai no aceite (ADR 0038). Mudar o texto é subir esta data, e
+/// quem aceitou a anterior precisa aceitar de novo antes de a caderneta
+/// voltar a subir.
+const versaoTermos = '2026-09-24';
+
 const termosResumo =
     'O life.and.roads é uma caderneta de uma motocicleta, neste aparelho. '
     'A conta é opcional e só replica ficha, datas de manutenção e o último ponto. '

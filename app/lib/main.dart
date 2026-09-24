@@ -12,6 +12,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_and_roads/api.dart';
+import 'package:life_and_roads/core/backup/caderneta_mudou.dart';
 import 'package:life_and_roads/core/database/caderneta_banco.dart';
 import 'package:life_and_roads/core/database/migracao_prefs.dart';
 import 'package:life_and_roads/core/marca/logo_pintor.dart';
@@ -120,6 +121,11 @@ class _TelaPrincipalState extends ConsumerState<TelaPrincipal>
     end: Offset.zero,
   ).animate(CurvedAnimation(parent: _entrada, curve: Movimento.curva));
 
+  /// Indo para segundo plano, o backup em Download e a caderneta na nuvem
+  /// gravam o que estava esperando. Com o app parado, a espera pode não
+  /// correr, e o que foi feito antes de fechar ficaria só aqui (ADR 0038).
+  late final AppLifecycleListener _ciclo;
+
   static const _abas = [
     Aba(titulo: 'Ficha', icone: Icons.two_wheeler),
     Aba(titulo: 'Manutenção', icone: Icons.build_outlined, ativo: Icons.build),
@@ -134,6 +140,9 @@ class _TelaPrincipalState extends ConsumerState<TelaPrincipal>
   @override
   void initState() {
     super.initState();
+    _ciclo = AppLifecycleListener(
+      onHide: () => unawaited(ref.read(cadernetaMudouProvider).aoSairDoApp()),
+    );
     Future<void>.microtask(() {
       if (mounted) {
         ref
@@ -145,6 +154,7 @@ class _TelaPrincipalState extends ConsumerState<TelaPrincipal>
 
   @override
   void dispose() {
+    _ciclo.dispose();
     _entrada.dispose();
     super.dispose();
   }

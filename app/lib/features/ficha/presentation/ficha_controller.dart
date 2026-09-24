@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:life_and_roads/core/backup/backup_automatico.dart';
+import 'package:life_and_roads/core/backup/backup_nuvem.dart';
+import 'package:life_and_roads/core/backup/caderneta_mudou.dart';
 import 'package:life_and_roads/api.dart';
 import 'package:life_and_roads/core/sync/ficha_sync_store.dart';
 import 'package:life_and_roads/features/auth/data/auth_local_datasource.dart';
@@ -107,7 +108,7 @@ class FichaController extends Notifier<FichaEstado> {
   Future<void> salvar(FichaMoto ficha, {bool silencioso = false}) async {
     _geracao++;
     final resultado = await _ficha.salvar(ficha);
-    ref.read(backupAutomaticoProvider).agendar();
+    ref.read(cadernetaMudouProvider).avisar();
     state = state.copiarCom(
       ficha: resultado.ficha,
       aviso: silencioso ? null : resultado.mensagem,
@@ -194,6 +195,7 @@ class FichaController extends Notifier<FichaEstado> {
 
   Future<void> sair() async {
     final sessao = await _auth.sair();
+    await ref.read(backupNuvemProvider).esquecerConta();
     state = state.copiarCom(
       limparSessao: true,
       limparRemoto: true,
@@ -207,6 +209,7 @@ class FichaController extends Notifier<FichaEstado> {
   Future<void> excluirConta() async {
     try {
       final sessao = await _auth.excluirConta();
+      await ref.read(backupNuvemProvider).esquecerConta();
       state = state.copiarCom(
         limparSessao: true,
         servidor: sessao.servidor,
@@ -348,6 +351,7 @@ class FichaController extends Notifier<FichaEstado> {
 
   Future<void> usarRemoto() async {
     final r = await _ficha.usarRemoto();
+    ref.read(cadernetaMudouProvider).avisar();
     state = FichaEstado(
       carregando: false,
       ficha: r.ficha,

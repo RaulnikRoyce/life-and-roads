@@ -99,6 +99,103 @@ class BackupCaderneta {
     return null;
   }
 
+  // Caderneta na nuvem (ADR 0038).
+
+  static const versaoNuvem = 1;
+
+  /// O que só existe neste aparelho, menos a foto. Ficha, datas de
+  /// manutenção e último ponto têm rota própria e ficam de fora, para cada
+  /// dado ter uma fonte só. As chaves são as do `ConteudoCaderneta` do
+  /// openapi.yaml, e a API recusa qualquer outra.
+  static Future<Map<String, dynamic>> exportarParaNuvem() async {
+    final abastecimentos = await HistoricoAbastecimento.carregar();
+    final servicos = await HistoricoServico.carregar();
+    final pins = await PinsMapa.carregar();
+    final ficha = await _fichaCrua();
+    return {
+      'v': versaoNuvem,
+      'abastecimentos': [for (final r in abastecimentos) r.paraJson()],
+      'servicos': [for (final s in servicos) s.paraJson()],
+      'pins': [for (final p in pins) p.paraJson()],
+      'extra': await ArmazemKv.lerTexto(ChavesKv.extra),
+      'precoGasolina': await ArmazemKv.lerTexto(ChavesKv.precoGasolina),
+      'precoAlcool': await ArmazemKv.lerTexto(ChavesKv.precoAlcool),
+      'psi': {
+        'dianteiro': _psi(ficha?['psiDianteiro']),
+        'traseiro': _psi(ficha?['psiTraseiro']),
+      },
+    };
+  }
+
+  /// Troca abastecimentos, serviços, pinos, km e CNH e preços pelos da nuvem.
+  /// Não passa pelo [restaurar]: lá a falta de foto apaga a foto, e aqui ela
+  /// nunca vem. O PSI entra na ficha que já existe sem mexer no resto dela;
+  /// sem ficha no aparelho, fica para depois que a ficha chegar da conta.
+  static Future<String?> restaurarDaNuvem(Map<String, dynamic> conteudo) async {
+    if (conteudo['v'] != versaoNuvem) return 'Caderneta de outra versão.';
+
+    final db = CadernetaBanco.instancia;
+    // Tudo ou nada: parar no meio deixaria o aparelho sem histórico.
+    await db.transaction(() async {
+      await db.apagarAbastecimentos();
+      await db.apagarServicos();
+      await db.apagarPins();
+      for (final r in listaDeBackup(
+        conteudo['abastecimentos'],
+        RegistroAbastecimento.deJson,
+      ).reversed) {
+        await HistoricoAbastecimento.inserirLinha(r);
+      }
+      for (final r in listaDeBackup(
+        conteudo['servicos'],
+        RegistroServico.deJson,
+      ).reversed) {
+        await HistoricoServico.inserirLinha(r);
+      }
+      final pins = listaDeBackup(conteudo['pins'], PinoMapa.deJson);
+      if (pins.isNotEmpty) await PinsMapa.salvar(pins);
+
+      await _gravaKv(ChavesKv.extra, conteudo['extra']);
+      await _gravaKv(ChavesKv.precoGasolina, conteudo['precoGasolina']);
+      await _gravaKv(ChavesKv.precoAlcool, conteudo['precoAlcool']);
+      await _mesclarPsi(conteudo['psi']);
+    });
+    return null;
+  }
+
+  static Future<Map<String, dynamic>?> _fichaCrua() async {
+    final bruto = await ArmazemKv.lerTexto(ChavesKv.ficha);
+    if (bruto == null) return null;
+    try {
+      final mapa = jsonDecode(bruto);
+      return mapa is Map ? Map<String, dynamic>.from(mapa) : null;
+    } on FormatException {
+      return null;
+    }
+  }
+
+  /// A API aceita 0 a 200. Fora disso vai nulo, para um número estranho
+  /// não travar o envio da caderneta inteira.
+  static int? _psi(Object? valor) {
+    final n = valor is int ? valor : int.tryParse('${valor ?? ''}'.trim());
+    if (n == null || n < 0 || n > 200) return null;
+    return n;
+  }
+
+  /// Só o PSI muda, e só o lado que a nuvem trouxe. A ficha guarda o PSI
+  /// como texto, do mesmo jeito que a tela grava.
+  static Future<void> _mesclarPsi(Object? psi) async {
+    if (psi is! Map) return;
+    final ficha = await _fichaCrua();
+    if (ficha == null) return;
+    final dianteiro = _psi(psi['dianteiro']);
+    final traseiro = _psi(psi['traseiro']);
+    if (dianteiro == null && traseiro == null) return;
+    if (dianteiro != null) ficha['psiDianteiro'] = '$dianteiro';
+    if (traseiro != null) ficha['psiTraseiro'] = '$traseiro';
+    await ArmazemKv.gravarTexto(ChavesKv.ficha, jsonEncode(ficha));
+  }
+
   static Object? _textoOuMapa(Object? valor) {
     if (valor is Map) return jsonEncode(valor);
     return valor;

@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:life_and_roads/core/backup/backup_automatico.dart';
+import 'package:life_and_roads/core/backup/caderneta_mudou.dart';
 import 'package:life_and_roads/features/ficha/data/ficha_local_datasource.dart';
 import 'package:life_and_roads/features/ficha/domain/ficha_repository.dart';
 import 'package:life_and_roads/features/ficha/presentation/ficha_controller.dart';
@@ -117,6 +117,7 @@ class ViagemController extends Notifier<ViagemEstado> {
       return;
     }
     await _viagem.gravarPrecos(precos);
+    ref.read(cadernetaMudouProvider).avisar();
     state = state.copiarCom(
       resultado: r.resultado,
       precos: precos,
@@ -149,7 +150,7 @@ class ViagemController extends Notifier<ViagemEstado> {
     final salva = await _fichaRepo.salvar(montado.ficha!);
     await _viagem.gravarPrecos(precos);
     final historico = await _viagem.acrescentarAbastecimento(montado.registro!);
-    ref.read(backupAutomaticoProvider).agendar();
+    ref.read(cadernetaMudouProvider).avisar();
     state = state.copiarCom(
       ficha: salva.ficha,
       precos: precos,

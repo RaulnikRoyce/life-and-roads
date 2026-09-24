@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:life_and_roads/core/backup/backup_automatico.dart';
+import 'package:life_and_roads/core/backup/caderneta_mudou.dart';
 import 'package:life_and_roads/features/auth/domain/auth_repository.dart';
 import 'package:life_and_roads/features/ficha/presentation/ficha_controller.dart';
 import 'package:life_and_roads/features/manutencao/data/manutencao_local_datasource.dart';
@@ -97,7 +97,7 @@ class ManutencaoController extends Notifier<ManutencaoEstado> {
       return;
     }
     final resultado = await _repo.salvar(agenda, extra);
-    ref.read(backupAutomaticoProvider).agendar();
+    ref.read(cadernetaMudouProvider).avisar();
     state = state.copiarCom(
       agenda: resultado.agenda,
       extra: resultado.extra,
@@ -110,6 +110,7 @@ class ManutencaoController extends Notifier<ManutencaoEstado> {
 
   Future<void> acrescentarServico(RegistroServico registro) async {
     final lista = await _repo.acrescentarServico(registro);
+    ref.read(cadernetaMudouProvider).avisar();
     state = state.copiarCom(
       servicos: lista,
       aviso: 'Serviço neste aparelho.',
@@ -135,6 +136,7 @@ class ManutencaoController extends Notifier<ManutencaoEstado> {
 
   Future<void> usarRemoto() async {
     final r = await _repo.usarRemoto();
+    ref.read(cadernetaMudouProvider).avisar();
     state = state.copiarCom(
       agenda: r.agenda,
       extra: r.extra,

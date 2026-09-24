@@ -11,7 +11,7 @@ import 'package:life_and_roads/core/database/chaves_kv.dart';
 /// Grava a caderneta em Download sozinho, sempre no mesmo arquivo.
 ///
 /// O piloto pediu para não depender de lembrar do backup. A cada mudança
-/// que vale (ficha, manutenção, abastecimento) o app regrava
+/// que vale, avisada por `CadernetaMudou`, o app regrava
 /// `Download/life.and.roads/caderneta.json`, que sobrevive a desinstalar o
 /// app e a trocar de celular.
 ///
@@ -43,6 +43,16 @@ class BackupAutomatico {
   void agendar() {
     _timer?.cancel();
     _timer = Timer(espera, () => unawaited(gravarAgora()));
+  }
+
+  bool get pendente => _timer?.isActive ?? false;
+
+  /// O app foi para segundo plano: grava o que estava esperando, porque o
+  /// relógio da espera pode não correr com o app parado.
+  Future<void> gravarSePendente() async {
+    if (!pendente) return;
+    _timer?.cancel();
+    await gravarAgora();
   }
 
   /// Grava na hora. Devolve o caminho, ou null quando não deu.

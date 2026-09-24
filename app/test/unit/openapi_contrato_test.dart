@@ -1,7 +1,11 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:life_and_roads/backup.dart';
 import 'package:life_and_roads/core/api/openapi/dtos.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../helpers/banco_teste.dart';
 
 void main() {
   late String yaml;
@@ -37,6 +41,17 @@ void main() {
     expect(_chaves(yaml, 'TrocaSenha'), TrocaSenhaDto.chaves);
     expect(_chaves(yaml, 'RecuperarSenha'), RecuperarSenhaDto.chaves);
     expect(_chaves(yaml, 'RedefinirSenha'), RedefinirSenhaDto.chaves);
+  });
+
+  test('o pacote da nuvem tem as chaves do ConteudoCaderneta, nem mais nem menos', () async {
+    // A API recusa chave a mais com .strict(); faltar uma também é 400.
+    SharedPreferences.setMockInitialValues({});
+    await abrirBancoTeste();
+    addTearDown(fecharBancoTeste);
+
+    final pacote = await BackupCaderneta.exportarParaNuvem();
+
+    expect(pacote.keys.toList(), _chaves(yaml, 'ConteudoCaderneta'));
   });
 }
 

@@ -15,6 +15,15 @@ class FalhaApi implements Exception {
   String toString() => mensagem;
 }
 
+/// A caderneta na nuvem mudou em outro aparelho desde o último envio deste
+/// (409). Nada foi gravado; quem chamou precisa perguntar qual fica.
+class ConflitoNuvem extends FalhaApi {
+  ConflitoNuvem(super.mensagem, {this.atualizadoEm});
+
+  /// O carimbo que está no servidor agora, quando a API mandou.
+  final String? atualizadoEm;
+}
+
 /// Cliente HTTP da API life.and.roads (porta 3001).
 class ApiCaderneta {
   static String get padrao => Ambiente.apiPadrao;
@@ -322,6 +331,66 @@ class ApiCaderneta {
       ),
     );
     if (r.statusCode != 200) throw _erro(r);
+  }
+
+  /// Caderneta guardada na conta, já aberta pelo servidor: `conteudo` e
+  /// `atualizadoEm`. Null quando a conta ainda não tem (ADR 0038).
+  static Future<Map<String, dynamic>?> buscarCaderneta(String token) async {
+    final r = await _comAuth(
+      token,
+      (t) => _cliente.get(
+        Uri.parse('$base/caderneta'),
+        headers: _cabecalhos(token: t),
+      ),
+    );
+    if (r.statusCode == 404) return null;
+    if (r.statusCode != 200) throw _erro(r);
+    return _corpo(r);
+  }
+
+  /// Grava se ninguém mexeu desde [carimboBase], o carimbo que este aparelho
+  /// conhece (null na primeira vez). Devolve o carimbo novo. Se outro
+  /// aparelho gravou antes, lança [ConflitoNuvem] e nada muda no servidor.
+  static Future<String> salvarCaderneta(
+    String token,
+    Map<String, dynamic> conteudo, {
+    required String? carimboBase,
+  }) async {
+    final r = await _comAuth(
+      token,
+      (t) => _cliente.put(
+        Uri.parse('$base/caderneta'),
+        headers: _cabecalhos(token: t),
+        body: jsonEncode({
+          'conteudo': conteudo,
+          'baseAtualizadoEm': carimboBase,
+        }),
+      ),
+    );
+    if (r.statusCode == 409) {
+      final corpo = _corpo(r);
+      final detalhes = corpo['detalhes'];
+      throw ConflitoNuvem(
+        corpo['erro'] as String? ?? 'A caderneta na nuvem mudou em outro aparelho.',
+        atualizadoEm: detalhes is Map ? detalhes['atualizadoEm'] as String? : null,
+      );
+    }
+    if (r.statusCode != 200) throw _erro(r);
+    final carimbo = _corpo(r)['atualizadoEm'];
+    if (carimbo is! String) throw FalhaApi('Resposta da API sem carimbo.');
+    return carimbo;
+  }
+
+  /// Apaga a caderneta da conta. Já não existir também é sucesso.
+  static Future<void> apagarCaderneta(String token) async {
+    final r = await _comAuth(
+      token,
+      (t) => _cliente.delete(
+        Uri.parse('$base/caderneta'),
+        headers: _cabecalhos(token: t),
+      ),
+    );
+    if (r.statusCode != 204) throw _erro(r);
   }
 
   static Future<void> excluirConta(String token) async {
