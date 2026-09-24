@@ -17,7 +17,8 @@ on:
 
 jobs:
   dump:
-    runs-on: ubuntu-latest
+    # Travado como no ci.yml, para o runner não trocar de versão sozinho.
+    runs-on: ubuntu-24.04
     steps:
       # Primeiro passo de propósito: sem senha, não há dump.
       - name: Senha do backup
@@ -73,7 +74,7 @@ jobs:
           # Nada em texto aberto pode sobrar para o upload.
           ! ls *.sql.gz 2>/dev/null
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: backup-mysql-${{ github.run_id }}
           path: '*.sql.gz.gpg'
