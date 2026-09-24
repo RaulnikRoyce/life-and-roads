@@ -14,6 +14,7 @@ import {
 import { AppError } from '../../shared/errors';
 import { logger } from '../../shared/http/logger';
 import {
+  enviarBoasVindas,
   enviarCodigoRecuperacao,
   envioDisponivel,
 } from '../../shared/email/enviar_email';
@@ -88,7 +89,19 @@ export const registrar = async (
     throw new AppError(409, 'E-mail já cadastrado.');
   }
   const senhaCriptografada = await bcrypt.hash(senha, 10);
-  return repo.salvar(email, senhaCriptografada);
+  const usuario = await repo.salvar(email, senhaCriptografada);
+
+  // Não espera o Resend: a conta já existe, e e-mail que falha não pode
+  // desfazer nem atrasar o cadastro (ADR 0036).
+  void enviarBoasVindas({ para: usuario.email, usuarioId: usuario.id })
+    .catch((erro) => {
+      logger.error('Falha ao enviar boas-vindas', {
+        usuarioId: usuario.id,
+        detalhe: erro instanceof Error ? erro.message : 'erro',
+      });
+    });
+
+  return usuario;
 };
 
 export const renovar = async (refreshToken: string): Promise<Tokens> => {

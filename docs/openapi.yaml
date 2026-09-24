@@ -64,6 +64,10 @@ paths:
   /auth/registrar:
     post:
       summary: Cria a conta
+      description: >-
+        Depois de criar, manda uma boas-vindas ao e-mail da conta, sem esperar
+        o envio. Se o envio falhar, a conta existe do mesmo jeito e a resposta
+        não muda (ADR 0036).
       requestBody:
         required: true
         content:

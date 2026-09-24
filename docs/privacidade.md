@@ -16,6 +16,10 @@ Crash (só em staging/produção, se ligado no build): tipo de erro, mensagem cu
 
 Motivo de não criar conta (só se o piloto escrever e enviar): o texto que ele digita ao dispensar o convite vai pela mesma rota anônima do crash, sem e-mail, sem identificador e sem nada da caderneta. Serve para entender o que falta no app. Responder é opcional, e dispensar o convite funciona igual sem resposta. Fica 90 dias no servidor, como os crashes.
 
+Boas-vindas (uma vez, quando o piloto cria a conta): o e-mail da conta é enviado ao Resend para entregar uma mensagem que explica o que a conta guarda e o que continua só no aparelho. A mensagem não leva nada da caderneta, nem o próprio e-mail no texto. Se o envio falhar, a conta é criada do mesmo jeito.
+
+Os e-mails do app saem de `contato@raulnikroyce.dev`, que aceita resposta. O que o piloto responder é encaminhado pelo Cloudflare para a caixa de e-mail do responsável pelo app, e fica lá. Quem receber a boas-vindas sem ter criado a conta pode responder pedindo, e a conta é apagada.
+
 Recuperação de senha (só quando o piloto pede): o e-mail da conta é enviado ao Resend, provedor de envio de e-mail, para entregar a mensagem com o código de 6 dígitos. O servidor guarda apenas o hash do código, que vale 15 minutos, e apaga o registro na limpeza diária depois de vencido. A mensagem com o código em texto fica no Resend pelo prazo de retenção do serviço e na caixa de e-mail do piloto.
 
 ## Permissões no Android

@@ -7,7 +7,12 @@ import {
   apagarSessoesVencidas,
 } from '../../src/modules/auth/auth.repository';
 import { migrar } from '../../src/shared/database/migrar';
-import { usarTransporte, type Mensagem } from '../../src/shared/email/enviar_email';
+import {
+  ASSUNTO_BOAS_VINDAS,
+  ASSUNTO_CODIGO,
+  usarTransporte,
+  type Mensagem,
+} from '../../src/shared/email/enviar_email';
 
 // Sem isto o pool segura o processo aberto até o idle timeout do mysql2.
 after(() => fecharPool());
@@ -35,9 +40,13 @@ const postJson = (base: string, rota: string, corpo: unknown) => fetch(`${base}$
  * O envio não é aguardado pela rota, então o teste espera a mensagem cair
  * na caixa do transporte falso e tira o código de 6 dígitos do texto.
  */
+/** Só os e-mails de código. A boas-vindas do cadastro também cai na caixa. */
+const soCodigos = (caixa: Mensagem[]): Mensagem[] =>
+  caixa.filter((m) => m.assunto === ASSUNTO_CODIGO);
+
 const esperarCodigo = async (caixa: Mensagem[], para: string): Promise<string> => {
   for (let i = 0; i < 100; i += 1) {
-    const mensagens = caixa.filter((m) => m.para === para);
+    const mensagens = soCodigos(caixa).filter((m) => m.para === para);
     const ultima = mensagens[mensagens.length - 1];
     const achado = ultima ? /\b(\d{6})\b/.exec(ultima.texto) : null;
     if (achado) return achado[1];
@@ -454,6 +463,65 @@ test('limpeza apaga só sessões vencidas', async (t) => {
   }
 });
 
+test('cadastro manda uma boas-vindas, sem código e sem dado do piloto', async (t) => {
+  if (!await bancoPronto(t)) return;
+  const server = app.listen(0);
+  const address = server.address();
+  const port = typeof address === 'object' && address ? address.port : 0;
+  const base = `http://127.0.0.1:${port}`;
+  const email = `bemvindo.${Date.now()}@teste.local`;
+  const caixa: Mensagem[] = [];
+  usarTransporte(async (m) => { caixa.push(m); });
+
+  try {
+    const reg = await postJson(base, '/auth/registrar', { email, senha: 'senha1234' });
+    assert.equal(reg.status, 201);
+
+    // O envio não é aguardado pela rota; espera cair na caixa.
+    for (let i = 0; i < 100 && caixa.length < 1; i += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    assert.equal(caixa.length, 1, 'uma boas-vindas e nada mais');
+    const [msg] = caixa;
+    assert.equal(msg.para, email);
+    assert.equal(msg.assunto, ASSUNTO_BOAS_VINDAS);
+    assert.ok(!/\b\d{6}\b/.test(msg.texto), 'boas-vindas não leva código');
+    assert.ok(!msg.texto.includes(email), 'o texto não repete o e-mail do piloto');
+
+    // Cadastro repetido é recusado e não manda uma segunda boas-vindas.
+    const repetido = await postJson(base, '/auth/registrar', { email, senha: 'senha1234' });
+    assert.equal(repetido.status, 409);
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    assert.equal(caixa.length, 1);
+  } finally {
+    usarTransporte(null);
+    await getPool().execute('DELETE FROM usuarios WHERE email = ?', [email]);
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('cadastro dá certo mesmo se a boas-vindas falhar', async (t) => {
+  if (!await bancoPronto(t)) return;
+  const server = app.listen(0);
+  const address = server.address();
+  const port = typeof address === 'object' && address ? address.port : 0;
+  const base = `http://127.0.0.1:${port}`;
+  const email = `semcorreio.${Date.now()}@teste.local`;
+  usarTransporte(async () => { throw new Error('provedor fora do ar'); });
+
+  try {
+    const reg = await postJson(base, '/auth/registrar', { email, senha: 'senha1234' });
+    assert.equal(reg.status, 201);
+    const login = await postJson(base, '/auth/login', { email, senha: 'senha1234' });
+    assert.equal(login.status, 200, 'a conta existe e entra normalmente');
+  } finally {
+    usarTransporte(null);
+    await getPool().execute('DELETE FROM usuarios WHERE email = ?', [email]);
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
 test('recuperação por código redefine a senha e revoga as sessões', async (t) => {
   if (!await bancoPronto(t)) return;
   const server = app.listen(0);
@@ -484,8 +552,8 @@ test('recuperação por código redefine a senha e revoga as sessões', async (t
     const corpoPedido = await pedido.json() as { mensagem: string };
     assert.equal(corpoPedido.mensagem, corpoSemConta.mensagem);
     const codigo = await esperarCodigo(caixa, email);
-    assert.equal(caixa.length, 1);
-    assert.equal(caixa[0].assunto, 'Seu código para redefinir a senha');
+    assert.equal(soCodigos(caixa).length, 1);
+    assert.equal(soCodigos(caixa)[0].para, email);
 
     const extra = await postJson(base, '/auth/redefinir', {
       email, codigo, senhaNova: 'senha5678', senhaAtual: 'senha1234',
@@ -616,11 +684,11 @@ test('quarto código na mesma hora responde 429', async (t) => {
     assert.ok(corpo.erro);
 
     // Os três chegaram; só o último vale.
-    for (let i = 0; i < 100 && caixa.length < 3; i += 1) {
+    for (let i = 0; i < 100 && soCodigos(caixa).length < 3; i += 1) {
       await new Promise((resolve) => setTimeout(resolve, 20));
     }
-    assert.equal(caixa.length, 3);
-    const codigos = caixa.map((m) => /\b(\d{6})\b/.exec(m.texto)?.[1]);
+    assert.equal(soCodigos(caixa).length, 3);
+    const codigos = soCodigos(caixa).map((m) => /\b(\d{6})\b/.exec(m.texto)?.[1]);
     const usaCodigo = (codigo: string | undefined) => postJson(base, '/auth/redefinir', {
       email, codigo, senhaNova: 'senha5678',
     });
@@ -667,11 +735,11 @@ test('pedidos simultâneos respeitam os 3 códigos por hora', async (t) => {
     );
     assert.equal(Number(rows[0].total), 3);
 
-    for (let i = 0; i < 100 && caixa.length < 3; i += 1) {
+    for (let i = 0; i < 100 && soCodigos(caixa).length < 3; i += 1) {
       await new Promise((resolve) => setTimeout(resolve, 20));
     }
     await new Promise((resolve) => setTimeout(resolve, 50));
-    assert.equal(caixa.length, 3);
+    assert.equal(soCodigos(caixa).length, 3);
 
     const sexto = await postJson(base, '/auth/recuperar', { email });
     assert.equal(sexto.status, 429);
