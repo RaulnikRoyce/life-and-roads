@@ -2,6 +2,14 @@ name: backup-banco
 
 # Dump semanal do MySQL de produção (Aiven, plano grátis sem backup próprio).
 # Fica como artifact por 90 dias. Também roda à mão em Actions → backup-banco.
+#
+# O repositório é público, e artifact de repositório público pode ser baixado
+# por qualquer pessoa com conta no GitHub. Por isso o dump só sai daqui
+# criptografado com a senha do secret BACKUP_PASSPHRASE (ADR 0037). Sem o
+# secret, o job falha antes de conectar no banco e nada sobe.
+#
+# Para restaurar, com a senha guardada no gerenciador de senhas:
+#   gpg --decrypt life-and-roads-AAAAMMDD.sql.gz.gpg | gunzip | mysql ...
 on:
   schedule:
     - cron: '0 6 * * 1'   # segunda, 06:00 UTC (03:00 em Brasília)
@@ -11,6 +19,14 @@ jobs:
   dump:
     runs-on: ubuntu-latest
     steps:
+      # Primeiro passo de propósito: sem senha, não há dump.
+      - name: Senha do backup
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          test -n "$BACKUP_PASSPHRASE"
+          test "${#BACKUP_PASSPHRASE}" -ge 20
+
       - name: Certificado da Aiven
         env:
           DB_SSL_CA_BASE64: ${{ secrets.DB_SSL_CA_BASE64 }}
@@ -38,9 +54,28 @@ jobs:
           # Sanidade: o dump precisa ter as tabelas do produto.
           zcat *.sql.gz | grep -c "CREATE TABLE" | xargs test 5 -le
 
+      # AES-256 simétrico. Antes de apagar o original, abre o cifrado de
+      # novo e compara o hash, para provar que o backup restaura.
+      - name: Criptografar e conferir
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          for f in *.sql.gz; do
+            printf '%s' "$BACKUP_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback \
+              --passphrase-fd 0 --symmetric --cipher-algo AES256 --output "$f.gpg" "$f"
+            original=$(sha256sum "$f" | cut -d' ' -f1)
+            volta=$(printf '%s' "$BACKUP_PASSPHRASE" | gpg --batch --quiet --pinentry-mode loopback \
+              --passphrase-fd 0 --decrypt "$f.gpg" | sha256sum | cut -d' ' -f1)
+            test "$original" = "$volta"
+            rm -f "$f"
+          done
+          ls -la
+          # Nada em texto aberto pode sobrar para o upload.
+          ! ls *.sql.gz 2>/dev/null
+
       - uses: actions/upload-artifact@v4
         with:
           name: backup-mysql-${{ github.run_id }}
-          path: '*.sql.gz'
+          path: '*.sql.gz.gpg'
           retention-days: 90
           if-no-files-found: error
