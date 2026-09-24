@@ -4,9 +4,9 @@
  * O HTML é a tela de abertura do app em forma de e-mail: fundo asfalto do
  * começo ao fim, a logo grande, a marca em Oswald e o código em número
  * grande, com o mínimo em volta. Layout em tabelas com estilo inline, sem
- * rastreio. A Oswald e a Source Sans 3 vêm do Google Fonts nos clientes que
- * aceitam fonte externa; no Gmail caem em Helvetica e no texto do sistema.
- * A logo é servida pela própria API em `/marca/logo.png`.
+ * rastreio e sem nenhum recurso de fora do domínio. A logo é servida pela
+ * própria API em `/marca/logo.png`, e as fontes são só nomes com
+ * alternativa do sistema, sem baixar nada.
  */
 
 export const textoDoCodigo = (codigo: string): string => [
@@ -40,8 +40,10 @@ const FIO = '#2A2A2A';
 const LATAO = '#8B4545';
 const FERRUGEM = '#A35555';
 
-const FONTES =
-  'https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Source+Sans+3:wght@400;600&display=swap';
+// Só nomes de fonte, sem baixar nada. Quem já tem Oswald instalada vê
+// Oswald; o resto cai em Helvetica. Buscar do Google Fonts foi tirado
+// porque o Gmail ignora fonte externa e ainda lê o link como recurso fora
+// do domínio de envio, o que empurra para o spam.
 const OSWALD = "'Oswald','Helvetica Neue',Helvetica,Arial,sans-serif";
 const TEXTO = "'Source Sans 3','Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif";
 
@@ -60,12 +62,6 @@ export const htmlDoCodigo = (codigo: string): string => {
 <meta name="color-scheme" content="dark">
 <meta name="supported-color-schemes" content="dark">
 <title>Seu código para redefinir a senha</title>
-<!--[if !mso]><!-->
-<link href="${FONTES}" rel="stylesheet">
-<!--<![endif]-->
-<style>
-  @import url('${FONTES}');
-</style>
 </head>
 <body style="margin:0;padding:0;background-color:${ASFALTO};-webkit-text-size-adjust:100%;">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;font-size:1px;line-height:1px;">Seu código é ${c}. Vale 15 minutos e serve uma única vez.&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;</div>

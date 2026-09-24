@@ -31,14 +31,19 @@ test('html não tem script, link clicável nem rastreio', () => {
   const imagens = html.match(/<img[^>]*src="([^"]+)"/gi) ?? [];
   assert.equal(imagens.length, 1);
   assert.ok(imagens[0].includes(`${urlPublica()}/marca/logo.png`));
-  // A única URL fora da API é a das fontes do Google, sem parâmetro por piloto.
+  // Toda URL do e-mail sai da API. Recurso de outro domínio, como o Google
+  // Fonts que havia aqui, o Gmail lê como sinal de spam.
   const urls = html.match(/https?:\/\/[^"' )]+/g) ?? [];
   for (const u of urls) {
-    assert.ok(
-      u.startsWith(urlPublica()) || u.startsWith('https://fonts.googleapis.com/'),
-      `url inesperada: ${u}`,
-    );
+    assert.ok(u.startsWith(urlPublica()), `url fora do domínio: ${u}`);
   }
+});
+
+test('html não busca fonte nem folha de estilo de fora', () => {
+  const html = htmlDoCodigo('406259');
+  assert.ok(!html.includes('fonts.googleapis'));
+  assert.ok(!/@import/i.test(html));
+  assert.ok(!/<link\s/i.test(html));
 });
 
 test('html usa tabelas de apresentação, o tema escuro e a fonte do app', () => {
