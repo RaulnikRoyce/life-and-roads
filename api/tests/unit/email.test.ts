@@ -82,9 +82,10 @@ test('escaparHtml troca os cinco caracteres', () => {
 
 test('boas-vindas explica o que a conta guarda, o que fica no celular e a senha', () => {
   const texto = textoDasBoasVindas();
-  assert.ok(texto.includes('ficha da sua moto e as datas de manutenção'));
-  assert.ok(texto.includes('continuam só no seu celular'));
-  assert.ok(texto.includes('Enviar backup'));
+  assert.ok(texto.includes('ficha da sua moto, as datas de manutenção e o resto da caderneta'));
+  assert.ok(texto.includes('A caderneta vai cifrada'));
+  assert.ok(texto.includes('A foto da moto continua só no seu celular'));
+  assert.ok(texto.includes('desligue em Conta'));
   assert.ok(texto.includes('Esqueci a senha'));
   assert.ok(texto.includes('responda este e-mail'));
   assert.ok(texto.includes('Se não foi você quem criou esta conta'));
@@ -94,8 +95,8 @@ test('boas-vindas em html tem o mesmo conteúdo do texto puro', () => {
   const html = htmlDasBoasVindas();
   for (const trecho of [
     'Sua conta está pronta',
-    'ficha da sua moto e as datas de manutenção',
-    'continuam só no seu celular',
+    'ficha da sua moto, as datas de manutenção e o resto da caderneta',
+    'A foto da moto continua só no seu celular',
     'Esqueci a senha',
     'Se não foi você quem criou esta conta',
   ]) {

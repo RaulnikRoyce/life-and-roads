@@ -70,6 +70,13 @@ class BlocoConta extends StatelessWidget {
   final bool nuvemOcupada;
 
   static const rotuloAceite = 'Li e aceito os Termos de uso e a Privacidade';
+
+  /// Lido antes de criar a conta: o interruptor nasce ligado, então a
+  /// pessoa precisa saber aqui o que vai para o servidor (ADR 0038).
+  static const oQueAContaGuarda =
+      'A conta guarda a ficha, as datas de manutenção e o último ponto, e '
+      'a caderneta inteira cifrada, menos a foto. Você pode desligar a '
+      'caderneta na conta quando quiser.';
   static const rotuloNuvem = 'Guardar a caderneta inteira na conta';
 
   @override
@@ -91,7 +98,7 @@ class BlocoConta extends StatelessWidget {
               ? (reenviar
                     ? 'Ficha neste aparelho. Reenvia quando a API voltar.'
                     : 'Ficha sincroniza com o servidor')
-              : 'Evita perder a ficha ao trocar de celular.',
+              : 'Leva a caderneta para um celular novo.',
           style: Theme.of(context).textTheme.bodyMedium,
         ),
         children: [
@@ -146,6 +153,13 @@ class BlocoConta extends StatelessWidget {
               teclado: TextInputType.emailAddress,
             ),
             CampoOficina(senhaCtrl, 'Senha (mín. 8)', max: 72, senha: true),
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                oQueAContaGuarda,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ),
             CheckboxListTile(
               contentPadding: EdgeInsets.zero,
               controlAffinity: ListTileControlAffinity.leading,

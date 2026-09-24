@@ -4,7 +4,8 @@ import 'package:life_and_roads/core/database/armazem_kv.dart';
 import 'package:life_and_roads/core/database/chaves_kv.dart';
 import 'package:life_and_roads/core/sync/status_sync.dart';
 
-/// Metadados de sync das datas. Km, CNH e serviço não sobem.
+/// Metadados de sync das datas. Km, CNH e serviço vão pela caderneta na
+/// nuvem (ADR 0038), fora deste sync.
 class ManutencaoSyncStore {
   static const chave = ChavesKv.manutencaoSync;
 

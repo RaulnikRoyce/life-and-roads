@@ -1,6 +1,7 @@
 import 'package:life_and_roads/manutencao/regras.dart';
 
-/// Datas da oficina e da papelada que a API replica (sem km, CNH nem serviço).
+/// Datas da oficina e da papelada que a rota /manutencao replica. Km, CNH e
+/// serviço vão pela caderneta na nuvem (ADR 0038).
 class AgendaManutencao {
   const AgendaManutencao({
     this.oleoUltima,

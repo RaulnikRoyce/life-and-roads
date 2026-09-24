@@ -11,9 +11,9 @@
 import { FERRUGEM, CREME, MUTE, OSWALD, TEXTO, TINTA, fio, molduraHtml, traco } from './moldura';
 
 const GUARDA =
-  'A partir de agora, a ficha da sua moto e as datas de manutenção ficam guardadas na sua conta e voltam quando você entrar em outro celular.';
+  'A partir de agora, a ficha da sua moto, as datas de manutenção e o resto da caderneta, com abastecimentos, serviços e pontos do mapa, ficam guardados na sua conta e voltam quando você entrar em outro celular. A caderneta vai cifrada.';
 const FICA_NO_CELULAR =
-  'Abastecimentos, fotos e os pontos marcados no mapa continuam só no seu celular. Para levar tudo numa troca de aparelho, use o botão Enviar backup, na aba Ficha.';
+  'A foto da moto continua só no seu celular. Se preferir não guardar a caderneta na conta, desligue em Conta, na aba Ficha.';
 const SENHA =
   'Esqueceu a senha? Na aba Ficha, abra Conta e toque em Esqueci a senha. Um código chega neste e-mail.';
 const RESPONDA = 'Dúvida, sugestão ou algo que não funcionou, responda este e-mail.';
@@ -38,7 +38,7 @@ const paragrafo = (texto: string, topo: number): string =>
 export const htmlDasBoasVindas = (): string =>
   molduraHtml({
     titulo: 'Sua conta no life.and.roads está pronta',
-    previa: 'A ficha e as datas de manutenção agora voltam se você trocar de celular.',
+    previa: 'A ficha e a caderneta agora voltam se você trocar de celular.',
     corpo: `<tr><td align="center" style="padding:56px 16px 0 16px;">
   <p style="margin:0;font-family:${OSWALD};font-size:13px;line-height:18px;letter-spacing:3.5px;text-transform:uppercase;font-weight:500;color:${FERRUGEM};">Conta criada</p>
   <p style="margin:14px 0 0 0;font-family:${OSWALD};font-size:30px;line-height:36px;letter-spacing:1px;font-weight:600;color:${CREME};">Sua conta está pronta</p>

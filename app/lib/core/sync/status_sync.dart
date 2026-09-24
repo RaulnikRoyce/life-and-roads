@@ -1,6 +1,7 @@
 /// Estado da ficha em relação à API opcional.
 ///
-/// Abastecimentos, serviços e pins não sobem ao servidor.
+/// Abastecimentos, serviços e pins vão pela caderneta na nuvem, com carimbo
+/// próprio (ADR 0038), e não usam este estado.
 enum StatusSync {
   synced,
   pending,

@@ -53,8 +53,8 @@ class ConviteConta extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              'Com conta, a ficha e as datas voltam quando você trocar de '
-              'celular. O app continua funcionando sem ela.',
+              'Com conta, a ficha e a caderneta inteira, menos a foto, voltam '
+              'quando você trocar de celular. O app continua funcionando sem ela.',
               style: tema.textTheme.bodyMedium,
             ),
             const SizedBox(height: 14),

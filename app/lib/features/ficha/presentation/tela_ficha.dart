@@ -387,8 +387,8 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
       builder: (ctx) => AlertDialog(
         title: const Text('Excluir conta?'),
         content: const Text(
-          'Apaga e-mail, ficha, datas e o último ponto no servidor. '
-          'A caderneta neste aparelho continua.',
+          'Apaga no servidor o e-mail, a ficha, as datas, o último ponto e '
+          'a caderneta guardada na conta. A caderneta deste aparelho continua.',
         ),
         actions: [
           TextButton(

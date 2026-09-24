@@ -19,6 +19,7 @@ flowchart LR
     RF["/ficha"]
     RM["/manutencao"]
     RL["/localizacao"]
+    RC["/caderneta (cifrada)"]
     MySQL[(MySQL)]
   end
   Ficha --> Sqlite
@@ -29,17 +30,19 @@ flowchart LR
   Ficha -.->|"JWT opcional"| RF
   Manutencao -.-> RM
   Mapa -.-> RL
+  Sqlite -.->|"com aceite dos termos"| RC
   Auth --> MySQL
   RF --> MySQL
   RM --> MySQL
   RL --> MySQL
+  RC --> MySQL
 ```
 
 A linha pontilhada só existe com conta. Sem login, nada sai do aparelho.
 
 ## 2. Camadas da API
 
-Pasta `api/src/`, de fora para dentro. TypeScript em módulos (`auth`, `ficha`, `manutencao`, `localizacao`) e `shared/`.
+Pasta `api/src/`, de fora para dentro. TypeScript em módulos (`auth`, `ficha`, `manutencao`, `localizacao`, `caderneta`, `monitor`) e `shared/`, que inclui a cifra da caderneta em `shared/cripto/`.
 
 | Camada | Pasta | Responsabilidade |
 |---|---|---|
@@ -71,20 +74,23 @@ app/lib/
   mapa/                  GPS, rota, pins, destino, tela
 ```
 
-As abas permanecem montadas (`IndexedStack`). Viagem e Manutenção relêem a ficha ao ficarem visíveis, para a média e o km do painel recém-salvos valerem no cálculo.
+As abas permanecem montadas (`IndexedStack`). Posto e Manutenção relêem a ficha ao ficarem visíveis, para a média e o km do painel recém-salvos valerem no cálculo. O abastecimento no Posto grava o km novo na ficha e avisa a Ficha para reler o aparelho, e a caderneta que chega da conta faz as quatro abas relerem.
 
 ## 4. O que é local e o que é remoto
 
 | Dado | Local | API |
 |---|---|---|
 | Ficha (marca, modelo, km, tanque, km/l) | sim | sim, com conta |
-| PSI | sim | não |
+| PSI | sim | na caderneta cifrada |
 | Foto | sim | não |
 | Óleo, pneus, revisão, IPVA, seguro, licenciamento | sim | sim (datas) |
-| Km de óleo/corrente, CNH, serviços | sim | não |
-| Preço do litro, abastecimentos, R$/km | sim | não |
-| Pins e backup | sim | não |
+| Km de óleo/corrente, CNH, serviços | sim | na caderneta cifrada |
+| Preço do litro, abastecimentos | sim | na caderneta cifrada |
+| Pins | sim | na caderneta cifrada |
+| Arquivo de backup | sim | não |
 | Último ponto GPS | sim | sim, com conta |
+
+"Na caderneta cifrada" vale com conta, aceite dos termos e o interruptor ligado, e vai por `/caderneta` (ADR 0038).
 
 ## 5. Fórmulas
 

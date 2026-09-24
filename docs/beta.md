@@ -38,7 +38,7 @@ Ficam no painel do Render, no serviço da API, ao lado das `DB_*`. Não são sec
 
 ## Data safety (Play)
 
-- Conta (e-mail, senha bcrypt, ficha sem PSI, datas, último ponto), **só com login**.
+- Conta (e-mail, senha bcrypt, ficha sem PSI, datas, último ponto e a caderneta cifrada, menos a foto), **só com login** e com o aceite dos termos (ADR 0038).
 - Foto, PSI, pins, abastecimentos, backup, **só neste aparelho**.
 - GPS, localização aproximada/precisa para o mapa. Sobe o último ponto se houver conta.
 - Sem anúncio, sem venda de dados, sem placa.

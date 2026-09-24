@@ -1,6 +1,7 @@
 import 'package:life_and_roads/features/ficha/domain/ficha_moto.dart';
 
-/// Compara só o que a API replica. PSI fica neste aparelho.
+/// Compara só o que a rota /ficha replica. O PSI vai pela caderneta na
+/// nuvem (ADR 0038) e fica fora desta comparação.
 class DetectarConflitoFicha {
   bool executar(FichaMoto local, FichaMoto remota) {
     return local.marca != remota.marca ||

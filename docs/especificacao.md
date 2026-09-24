@@ -19,7 +19,7 @@ Uma caderneta digital para um único veículo, com persistência local e sincron
 3. Registrar consumo no posto com `(km atual − km da ficha) ÷ litros`.
 4. Controlar óleo, pneus, revisão, corrente, IPVA, seguro, licenciamento e vencimento da CNH.
 5. Exibir o último ponto no mapa e permitir marcas locais de posto ou oficina.
-6. Oferecer conta opcional (JWT) apenas para ficha, datas de manutenção e último ponto.
+6. Oferecer conta opcional (JWT) para ficha, datas de manutenção, último ponto e a caderneta cifrada, menos a foto, com aceite dos termos e interruptor (ADR 0038).
 
 ## 3. Requisitos funcionais
 

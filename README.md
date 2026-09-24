@@ -6,7 +6,7 @@ Caderneta digital de **uma motocicleta**. Ficha, manutenção, viagem e último 
 
 Flutter (Android) neste aparelho, API Node.js opcional (Express, MySQL, porta **3001**). Sem comunidade, FIPE ou placa. O mapa é uma tela de apoio.
 
-A caderneta funciona offline, sem conta. O login replica ficha, datas de manutenção e o último ponto, para a troca de celular. A API recusa placa, chassi, RENAVAM, foto e qualquer campo fora do schema Zod `.strict()`.
+A caderneta funciona offline, sem conta. Com login, a ficha, as datas de manutenção e o último ponto sincronizam, e o resto da caderneta vai cifrado para a conta, menos a foto, para a troca de celular (ADR 0038). A API recusa placa, chassi, RENAVAM, foto e qualquer campo fora do schema Zod `.strict()`.
 
 | Aba | O que guarda |
 |---|---|

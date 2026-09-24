@@ -1,6 +1,6 @@
 # Sincronização, life.and.roads
 
-A caderneta funciona **neste aparelho**. A API é um cofre opcional da ficha, das **datas de manutenção** e do último ponto. Abastecimentos, serviços, pins, foto, PSI, km de óleo/corrente e CNH **não** sobem.
+A caderneta funciona **neste aparelho**. A API é um cofre opcional da ficha, das **datas de manutenção**, do último ponto e da **caderneta cifrada**, que leva abastecimentos, serviços, pins, PSI, km de óleo/corrente, CNH e preços do dia (ADR 0038). A foto não sobe.
 
 ## Estados (ficha e agenda de manutenção)
 
@@ -26,8 +26,17 @@ Metadados da ficha no SQLite (`ficha_sync`). Metadados da agenda no SQLite (`cad
 
 O abastecimento na aba Viagem atualiza a ficha pelo `FichaRepository`. Se a conta existir e o PUT falhar, a ficha fica `pending`/`failed`.
 
+## Caderneta na nuvem
+
+Fluxo separado do da ficha e da agenda, com carimbo próprio (`atualizado_em_ms`) e sem os estados acima. O app guarda o carimbo, a assinatura sha256 do último pacote e um aviso de conflito na tabela `caderneta_kv`.
+
+1. Só age com conta, interruptor ligado e o aceite da versão atual dos termos.
+2. Cada mudança avisa o `CadernetaMudou`. O envio espera 2 minutos sem mudança nova, ou sai na hora quando o app vai para segundo plano, e só sobe se a assinatura mudou.
+3. O `PUT` leva o carimbo conhecido. Se outro aparelho gravou antes, a API responde 409 e o app para de mandar até o piloto escolher.
+4. Ao entrar e ao abrir, depois de a ficha carregar, `DecidirCadernetaNuvem` manda, traz, adota ou pergunta. Só pergunta quando os dois lados têm histórico e ele não é o mesmo.
+
 ## O que não sincroniza
 
-Históricos, pins, backup, km de troca, CNH. Restaurar um JSON local marca ficha **e** agenda como pendentes se houver token.
+Foto e arquivo de backup. Restaurar um JSON local marca ficha **e** agenda como pendentes se houver token, e avisa a caderneta na nuvem.
 
 Retry: cada abertura da Ficha ou da Manutenção (e o login). Access JWT ~15 min; o app troca o refresh no 401. Sem fila em segundo plano.
