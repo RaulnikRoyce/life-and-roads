@@ -234,12 +234,16 @@ export const recuperarSenha = async (email: string): Promise<void> => {
     });
 };
 
-/** Um só erro para toda falha, para não dizer qual parte errou. */
+/**
+ * Um só erro para toda falha, para não dizer qual parte errou. Devolve a
+ * versão dos termos como o login, porque redefinir também entra na conta,
+ * muitas vezes num celular novo (ADR 0038).
+ */
 export const redefinirSenha = async (
   email: string,
   codigo: string,
   senhaNova: string,
-): Promise<Tokens> => {
+): Promise<Tokens & { termosVersao: string | null }> => {
   const usuario = await repo.buscarPorEmail(email);
   if (!usuario || !usuario.ativo) {
     throw new AppError(401, ERRO_CODIGO);
@@ -260,7 +264,8 @@ export const redefinirSenha = async (
   const senhaCriptografada = await bcrypt.hash(senhaNova, 10);
   await repo.atualizarSenha(usuario.id, senhaCriptografada);
   await repo.revogarTodas(usuario.id);
-  return emitir(usuario.id, usuario.email);
+  const tokens = await emitir(usuario.id, usuario.email);
+  return { ...tokens, termosVersao: usuario.termos_versao ?? null };
 };
 
 /** Quem já tem conta aceita a versão nova dos termos (ADR 0038). */

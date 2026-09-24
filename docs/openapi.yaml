@@ -210,7 +210,7 @@ paths:
               $ref: '#/components/schemas/RedefinirSenha'
       responses:
         '200':
-          description: senha redefinida; token e refreshToken novos
+          description: senha redefinida; token, refreshToken e termosVersao, como o login
         '400':
           description: payload extra, código fora do formato ou senha curta
         '401':

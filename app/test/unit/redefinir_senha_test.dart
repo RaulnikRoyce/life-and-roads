@@ -30,7 +30,12 @@ class _RemotoFake extends AuthRemoteDatasource {
     emailRedefinido = email;
     this.codigo = codigo;
     this.senhaNova = senhaNova;
-    return (token: 'token-novo', email: email, refresh: 'refresh-novo');
+    return (
+      token: 'token-novo',
+      email: email,
+      refresh: 'refresh-novo',
+      termosVersao: '2026-09-24',
+    );
   }
 }
 

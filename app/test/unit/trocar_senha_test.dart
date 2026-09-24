@@ -14,7 +14,7 @@ class _RemotoFake extends AuthRemoteDatasource {
   bool falhar = false;
 
   @override
-  Future<({String token, String email, String refresh})> trocarSenha({
+  Future<ParSessao> trocarSenha({
     required String token,
     required String senhaAtual,
     required String senhaNova,
@@ -23,7 +23,12 @@ class _RemotoFake extends AuthRemoteDatasource {
     tokenRecebido = token;
     this.senhaAtual = senhaAtual;
     this.senhaNova = senhaNova;
-    return (token: 'token-novo', email: 'a@b.c', refresh: 'refresh-novo');
+    return (
+      token: 'token-novo',
+      email: 'a@b.c',
+      refresh: 'refresh-novo',
+      termosVersao: null,
+    );
   }
 }
 

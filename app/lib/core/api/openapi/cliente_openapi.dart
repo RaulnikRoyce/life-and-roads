@@ -51,11 +51,15 @@ class ClienteOpenApi {
     );
   }
 
-  Future<void> registrar(CredenciaisDto credenciais) {
-    return ApiCaderneta.registrar(credenciais.toJson());
+  Future<void> registrar(CadastroDto cadastro) {
+    return ApiCaderneta.registrar(cadastro.toJson());
   }
 
-  /// Corpo do login: `token`, `refreshToken`, `email`, `id`.
+  Future<void> aceitarTermos(String token, TermosDto termos) {
+    return ApiCaderneta.aceitarTermos(token, termos.toJson());
+  }
+
+  /// Corpo do login: `token`, `refreshToken`, `email`, `id`, `termosVersao`.
   Future<Map<String, dynamic>> login(CredenciaisDto credenciais) {
     return ApiCaderneta.login(credenciais.toJson());
   }
@@ -70,7 +74,7 @@ class ClienteOpenApi {
     return ApiCaderneta.recuperarSenha(pedido.toJson());
   }
 
-  /// Sem token. Corpo igual ao do login (`token`, `refreshToken`, `email`).
+  /// Sem token. Corpo igual ao do login, com `termosVersao`.
   Future<Map<String, dynamic>> redefinirSenha(RedefinirSenhaDto pedido) {
     return ApiCaderneta.redefinirSenha(pedido.toJson());
   }

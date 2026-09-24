@@ -148,7 +148,10 @@ class _TelaPostoState extends ConsumerState<TelaPosto> {
         if (atual.erro != null && atual.erro != anterior?.erro) {
           _aviso(atual.erro!);
         }
-        if (!_precosAplicados && !atual.carregando) {
+        // Na abertura e a cada carga nova, que depois da abertura só vem
+        // quando a caderneta da conta chega (ADR 0038).
+        final cargaTerminou = anterior?.carregando == true && !atual.carregando;
+        if (!atual.carregando && (!_precosAplicados || cargaTerminou)) {
           _preco.text = atual.precos.gasolina;
           _precoAlcool.text = atual.precos.alcool;
           _precosAplicados = true;

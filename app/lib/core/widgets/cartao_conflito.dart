@@ -9,10 +9,18 @@ class CartaoConflito extends StatelessWidget {
     required this.resumoRemoto,
     required this.aoManter,
     required this.aoUsarServidor,
+    this.resumoLocal,
+    this.ocupado = false,
   });
 
   final String titulo;
   final String resumoRemoto;
+
+  /// O que tem neste aparelho, quando ajuda a escolher.
+  final String? resumoLocal;
+
+  /// Esperando a API: os botões ficam parados.
+  final bool ocupado;
   final VoidCallback aoManter;
   final VoidCallback aoUsarServidor;
 
@@ -29,19 +37,26 @@ class CartaoConflito extends StatelessWidget {
             'No servidor: $resumoRemoto. Foi alterada em outro aparelho.',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
+          if (resumoLocal != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Neste aparelho: $resumoLocal.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ],
           const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
                 child: OutlinedButton(
-                  onPressed: aoManter,
+                  onPressed: ocupado ? null : aoManter,
                   child: const Text('Manter esta'),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: FilledButton(
-                  onPressed: aoUsarServidor,
+                  onPressed: ocupado ? null : aoUsarServidor,
                   child: const Text('Usar a do servidor'),
                 ),
               ),

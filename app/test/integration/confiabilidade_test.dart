@@ -3,13 +3,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:life_and_roads/api.dart';
+import 'package:life_and_roads/core/backup/backup_nuvem.dart';
+import 'package:life_and_roads/core/legal/textos.dart';
 import 'package:life_and_roads/core/sync/lido_do_servidor.dart';
 import 'package:life_and_roads/core/permissoes/mensagens_permissao.dart';
 import 'package:life_and_roads/core/widgets/cartao_conflito.dart';
+import 'package:life_and_roads/features/ficha/data/caderneta_nuvem_repository.dart';
 import 'package:life_and_roads/features/ficha/data/ficha_local_datasource.dart';
 import 'package:life_and_roads/features/ficha/data/ficha_remote_datasource.dart';
 import 'package:life_and_roads/features/ficha/domain/ficha_moto.dart';
 import 'package:life_and_roads/features/ficha/presentation/ficha_controller.dart';
+import 'package:life_and_roads/features/ficha/presentation/nuvem_controller.dart';
 import 'package:life_and_roads/features/mapa/data/servico_permissao_gps.dart';
 import 'package:life_and_roads/features/mapa/presentation/mapa_controller.dart';
 import 'package:life_and_roads/core/widgets/barra_abas.dart';
@@ -47,6 +51,19 @@ class _GpsNegado implements ConsultaPermissaoGps {
   Future<String?> recusar({required bool web}) async {
     return MensagensPermissao.gpsNegada(web: false);
   }
+}
+
+/// Conta que já aceitou os termos e nuvem sem caderneta, sem HTTP. Estes
+/// testes olham a ficha; a caderneta na nuvem tem os seus.
+Future<Override> _nuvemQuieta() async {
+  await const EstadoNuvem().gravarTermosAceitos(versaoTermos);
+  return cadernetaNuvemRepositoryProvider.overrideWith(
+    (ref) => CadernetaNuvemRepository(
+      backup: ref.watch(backupNuvemProvider),
+      auth: ref.watch(authRepositoryProvider),
+      buscar: (_) async => null,
+    ),
+  );
 }
 
 Finder _aba(String nome) => find.descendant(
@@ -143,9 +160,11 @@ void main() {
         kmAtual: 1000,
       ),
     );
+    final nuvem = await _nuvemQuieta();
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          nuvem,
           fichaRemoteDatasourceProvider.overrideWith(
             (_) => _FichaRemotaFake(falhar: true),
           ),
@@ -176,9 +195,11 @@ void main() {
         kmAtual: 1000,
       ),
     );
+    final nuvem = await _nuvemQuieta();
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          nuvem,
           fichaRemoteDatasourceProvider.overrideWith(
             (_) => _FichaRemotaFake(
               remota: const FichaMoto(

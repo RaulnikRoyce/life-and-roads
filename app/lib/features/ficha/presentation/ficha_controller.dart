@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_and_roads/core/backup/backup_nuvem.dart';
 import 'package:life_and_roads/core/backup/caderneta_mudou.dart';
 import 'package:life_and_roads/api.dart';
+import 'package:life_and_roads/core/legal/textos.dart';
 import 'package:life_and_roads/core/sync/ficha_sync_store.dart';
 import 'package:life_and_roads/features/auth/data/auth_local_datasource.dart';
 import 'package:life_and_roads/features/auth/data/auth_remote_datasource.dart';
@@ -15,6 +18,7 @@ import 'package:life_and_roads/features/ficha/data/ficha_repository_impl.dart';
 import 'package:life_and_roads/features/ficha/domain/ficha_moto.dart';
 import 'package:life_and_roads/features/ficha/domain/ficha_repository.dart';
 import 'package:life_and_roads/features/ficha/presentation/ficha_estado.dart';
+import 'package:life_and_roads/features/ficha/presentation/nuvem_controller.dart';
 
 final authLocalDatasourceProvider = Provider<AuthLocalDatasource>(
   (_) => AuthLocalDatasource(),
@@ -55,6 +59,8 @@ final fichaRepositoryProvider = Provider<FichaRepository>(
 class FichaController extends Notifier<FichaEstado> {
   AuthRepository get _auth => ref.read(authRepositoryProvider);
   FichaRepository get _ficha => ref.read(fichaRepositoryProvider);
+  CadernetaNuvemController get _nuvem =>
+      ref.read(cadernetaNuvemControllerProvider.notifier);
   static const _trocarSenha = TrocarSenha();
   static const _redefinirSenha = RedefinirSenha();
 
@@ -86,9 +92,14 @@ class FichaController extends Notifier<FichaEstado> {
       servidor: local.sessao.servidor,
       sync: local.sync,
     );
-    if (!local.sessao.logado) return;
+    if (!local.sessao.logado) {
+      unawaited(_nuvem.verificar());
+      return;
+    }
 
     final carregada = await _ficha.carregar();
+    // Depois da ficha: se a caderneta vier da conta, o PSI tem onde entrar.
+    unawaited(_nuvem.verificar());
     if (geracao != _geracao) {
       state = state.copiarCom(sincronizando: false);
       return;
@@ -103,6 +114,15 @@ class FichaController extends Notifier<FichaEstado> {
       offline: carregada.offline,
       sync: carregada.sync,
     );
+  }
+
+  /// A ficha mudou por fora desta tela (abastecimento no Posto, caderneta
+  /// trazida da conta): relê só o aparelho, sem ir ao servidor de novo.
+  /// Sobe a geração para um carregar() antigo não voltar com o km velho.
+  Future<void> relerDoAparelho() async {
+    _geracao++;
+    final local = await _ficha.carregarLocal();
+    state = state.copiarCom(ficha: local.ficha, sync: local.sync);
   }
 
   Future<void> salvar(FichaMoto ficha, {bool silencioso = false}) async {
@@ -123,6 +143,7 @@ class FichaController extends Notifier<FichaEstado> {
     required String email,
     required String senha,
     required String servidor,
+    required bool aceitouTermos,
   }) async {
     if (email.isEmpty || senha.length < 8) {
       state = state.copiarCom(
@@ -131,16 +152,44 @@ class FichaController extends Notifier<FichaEstado> {
       );
       return;
     }
+    if (!aceitouTermos) {
+      state = state.copiarCom(
+        erro: 'Para criar a conta, marque que leu os Termos de uso e a Privacidade.',
+        limparAviso: true,
+      );
+      return;
+    }
     await _auth.definirServidor(servidor);
     try {
-      final sessao = await _auth.registrar(email, senha);
+      final sessao = await _auth.registrar(
+        email,
+        senha,
+        termosVersao: versaoTermos,
+      );
+      await _nuvem.registrarAceiteDoLogin(sessao.termosVersao ?? versaoTermos);
+      // Conta nova leva a ficha que já existe aqui, sem esperar o piloto
+      // salvar de novo, e a caderneta logo depois (ADR 0038).
+      final local = (await _ficha.carregarLocal()).ficha;
+      FichaSalva? salva;
+      if (local != null && local.preenchida) {
+        _geracao++;
+        salva = await _ficha.salvar(local);
+      }
+      unawaited(_nuvem.verificar());
       state = state.copiarCom(
         token: sessao.token,
         email: sessao.email,
         servidor: sessao.servidor,
-        aviso: 'Conta criada. Agora salve a ficha para ela ir ao servidor.',
+        ficha: salva?.ficha,
+        sync: salva?.sync,
+        offline: salva?.offline ?? false,
+        aviso: switch (salva) {
+          null => 'Conta criada. Salve a ficha para ela ir para a conta.',
+          FichaSalva(sincronizada: true) =>
+            'Conta criada. A ficha deste aparelho já está na conta.',
+          _ => salva.mensagem,
+        },
         limparErro: true,
-        offline: false,
       );
     } on FalhaApi catch (e) {
       state = state.copiarCom(erro: e.mensagem, limparAviso: true);
@@ -168,7 +217,9 @@ class FichaController extends Notifier<FichaEstado> {
     await _auth.definirServidor(servidor);
     try {
       final sessao = await _auth.entrar(email, senha);
+      await _nuvem.registrarAceiteDoLogin(sessao.termosVersao);
       final carregada = await _ficha.carregar();
+      unawaited(_nuvem.verificar());
       state = FichaEstado(
         carregando: false,
         ficha: carregada.ficha,
@@ -196,6 +247,7 @@ class FichaController extends Notifier<FichaEstado> {
   Future<void> sair() async {
     final sessao = await _auth.sair();
     await ref.read(backupNuvemProvider).esquecerConta();
+    unawaited(_nuvem.verificar());
     state = state.copiarCom(
       limparSessao: true,
       limparRemoto: true,
@@ -210,6 +262,7 @@ class FichaController extends Notifier<FichaEstado> {
     try {
       final sessao = await _auth.excluirConta();
       await ref.read(backupNuvemProvider).esquecerConta();
+      unawaited(_nuvem.verificar());
       state = state.copiarCom(
         limparSessao: true,
         servidor: sessao.servidor,
@@ -311,7 +364,9 @@ class FichaController extends Notifier<FichaEstado> {
     await _auth.definirServidor(servidor);
     try {
       final sessao = await _auth.redefinirSenha(email, codigo, senhaNova);
+      await _nuvem.registrarAceiteDoLogin(sessao.termosVersao);
       final carregada = await _ficha.carregar();
+      unawaited(_nuvem.verificar());
       state = FichaEstado(
         carregando: false,
         ficha: carregada.ficha,

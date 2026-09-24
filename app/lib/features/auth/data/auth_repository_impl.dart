@@ -28,9 +28,22 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Sessao> registrar(String email, String senha) async {
-    await _remoto.registrar(email, senha);
+  Future<Sessao> registrar(
+    String email,
+    String senha, {
+    required String termosVersao,
+  }) async {
+    await _remoto.registrar(email, senha, termosVersao: termosVersao);
     return entrar(email, senha);
+  }
+
+  @override
+  Future<void> aceitarTermos(String versao) async {
+    final token = await _local.lerToken();
+    if (token == null || token.isEmpty) {
+      throw FalhaApi('Entre na conta para aceitar os termos.');
+    }
+    await _remoto.aceitarTermos(token, versao);
   }
 
   @override
@@ -41,6 +54,7 @@ class AuthRepositoryImpl implements AuthRepository {
       token: login.token,
       email: login.email,
       servidor: ApiCaderneta.base,
+      termosVersao: login.termosVersao,
     );
   }
 
@@ -106,6 +120,7 @@ class AuthRepositoryImpl implements AuthRepository {
       token: login.token,
       email: login.email,
       servidor: ApiCaderneta.base,
+      termosVersao: login.termosVersao,
     );
   }
 }

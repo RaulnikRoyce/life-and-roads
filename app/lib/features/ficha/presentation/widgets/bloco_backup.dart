@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:life_and_roads/core/backup/pasta_download.dart';
+import 'package:life_and_roads/core/texto/tempo_relativo.dart';
 import 'package:life_and_roads/tema.dart';
 
 /// Seção "Backup neste aparelho" da Ficha. Só botões; quem faz é a tela.
@@ -32,18 +33,7 @@ class BlocoBackup extends StatelessWidget {
       return 'Uma cópia fica em Download, na pasta life.and.roads. $fim';
     }
     return 'Salvo sozinho em Download, na pasta life.and.roads, '
-        '${_quando(em)}. $fim';
-  }
-
-  static String _quando(DateTime d) {
-    final agora = DateTime.now();
-    final minutos = agora.difference(d).inMinutes;
-    if (minutos < 1) return 'agora';
-    if (minutos < 60) return 'há $minutos min';
-    final horas = agora.difference(d).inHours;
-    if (horas < 24) return 'há $horas h';
-    final dias = agora.difference(d).inDays;
-    return dias == 1 ? 'ontem' : 'há $dias dias';
+        '${haQuanto(em)}. $fim';
   }
 
   @override

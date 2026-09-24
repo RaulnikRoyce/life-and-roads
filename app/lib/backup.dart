@@ -163,6 +163,43 @@ class BackupCaderneta {
     return null;
   }
 
+  /// Põe o que veio da nuvem na mesma forma que [exportarParaNuvem] monta,
+  /// para comparar os dois lados sem restaurar. O JSON da API devolve
+  /// `12000` onde o aparelho tem `12000.0`, e sem isso o mesmo histórico
+  /// pareceria outro.
+  static Map<String, dynamic> normalizarNuvem(Map<String, dynamic> conteudo) {
+    String? texto(Object? v) => v is String && v.isNotEmpty ? v : null;
+    final psi = conteudo['psi'];
+    return {
+      'v': conteudo['v'],
+      'abastecimentos': [
+        for (final r in listaDeBackup(
+          conteudo['abastecimentos'],
+          RegistroAbastecimento.deJson,
+        ))
+          r.paraJson(),
+      ],
+      'servicos': [
+        for (final s in listaDeBackup(
+          conteudo['servicos'],
+          RegistroServico.deJson,
+        ))
+          s.paraJson(),
+      ],
+      'pins': [
+        for (final p in listaDeBackup(conteudo['pins'], PinoMapa.deJson))
+          p.paraJson(),
+      ],
+      'extra': texto(conteudo['extra']),
+      'precoGasolina': texto(conteudo['precoGasolina']),
+      'precoAlcool': texto(conteudo['precoAlcool']),
+      'psi': {
+        'dianteiro': psi is Map ? _psi(psi['dianteiro']) : null,
+        'traseiro': psi is Map ? _psi(psi['traseiro']) : null,
+      },
+    };
+  }
+
   static Future<Map<String, dynamic>?> _fichaCrua() async {
     final bruto = await ArmazemKv.lerTexto(ChavesKv.ficha);
     if (bruto == null) return null;

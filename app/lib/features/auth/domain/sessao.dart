@@ -3,11 +3,16 @@ class Sessao {
     this.token,
     this.email,
     required this.servidor,
+    this.termosVersao,
   });
 
   final String? token;
   final String? email;
   final String servidor;
+
+  /// Versão dos termos que a conta aceitou, como veio do login ou da
+  /// redefinição de senha. Não é guardada aqui: quem guarda é a nuvem.
+  final String? termosVersao;
 
   bool get logado => token != null && token!.isNotEmpty;
 

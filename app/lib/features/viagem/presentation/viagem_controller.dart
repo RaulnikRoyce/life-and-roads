@@ -148,6 +148,9 @@ class ViagemController extends Notifier<ViagemEstado> {
     }
 
     final salva = await _fichaRepo.salvar(montado.ficha!);
+    // O km do painel mudou por aqui; sem isso a Ficha mostra o antigo até
+    // reabrir o app.
+    await ref.read(fichaControllerProvider.notifier).relerDoAparelho();
     await _viagem.gravarPrecos(precos);
     final historico = await _viagem.acrescentarAbastecimento(montado.registro!);
     ref.read(cadernetaMudouProvider).avisar();

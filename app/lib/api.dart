@@ -393,6 +393,22 @@ class ApiCaderneta {
     if (r.statusCode != 204) throw _erro(r);
   }
 
+  /// Registra o aceite dos termos por quem já tem conta.
+  static Future<void> aceitarTermos(
+    String token,
+    Map<String, dynamic> termos,
+  ) async {
+    final r = await _comAuth(
+      token,
+      (t) => _cliente.post(
+        Uri.parse('$base/auth/termos'),
+        headers: _cabecalhos(token: t),
+        body: jsonEncode(termos),
+      ),
+    );
+    if (r.statusCode != 200) throw _erro(r);
+  }
+
   static Future<void> excluirConta(String token) async {
     final r = await _comAuth(
       token,

@@ -2,7 +2,13 @@ import 'package:life_and_roads/api.dart';
 import 'package:life_and_roads/core/api/openapi/cliente_openapi.dart';
 import 'package:life_and_roads/core/api/openapi/dtos.dart';
 
-typedef ParSessao = ({String token, String email, String refresh});
+/// `termosVersao` é a versão dos termos que a conta aceitou, ou null.
+typedef ParSessao = ({
+  String token,
+  String email,
+  String refresh,
+  String? termosVersao,
+});
 
 class AuthRemoteDatasource {
   AuthRemoteDatasource({ClienteOpenApi? cliente})
@@ -10,8 +16,18 @@ class AuthRemoteDatasource {
 
   final ClienteOpenApi _cliente;
 
-  Future<void> registrar(String email, String senha) {
-    return _cliente.registrar(CredenciaisDto(email: email, senha: senha));
+  Future<void> registrar(
+    String email,
+    String senha, {
+    required String termosVersao,
+  }) {
+    return _cliente.registrar(
+      CadastroDto(email: email, senha: senha, termosVersao: termosVersao),
+    );
+  }
+
+  Future<void> aceitarTermos(String token, String versao) {
+    return _cliente.aceitarTermos(token, TermosDto(versao: versao));
   }
 
   Future<ParSessao> login(String email, String senha) async {
@@ -57,10 +73,12 @@ class AuthRemoteDatasource {
   ParSessao _par(Map<String, dynamic> corpo, {required String emailPadrao}) {
     final token = '${corpo['token'] ?? ''}';
     if (token.isEmpty) throw FalhaApi('Resposta da API sem token.');
+    final termos = corpo['termosVersao'];
     return (
       token: token,
       email: '${corpo['email'] ?? emailPadrao}',
       refresh: '${corpo['refreshToken'] ?? ''}',
+      termosVersao: termos is String ? termos : null,
     );
   }
 }

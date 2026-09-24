@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:life_and_roads/api.dart';
+import 'package:life_and_roads/features/auth/data/auth_remote_datasource.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -96,6 +97,49 @@ void main() {
             .having((e) => e.mensagem, 'mensagem', contains('indisponível')),
       ),
     );
+  });
+
+  test('aceite dos termos vai com token e só a versão', () async {
+    responder(200, {'termosVersao': '2026-09-24'});
+    await AuthRemoteDatasource().aceitarTermos('access', '2026-09-24');
+    final pedido = pedidos.single;
+    expect(pedido.url.toString(), '${ApiCaderneta.base}/auth/termos');
+    expect(pedido.headers['Authorization'], 'Bearer access');
+    expect(jsonDecode(pedido.body), {'versao': '2026-09-24'});
+  });
+
+  test('cadastro manda a versão dos termos aceita', () async {
+    responder(201, {'id': 1, 'email': 'a@b.c'});
+    await AuthRemoteDatasource().registrar(
+      'a@b.c',
+      'senha1234',
+      termosVersao: '2026-09-24',
+    );
+    expect(jsonDecode(pedidos.single.body), {
+      'email': 'a@b.c',
+      'senha': 'senha1234',
+      'termosVersao': '2026-09-24',
+    });
+  });
+
+  test('login traz a versão aceita, e conta sem aceite traz nulo', () async {
+    responder(200, {
+      'token': 'access',
+      'refreshToken': 'refresh',
+      'email': 'a@b.c',
+      'termosVersao': '2026-09-24',
+    });
+    final comAceite = await AuthRemoteDatasource().login('a@b.c', 'senha1234');
+    expect(comAceite.termosVersao, '2026-09-24');
+
+    responder(200, {
+      'token': 'access',
+      'refreshToken': 'refresh',
+      'email': 'a@b.c',
+      'termosVersao': null,
+    });
+    final semAceite = await AuthRemoteDatasource().login('a@b.c', 'senha1234');
+    expect(semAceite.termosVersao, isNull);
   });
 
   test('apagar aceita 204 e recusa o resto', () async {

@@ -41,6 +41,8 @@ void main() {
     expect(_chaves(yaml, 'TrocaSenha'), TrocaSenhaDto.chaves);
     expect(_chaves(yaml, 'RecuperarSenha'), RecuperarSenhaDto.chaves);
     expect(_chaves(yaml, 'RedefinirSenha'), RedefinirSenhaDto.chaves);
+    expect(_chaves(yaml, 'Cadastro'), CadastroDto.chaves);
+    expect(_chaves(yaml, 'Termos'), TermosDto.chaves);
   });
 
   test('o pacote da nuvem tem as chaves do ConteudoCaderneta, nem mais nem menos', () async {

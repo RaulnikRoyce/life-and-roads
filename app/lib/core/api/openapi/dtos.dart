@@ -158,6 +158,38 @@ class CredenciaisDto {
   Map<String, dynamic> toJson() => {'email': email, 'senha': senha};
 }
 
+/// Cadastro com a versão dos termos que a pessoa aceitou (ADR 0038).
+class CadastroDto {
+  const CadastroDto({
+    required this.email,
+    required this.senha,
+    required this.termosVersao,
+  });
+
+  static const chaves = ['email', 'senha', 'termosVersao'];
+
+  final String email;
+  final String senha;
+  final String termosVersao;
+
+  Map<String, dynamic> toJson() => {
+    'email': email,
+    'senha': senha,
+    'termosVersao': termosVersao,
+  };
+}
+
+/// Aceite dos termos por quem já tem conta (`POST /auth/termos`).
+class TermosDto {
+  const TermosDto({required this.versao});
+
+  static const chaves = ['versao'];
+
+  final String versao;
+
+  Map<String, dynamic> toJson() => {'versao': versao};
+}
+
 class TrocaSenhaDto {
   const TrocaSenhaDto({required this.senhaAtual, required this.senhaNova});
 

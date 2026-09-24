@@ -24,6 +24,12 @@ class BlocoConta extends StatelessWidget {
     required this.aoEsqueciSenha,
     required this.aoExcluirConta,
     required this.aoMostrarTexto,
+    required this.aceitouTermos,
+    required this.aoMudarAceite,
+    this.nuvemLigada = true,
+    this.nuvemLinha,
+    this.aoMudarNuvem,
+    this.nuvemOcupada = false,
     this.chave,
   });
 
@@ -52,6 +58,20 @@ class BlocoConta extends StatelessWidget {
   final VoidCallback aoExcluirConta;
   final void Function(String titulo, String corpo) aoMostrarTexto;
 
+  /// Caixa do cadastro. Nasce desmarcada, e "Cadastrar" só libera marcada
+  /// (ADR 0038).
+  final bool aceitouTermos;
+  final ValueChanged<bool> aoMudarAceite;
+
+  /// Interruptor da caderneta na nuvem, com a linha de quando guardou.
+  final bool nuvemLigada;
+  final String? nuvemLinha;
+  final ValueChanged<bool>? aoMudarNuvem;
+  final bool nuvemOcupada;
+
+  static const rotuloAceite = 'Li e aceito os Termos de uso e a Privacidade';
+  static const rotuloNuvem = 'Guardar a caderneta inteira na conta';
+
   @override
   Widget build(BuildContext context) {
     return Theme(
@@ -76,6 +96,13 @@ class BlocoConta extends StatelessWidget {
         ),
         children: [
           if (logado) ...[
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text(rotuloNuvem),
+              subtitle: nuvemLinha == null ? null : Text(nuvemLinha!),
+              value: nuvemLigada,
+              onChanged: nuvemOcupada ? null : aoMudarNuvem,
+            ),
             Align(
               alignment: Alignment.centerLeft,
               child: TextButton(onPressed: aoSair, child: const Text('Sair')),
@@ -119,11 +146,19 @@ class BlocoConta extends StatelessWidget {
               teclado: TextInputType.emailAddress,
             ),
             CampoOficina(senhaCtrl, 'Senha (mín. 8)', max: 72, senha: true),
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              controlAffinity: ListTileControlAffinity.leading,
+              title: const Text(rotuloAceite),
+              value: aceitouTermos,
+              onChanged: (v) => aoMudarAceite(v ?? false),
+            ),
+            _links(),
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: aoCadastrar,
+                    onPressed: aceitouTermos ? aoCadastrar : null,
                     child: const Text('Cadastrar'),
                   ),
                 ),
@@ -144,19 +179,26 @@ class BlocoConta extends StatelessWidget {
               ),
             ),
           ],
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton(
-              onPressed: () => aoMostrarTexto('Termos de uso', termosResumo),
-              child: const Text('Termos de uso'),
-            ),
+          if (logado) _links(),
+        ],
+      ),
+    );
+  }
+
+  /// À esquerda, como os outros botões de texto: o ExpansionTile centraliza
+  /// o que não pede lado.
+  Widget _links() {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Wrap(
+        children: [
+          TextButton(
+            onPressed: () => aoMostrarTexto('Termos de uso', termosResumo),
+            child: const Text('Termos de uso'),
           ),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton(
-              onPressed: () => aoMostrarTexto('Privacidade', privacidadeResumo),
-              child: const Text('Privacidade'),
-            ),
+          TextButton(
+            onPressed: () => aoMostrarTexto('Privacidade', privacidadeResumo),
+            child: const Text('Privacidade'),
           ),
         ],
       ),

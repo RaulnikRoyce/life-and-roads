@@ -48,6 +48,26 @@ class EstadoNuvem {
   Future<void> marcarConflito() =>
       ArmazemKv.gravarTexto(ChavesKv.nuvemConflito, 'sim');
 
+  Future<void> limparConflito() =>
+      ArmazemKv.gravarTexto(ChavesKv.nuvemConflito, null);
+
+  /// O piloto escolheu mandar o deste aparelho por cima da nuvem. Assume o
+  /// carimbo que está lá, e o próximo envio sobe mesmo sem mudança nova.
+  Future<void> adotarCarimbo(String carimbo) async {
+    await ArmazemKv.gravarTexto(ChavesKv.nuvemCarimbo, carimbo);
+    await ArmazemKv.gravarTexto(ChavesKv.nuvemAssinatura, null);
+    await ArmazemKv.gravarTexto(ChavesKv.nuvemConflito, null);
+  }
+
+  /// Interruptor desligado e cópia da conta apagada. Religar começa do
+  /// zero, como a primeira vez.
+  Future<void> desligar() async {
+    await ligar(false);
+    await ArmazemKv.gravarTexto(ChavesKv.nuvemCarimbo, null);
+    await ArmazemKv.gravarTexto(ChavesKv.nuvemAssinatura, null);
+    await ArmazemKv.gravarTexto(ChavesKv.nuvemConflito, null);
+  }
+
   /// Saiu da conta: carimbo, assinatura, conflito e aceite eram dela. O
   /// interruptor fica, porque desligar foi escolha da pessoa neste aparelho.
   Future<void> esquecerConta() async {
@@ -116,6 +136,10 @@ class BackupNuvem {
   /// tela trocar "guardada há 5 min" sem reabrir o app.
   final ultimo = ValueNotifier<String?>(null);
 
+  /// Vira true quando um envio por trás recebe 409, para a tela perguntar
+  /// sem esperar a próxima abertura.
+  final conflito = ValueNotifier<bool>(false);
+
   Timer? _timer;
   bool _enviando = false;
   bool _deNovo = false;
@@ -179,9 +203,11 @@ class BackupNuvem {
       final carimbo = await _enviar(token, conteudo, carimboBase: base);
       await estado.marcarIgual(carimbo: carimbo, assinatura: assinatura);
       ultimo.value = carimbo;
+      conflito.value = false;
       return ResultadoNuvem.enviada;
     } on ConflitoNuvem {
       await estado.marcarConflito();
+      conflito.value = true;
       return ResultadoNuvem.conflito;
     } catch (_) {
       return ResultadoNuvem.falhou;
@@ -195,6 +221,20 @@ class BackupNuvem {
     final assinatura = assinar(await _exportar());
     await estado.marcarIgual(carimbo: carimbo, assinatura: assinatura);
     ultimo.value = carimbo;
+    conflito.value = false;
+  }
+
+  /// Os dois lados já têm o mesmo conteúdo: guarda o carimbo da nuvem e a
+  /// assinatura do aparelho, sem mandar nem trazer nada.
+  Future<void> adotarIgual(String carimbo) => registrarRestaurada(carimbo);
+
+  /// Interruptor desligado. Para o que estava esperando.
+  Future<void> desligar() async {
+    _timer?.cancel();
+    _timer = null;
+    await estado.desligar();
+    ultimo.value = null;
+    conflito.value = false;
   }
 
   /// Saiu da conta ou apagou a conta.
@@ -203,12 +243,14 @@ class BackupNuvem {
     _timer = null;
     await estado.esquecerConta();
     ultimo.value = null;
+    conflito.value = false;
   }
 
   void descartar() {
     _timer?.cancel();
     _timer = null;
     ultimo.dispose();
+    conflito.dispose();
   }
 }
 

@@ -57,6 +57,8 @@ class _Cenario {
                 ),
                 aoExcluirConta: () {},
                 aoMostrarTexto: (_, _) {},
+                aceitouTermos: false,
+                aoMudarAceite: (_) {},
               ),
             ],
           ),

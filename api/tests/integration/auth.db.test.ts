@@ -533,7 +533,9 @@ test('recuperação por código redefine a senha e revoga as sessões', async (t
   usarTransporte(async (m) => { caixa.push(m); });
 
   try {
-    const reg = await postJson(base, '/auth/registrar', { email, senha: 'senha1234' });
+    const reg = await postJson(base, '/auth/registrar', {
+      email, senha: 'senha1234', termosVersao: '2026-09-24',
+    });
     assert.equal(reg.status, 201);
     const login = await postJson(base, '/auth/login', { email, senha: 'senha1234' });
     assert.equal(login.status, 200);
@@ -573,9 +575,11 @@ test('recuperação por código redefine a senha e revoga as sessões', async (t
     assert.equal(redefinir.status, 200);
     const nova = await redefinir.json() as {
       mensagem: string; token: string; refreshToken: string; expiresIn: number;
-      email: string; id: number;
+      email: string; id: number; termosVersao: string | null;
     };
     assert.ok(nova.token);
+    // Celular novo depois de esquecer a senha: o app sabe que o aceite já existe.
+    assert.equal(nova.termosVersao, '2026-09-24');
     assert.ok(nova.refreshToken);
     assert.equal(nova.expiresIn, 900);
     assert.equal(nova.email, email);

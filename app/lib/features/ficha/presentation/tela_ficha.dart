@@ -8,15 +8,21 @@ import 'package:life_and_roads/backup.dart';
 import 'package:life_and_roads/core/database/armazem_kv.dart';
 import 'package:life_and_roads/core/database/chaves_kv.dart';
 import 'package:life_and_roads/core/backup/backup_automatico.dart';
+import 'package:life_and_roads/core/backup/caderneta_mudou.dart';
+import 'package:life_and_roads/core/legal/textos.dart';
+import 'package:life_and_roads/core/texto/tempo_relativo.dart';
 import 'package:life_and_roads/core/permissoes/mensagens_permissao.dart';
 import 'package:life_and_roads/core/widgets/cartao_conflito.dart';
 import 'package:life_and_roads/core/widgets/linha_sync.dart';
 import 'package:life_and_roads/features/ficha/domain/ficha_moto.dart';
+import 'package:life_and_roads/features/ficha/domain/situacao_nuvem.dart';
 import 'package:life_and_roads/features/ficha/data/enviar_caderneta.dart';
 import 'package:life_and_roads/features/ficha/data/escolher_caderneta.dart';
 import 'package:life_and_roads/features/ficha/domain/usecases/enviar_caderneta_arquivo.dart';
 import 'package:life_and_roads/features/ficha/domain/usecases/importar_caderneta_arquivo.dart';
 import 'package:life_and_roads/features/ficha/presentation/ficha_controller.dart';
+import 'package:life_and_roads/features/ficha/presentation/nuvem_controller.dart';
+import 'package:life_and_roads/features/ficha/presentation/widgets/cartao_aceite_nuvem.dart';
 import 'package:life_and_roads/features/ficha/presentation/widgets/bloco_backup.dart';
 import 'package:life_and_roads/features/ficha/presentation/widgets/bloco_conta.dart';
 import 'package:life_and_roads/features/ficha/presentation/widgets/busca_modelo.dart';
@@ -74,6 +80,9 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
 
   /// Convite de conta: some quando o piloto dispensa.
   bool _conviteDispensado = true;
+
+  /// Caixa dos termos no cadastro. Nasce desmarcada (ADR 0038).
+  bool _aceiteTermos = false;
 
   /// Recebe valor quando o convite é aceito: abre o bloco Conta e rola
   /// até ele. A chave também identifica o bloco na árvore.
@@ -266,8 +275,57 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
       email: _email.text.trim().toLowerCase(),
       senha: _senha.text,
       servidor: _servidor.text,
+      aceitouTermos: _aceiteTermos,
     );
     _senha.clear();
+  }
+
+  CadernetaNuvemController get _nuvem =>
+      ref.read(cadernetaNuvemControllerProvider.notifier);
+
+  /// Ligar é direto. Desligar apaga a cópia da conta, então confirma antes.
+  Future<void> _mudarNuvem(bool ligar) async {
+    if (ligar) {
+      await _nuvem.ligar();
+      return;
+    }
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Desligar a caderneta na conta?'),
+        content: const Text(
+          'Apaga a cópia guardada na conta. A caderneta deste aparelho '
+          'continua aqui. Se você usa a mesma conta em outro celular, '
+          'desligue lá também.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Desligar'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) await _nuvem.desligar();
+  }
+
+  static String _linhaNuvem(SituacaoNuvem s) {
+    if (!s.ligada) return 'Desligada. A caderneta fica só neste aparelho.';
+    if (s.precisaAceite) return 'Parada até você responder o aviso no topo da Ficha.';
+    if (s.conflito != null) return 'Parada até você escolher qual caderneta fica.';
+    final em = s.guardadaEm;
+    if (em != null) return 'Guardada na conta ${haQuanto(em)}.';
+    return 'Ainda não foi para a conta.';
+  }
+
+  static String _resumoNuvem(ConflitoCadernetaNuvem c) {
+    final em = c.nuvemEm;
+    if (em == null) return c.nuvem.texto;
+    return '${c.nuvem.texto}, guardada ${haQuanto(em.toLocal())}';
   }
 
   Future<void> _entrar() async {
@@ -510,7 +568,21 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
       });
     });
 
+    ref.listen(cadernetaNuvemControllerProvider, (anterior, atual) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (atual.aviso != null && atual.aviso != anterior?.aviso) {
+          _aviso(atual.aviso!);
+        }
+        if (atual.erro != null && atual.erro != anterior?.erro) {
+          _aviso(atual.erro!);
+        }
+      });
+    });
+
     final estado = ref.watch(fichaControllerProvider);
+    final nuvem = ref.watch(cadernetaNuvemControllerProvider);
+    final conflitoNuvem = nuvem.situacao.conflito;
     if (estado.carregando) {
       return Esqueleto(linhas: const [26, 16, 196, 22, 16, 16]);
     }
@@ -540,6 +612,32 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
                     ref.read(fichaControllerProvider.notifier).manterLocal(),
                 aoUsarServidor: () =>
                     ref.read(fichaControllerProvider.notifier).usarRemoto(),
+              ),
+            ),
+          // Conta antiga sem o aceite atual: nada sobe até responder.
+          if (logado && nuvem.situacao.precisaAceite)
+            Padding(
+              padding: EdgeInsets.fromLTRB(margem.left, 8, margem.right, 12),
+              child: CartaoAceiteNuvem(
+                ocupado: nuvem.ocupado,
+                aoAceitar: _nuvem.aceitar,
+                aoDesligar: _nuvem.desligar,
+                aoMostrarTermos: () =>
+                    _mostrarTexto('Termos de uso', termosResumo),
+                aoMostrarPrivacidade: () =>
+                    _mostrarTexto('Privacidade', privacidadeResumo),
+              ),
+            ),
+          if (logado && conflitoNuvem != null)
+            Padding(
+              padding: EdgeInsets.fromLTRB(margem.left, 8, margem.right, 12),
+              child: CartaoConflito(
+                titulo: 'Caderneta diferente na conta',
+                resumoRemoto: _resumoNuvem(conflitoNuvem),
+                resumoLocal: conflitoNuvem.aparelho.texto,
+                ocupado: nuvem.ocupado,
+                aoManter: _nuvem.manterAparelho,
+                aoUsarServidor: _nuvem.usarDaConta,
               ),
             ),
           if (fichaSalva)
@@ -605,6 +703,12 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
               aoEsqueciSenha: _esqueciSenha,
               aoExcluirConta: _excluirConta,
               aoMostrarTexto: _mostrarTexto,
+              aceitouTermos: _aceiteTermos,
+              aoMudarAceite: (v) => setState(() => _aceiteTermos = v),
+              nuvemLigada: nuvem.situacao.ligada,
+              nuvemLinha: _linhaNuvem(nuvem.situacao),
+              aoMudarNuvem: _mudarNuvem,
+              nuvemOcupada: nuvem.ocupado,
             ),
           ]),
         ],
@@ -886,6 +990,7 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
       _aviso(erro);
       return;
     }
+    ref.read(cadernetaMudouProvider).avisar();
     await _ctrl.carregar();
     _aviso('Caderneta restaurada neste aparelho.');
   }
@@ -900,6 +1005,7 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
       _aviso(erro);
       return;
     }
+    ref.read(cadernetaMudouProvider).avisar();
     await _ctrl.carregar();
     _aviso('Caderneta restaurada neste aparelho.');
   }
