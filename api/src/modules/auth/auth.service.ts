@@ -68,7 +68,7 @@ const emitir = async (id: number, email: string): Promise<Tokens> => {
 export const autenticar = async (
   email: string,
   senha: string,
-): Promise<Tokens | null> => {
+): Promise<(Tokens & { termosVersao: string | null }) | null> => {
   const usuario = await repo.buscarPorEmail(email);
   const senhaValida = await bcrypt.compare(senha, usuario?.senha ?? HASH_FANTASMA);
   if (!usuario || !senhaValida) return null;
@@ -77,19 +77,23 @@ export const autenticar = async (
     throw new AppError(403, 'Conta desativada.');
   }
 
-  return emitir(usuario.id, usuario.email);
+  // A versão dos termos aceita vai junto, para o app saber se precisa
+  // mostrar o aceite antes de mandar a caderneta para a nuvem (ADR 0038).
+  const tokens = await emitir(usuario.id, usuario.email);
+  return { ...tokens, termosVersao: usuario.termos_versao ?? null };
 };
 
 export const registrar = async (
   email: string,
   senha: string,
+  termosVersao: string | null = null,
 ): Promise<{ id: number; email: string }> => {
   const existente = await repo.buscarPorEmail(email);
   if (existente) {
     throw new AppError(409, 'E-mail já cadastrado.');
   }
   const senhaCriptografada = await bcrypt.hash(senha, 10);
-  const usuario = await repo.salvar(email, senhaCriptografada);
+  const usuario = await repo.salvar(email, senhaCriptografada, termosVersao);
 
   // Não espera o Resend: a conta já existe, e e-mail que falha não pode
   // desfazer nem atrasar o cadastro (ADR 0036).
@@ -257,4 +261,14 @@ export const redefinirSenha = async (
   await repo.atualizarSenha(usuario.id, senhaCriptografada);
   await repo.revogarTodas(usuario.id);
   return emitir(usuario.id, usuario.email);
+};
+
+/** Quem já tem conta aceita a versão nova dos termos (ADR 0038). */
+export const aceitarTermos = async (
+  usuarioId: number,
+  versao: string,
+): Promise<{ termosVersao: string }> => {
+  const existia = await repo.registrarAceiteTermos(usuarioId, versao);
+  if (!existia) throw new AppError(404, 'Conta não encontrada.');
+  return { termosVersao: versao };
 };

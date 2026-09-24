@@ -10,6 +10,7 @@ import {
   registrarSchema,
   sairSchema,
   senhaSchema,
+  termosSchema,
 } from './auth.schema';
 import * as authController from './auth.controller';
 
@@ -49,5 +50,6 @@ router.post(
   authController.redefinir,
 );
 router.delete('/conta', verificarToken, authController.excluirConta);
+router.post('/termos', verificarToken, validarSchema(termosSchema), authController.aceitarTermos);
 
 export default router;

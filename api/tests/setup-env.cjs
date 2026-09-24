@@ -7,3 +7,8 @@ process.env.DB_USER = process.env.DB_USER || 'test';
 process.env.DB_NAME = process.env.DB_NAME || 'test';
 process.env.DB_PASSWORD = process.env.DB_PASSWORD || '';
 process.env.DB_PORT = process.env.DB_PORT || '3306';
+// Chave falsa, 32 bytes de valor 7, só para teste. A de produção fica no
+// Render e no gerenciador de senhas do Raulnik (ADR 0038).
+process.env.CADERNETA_CHAVE = 'BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc=';
+// Limite baixo para o teste do limite fazer 6 envios em vez de 31.
+process.env.CADERNETA_LIMITE_ENVIOS = '5';

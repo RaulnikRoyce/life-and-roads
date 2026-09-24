@@ -5,6 +5,7 @@ import rateLimit from 'express-rate-limit';
 import fs from 'fs';
 import path from 'path';
 import authRoutes from './modules/auth/auth.routes';
+import cadernetaRoutes from './modules/caderneta/caderneta.routes';
 import fichaRoutes from './modules/ficha/ficha.routes';
 import manutencaoRoutes from './modules/manutencao/manutencao.routes';
 import localizacaoRoutes from './modules/localizacao/localizacao.routes';
@@ -46,7 +47,15 @@ app.use(cors({
   },
 }));
 
-app.use(express.json({ limit: '20kb' }));
+// 20 KB para tudo, menos a caderneta na nuvem, a única com corpo grande
+// (ADR 0038). Escolhido aqui, no mesmo lugar, para ela não pular os
+// middlewares de log, CORS e limite que vêm depois.
+const jsonPadrao = express.json({ limit: '20kb' });
+const jsonCaderneta = express.json({ limit: '512kb' });
+app.use((req, res, next) => {
+  const daCaderneta = req.path === '/caderneta' || req.path.startsWith('/caderneta/');
+  (daCaderneta ? jsonCaderneta : jsonPadrao)(req, res, next);
+});
 
 app.use((req, res, next) => {
   if (req.path === '/health' || req.path === '/ready') return next();
@@ -115,6 +124,7 @@ app.get('/openapi.yaml', (_req, res) => {
 });
 
 app.use('/auth', authRoutes);
+app.use('/caderneta', cadernetaRoutes);
 app.use('/ficha', fichaRoutes);
 app.use('/manutencao', manutencaoRoutes);
 app.use('/localizacao', localizacaoRoutes);

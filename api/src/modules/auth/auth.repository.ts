@@ -7,6 +7,8 @@ export type Usuario = {
   email: string;
   senha: string;
   ativo: number;
+  /** Data do texto dos termos aceito, ou null (ADR 0038). */
+  termos_versao: string | null;
 };
 
 type UsuarioRow = RowDataPacket & Usuario;
@@ -25,7 +27,7 @@ export const hashRefresh = (token: string): string =>
 
 export async function buscarPorEmail(email: string): Promise<Usuario | null> {
   const [rows] = await getPool().execute<UsuarioRow[]>(
-    'SELECT id, email, senha, ativo FROM usuarios WHERE email = ?',
+    'SELECT id, email, senha, ativo, termos_versao FROM usuarios WHERE email = ?',
     [email],
   );
   return rows[0] ?? null;
@@ -33,7 +35,7 @@ export async function buscarPorEmail(email: string): Promise<Usuario | null> {
 
 export async function buscarPorId(id: number): Promise<Usuario | null> {
   const [rows] = await getPool().execute<UsuarioRow[]>(
-    'SELECT id, email, senha, ativo FROM usuarios WHERE id = ?',
+    'SELECT id, email, senha, ativo, termos_versao FROM usuarios WHERE id = ?',
     [id],
   );
   return rows[0] ?? null;
@@ -42,12 +44,27 @@ export async function buscarPorId(id: number): Promise<Usuario | null> {
 export async function salvar(
   email: string,
   senhaCriptografada: string,
+  termosVersao: string | null = null,
 ): Promise<{ id: number; email: string }> {
+  // Sem versão, como no APK antigo, a data do aceite também fica nula.
   const [result] = await getPool().execute<ResultSetHeader>(
-    'INSERT INTO usuarios (email, senha) VALUES (?, ?)',
-    [email, senhaCriptografada],
+    `INSERT INTO usuarios (email, senha, termos_versao, termos_aceitos_em)
+     VALUES (?, ?, ?, CASE WHEN ? IS NULL THEN NULL ELSE UTC_TIMESTAMP() END)`,
+    [email, senhaCriptografada, termosVersao, termosVersao],
   );
   return { id: result.insertId, email };
+}
+
+/** Registra o aceite de quem já tem conta. Devolve se a conta existia. */
+export async function registrarAceiteTermos(
+  usuarioId: number,
+  versao: string,
+): Promise<boolean> {
+  const [result] = await getPool().execute<ResultSetHeader>(
+    'UPDATE usuarios SET termos_versao = ?, termos_aceitos_em = UTC_TIMESTAMP() WHERE id = ?',
+    [versao, usuarioId],
+  );
+  return result.affectedRows > 0;
 }
 
 export async function gravarSessao(

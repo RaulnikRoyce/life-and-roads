@@ -11,10 +11,23 @@ export const loginSchema = z.object({
   senha: senhaForte,
 });
 
+/**
+ * A versão dos Termos de uso e da Privacidade é a data do texto aceito
+ * (ADR 0038). O servidor guarda o que o app mostrou, sem conferir se é a
+ * mais nova.
+ */
+const versaoTermos = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Versão dos termos inválida');
+
 export const registrarSchema = z.object({
   email: emailValido,
   senha: senhaForte,
+  // Opcional enquanto o APK antigo, que não manda o campo, cadastrar.
+  termosVersao: versaoTermos.optional(),
 });
+
+export const termosSchema = z.object({
+  versao: versaoTermos,
+}).strict();
 
 export const refreshSchema = z.object({
   refreshToken: z.string().trim().min(16, 'Refresh token inválido').max(2000),

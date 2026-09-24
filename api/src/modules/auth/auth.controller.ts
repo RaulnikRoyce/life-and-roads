@@ -15,9 +15,18 @@ export const login = asyncHandler(async (req, res) => {
 });
 
 export const registrar = asyncHandler(async (req, res) => {
-  const { email, senha } = req.body as { email: string; senha: string };
-  await authService.registrar(email, senha);
+  const { email, senha, termosVersao } = req.body as {
+    email: string;
+    senha: string;
+    termosVersao?: string;
+  };
+  await authService.registrar(email, senha, termosVersao ?? null);
   criado(res, 'Conta criada');
+});
+
+export const aceitarTermos = asyncHandler(async (req, res) => {
+  const { versao } = req.body as { versao: string };
+  res.json(await authService.aceitarTermos(req.usuario!.id, versao));
 });
 
 export const refresh = asyncHandler(async (req, res) => {

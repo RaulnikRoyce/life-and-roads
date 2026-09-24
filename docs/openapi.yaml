@@ -1,10 +1,12 @@
 openapi: 3.0.3
 info:
   title: life.and.roads API
-  version: 1.1.0
+  version: 1.2.0
   description: >
     Cofre opcional da caderneta. Uma moto por conta.
-    Sem placa, chassi, RENAVAM, foto, pins ou histórico de posto.
+    Sem placa, chassi, RENAVAM ou foto. Abastecimentos, serviços, pinos,
+    PSI e o resto que só existia no aparelho vão em /caderneta, cifrados
+    no servidor (ADR 0038).
 servers:
   - url: http://localhost:3001
 paths:
@@ -67,16 +69,19 @@ paths:
       description: >-
         Depois de criar, manda uma boas-vindas ao e-mail da conta, sem esperar
         o envio. Se o envio falhar, a conta existe do mesmo jeito e a resposta
-        não muda (ADR 0036).
+        não muda (ADR 0036). Com termosVersao, grava a versão aceita e a hora
+        do aceite; sem o campo, como o APK antigo, grava nulo (ADR 0038).
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Credenciais'
+              $ref: '#/components/schemas/Cadastro'
       responses:
         '201':
           description: conta criada
+        '400':
+          description: e-mail inválido, senha curta ou versão dos termos fora do formato
         '409':
           description: e-mail já cadastrado
   /auth/login:
@@ -91,6 +96,22 @@ paths:
       responses:
         '200':
           description: token (access) e refreshToken
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+                  refreshToken: { type: string }
+                  expiresIn: { type: integer }
+                  email: { type: string }
+                  id: { type: integer }
+                  termosVersao:
+                    type: string
+                    nullable: true
+                    description: >-
+                      Versão dos termos que a conta aceitou, ou null. O app
+                      compara com a atual antes de mandar a caderneta.
   /auth/refresh:
     post:
       summary: Troca o refresh por um par novo (rotação)
@@ -194,9 +215,36 @@ paths:
           description: payload extra, código fora do formato ou senha curta
         '401':
           description: código inválido ou vencido
+  /auth/termos:
+    post:
+      summary: Registra o aceite dos termos por quem já tem conta
+      description: >
+        A versão é a data do texto aceito. Grava a versão e a hora do aceite.
+        O servidor não confere se é a mais nova (ADR 0038).
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Termos'
+      responses:
+        '200':
+          description: aceite gravado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  termosVersao: { type: string }
+        '400':
+          description: campo a mais ou versão fora do formato
+        '401':
+          description: token ausente ou inválido
   /auth/conta:
     delete:
-      summary: Exclui a conta e os dados remotos (CASCADE)
+      summary: Exclui a conta e os dados remotos, caderneta na nuvem inclusa (CASCADE)
       security:
         - bearerAuth: []
       responses:
@@ -281,6 +329,72 @@ paths:
       responses:
         '200':
           description: gravado
+  /caderneta:
+    get:
+      summary: Devolve a caderneta guardada na conta, decifrada
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: caderneta e o carimbo do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CadernetaLida'
+        '401':
+          description: token ausente ou inválido
+        '404':
+          description: ainda não há caderneta na nuvem
+        '500':
+          description: a caderneta guardada não abriu (chave trocada ou conteúdo mexido no banco)
+        '503':
+          description: CADERNETA_CHAVE não configurada neste servidor
+    put:
+      summary: Grava a caderneta, cifrada, se ninguém mexeu nela antes
+      description: |
+        O servidor cifra com AES-256-GCM e uma chave que só ele tem, amarrada
+        à conta. baseAtualizadoEm é o carimbo que o aparelho recebeu da última
+        vez (null na primeira). Se já existe caderneta e o carimbo não bate,
+        responde 409 com o atual e não grava. Corpo até 512 KB; as outras rotas
+        seguem com 20 KB. Até 30 envios por conta a cada 15 min.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SalvarCaderneta'
+      responses:
+        '200':
+          description: gravada, com o carimbo novo
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  atualizadoEm: { type: string, format: date-time }
+        '400':
+          description: chave a mais ou faltando, foto, versão errada ou lista grande demais
+        '401':
+          description: token ausente ou inválido
+        '409':
+          description: outro aparelho gravou antes; detalhes.atualizadoEm traz o carimbo atual
+        '413':
+          description: corpo acima de 512 KB
+        '429':
+          description: passou de 30 envios em 15 minutos
+        '503':
+          description: CADERNETA_CHAVE não configurada neste servidor
+    delete:
+      summary: Apaga a caderneta da conta (interruptor desligado)
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: apagada, ou já não existia
+        '401':
+          description: token ausente ou inválido
 components:
   securitySchemes:
     bearerAuth:
@@ -299,6 +413,28 @@ components:
           type: string
           minLength: 8
           maxLength: 72
+    Cadastro:
+      type: object
+      required: [email, senha]
+      properties:
+        email:
+          type: string
+        senha:
+          type: string
+          minLength: 8
+          maxLength: 72
+        termosVersao:
+          type: string
+          pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+          description: Data do texto dos termos que a pessoa aceitou. Opcional enquanto houver APK antigo.
+    Termos:
+      type: object
+      additionalProperties: false
+      required: [versao]
+      properties:
+        versao:
+          type: string
+          pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
     TrocaSenha:
       type: object
       additionalProperties: false
@@ -407,3 +543,66 @@ components:
           type: number
         longitude:
           type: number
+    ConteudoCaderneta:
+      type: object
+      description: >
+        O que só existe no aparelho, menos a foto. Ficha, datas de manutenção
+        e último ponto têm rota própria e não entram aqui. Cada item das listas
+        é livre, para o app ganhar campo novo sem quebrar a API.
+      additionalProperties: false
+      required: [v, abastecimentos, servicos, pins, extra, precoGasolina, precoAlcool, psi]
+      properties:
+        v:
+          type: integer
+          enum: [1]
+        abastecimentos:
+          type: array
+          maxItems: 5000
+          items: { type: object }
+        servicos:
+          type: array
+          maxItems: 5000
+          items: { type: object }
+        pins:
+          type: array
+          maxItems: 5000
+          items: { type: object }
+        extra:
+          type: string
+          maxLength: 20000
+          nullable: true
+          description: km de óleo e corrente e validade da CNH, como o app guarda
+        precoGasolina:
+          type: string
+          maxLength: 20000
+          nullable: true
+        precoAlcool:
+          type: string
+          maxLength: 20000
+          nullable: true
+        psi:
+          type: object
+          additionalProperties: false
+          required: [dianteiro, traseiro]
+          properties:
+            dianteiro: { type: integer, minimum: 0, maximum: 200, nullable: true }
+            traseiro: { type: integer, minimum: 0, maximum: 200, nullable: true }
+    SalvarCaderneta:
+      type: object
+      additionalProperties: false
+      required: [conteudo, baseAtualizadoEm]
+      properties:
+        conteudo:
+          $ref: '#/components/schemas/ConteudoCaderneta'
+        baseAtualizadoEm:
+          type: string
+          format: date-time
+          nullable: true
+    CadernetaLida:
+      type: object
+      properties:
+        conteudo:
+          $ref: '#/components/schemas/ConteudoCaderneta'
+        atualizadoEm:
+          type: string
+          format: date-time
