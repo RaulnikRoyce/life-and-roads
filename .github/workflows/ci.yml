@@ -118,7 +118,7 @@ jobs:
             --dart-define=CRASH_REPORTING=true \
             --dart-define=APP_VERSION="$TAG+${GITHUB_RUN_NUMBER}" \
             --dart-define=API_BASE="$API_BASE"
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: app-release
           path: app/build/app/outputs/flutter-apk/app-release.apk
