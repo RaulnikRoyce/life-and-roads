@@ -889,12 +889,9 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
       max: 5,
       filtros: [FilteringTextInputFormatter.allow(RegExp(r'[0-9,.]'))],
     );
-    final km = CampoOficina(
-      _kmAtual,
-      'Km no painel agora',
-      teclado: const TextInputType.numberWithOptions(decimal: true),
-      max: 7,
-      filtros: [FilteringTextInputFormatter.allow(RegExp(r'[0-9,.]'))],
+    final km = Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Text('Km no painel ${_kmAtual.text}. Atualize na aba Posto.'),
     );
     final tanque = CampoOficina(
       _tanque,

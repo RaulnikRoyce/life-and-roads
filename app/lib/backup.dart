@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'dart:convert';
 
 import 'package:life_and_roads/core/backup/lista_backup.dart';
@@ -54,47 +55,101 @@ class BackupCaderneta {
     final v = mapa['v'];
     if (v != 1 && v != 2) return 'Backup de outra versão.';
 
-    await _gravaKv(ChavesKv.ficha, _textoOuMapa(mapa['ficha']));
-    await _gravaFoto(mapa['foto']);
-    await _gravaKv(ChavesKv.agenda, mapa['manutencao']);
-    await _gravaKv(ChavesKv.extra, mapa['manutencaoKm']);
-    await _gravaKv(ChavesKv.ponto, mapa['ultimoPonto']);
-    await _gravaKv(ChavesKv.precoGasolina, mapa['precoGasolina']);
-    await _gravaKv(ChavesKv.precoAlcool, mapa['precoAlcool']);
-
-    final db = CadernetaBanco.instancia;
-    await db.apagarAbastecimentos();
-    await db.apagarServicos();
-    await db.apagarPins();
-    for (final r in listaDeBackup(
-      mapa['abastecimentos'],
-      RegistroAbastecimento.deJson,
-    ).reversed) {
-      await HistoricoAbastecimento.inserirLinha(r);
+    // Validação inteira e preparação antes de qualquer alteração no aparelho.
+    late final List<RegistroAbastecimento> abastecimentos;
+    late final List<RegistroServico> servicos;
+    late final List<PinoMapa> pins;
+    List<int>? foto;
+    try {
+      if (!mapa.containsKey('ficha') ||
+          (v == 2 &&
+              ![
+                'abastecimentos',
+                'servicos',
+                'pins',
+              ].every((c) => mapa[c] is List))) {
+        throw const FormatException('Backup incompleto.');
+      }
+      _validarTextos(mapa, [
+        'ficha',
+        'manutencao',
+        'manutencaoKm',
+        'ultimoPonto',
+      ]);
+      _validarTextos(mapa, ['precoGasolina', 'precoAlcool'], json: false);
+      final imagem = mapa['foto'];
+      if (imagem != null && imagem is! String) {
+        throw const FormatException('Foto inválida.');
+      }
+      if (imagem is String && imagem.isNotEmpty) {
+        foto = base64Decode(imagem);
+      }
+      abastecimentos = listaDeBackup(
+        mapa['abastecimentos'] ?? [],
+        RegistroAbastecimento.deJson,
+        estrita: true,
+      );
+      servicos = listaDeBackup(
+        mapa['servicos'] ?? [],
+        RegistroServico.deJson,
+        estrita: true,
+      );
+      pins = listaDeBackup(mapa['pins'] ?? [], PinoMapa.deJson, estrita: true);
+    } catch (_) {
+      return 'Backup inválido ou incompleto. Nenhum dado foi alterado.';
     }
-    for (final r in listaDeBackup(
-      mapa['servicos'],
-      RegistroServico.deJson,
-    ).reversed) {
-      await HistoricoServico.inserirLinha(r);
-    }
-    final pins = listaDeBackup(mapa['pins'], PinoMapa.deJson);
-    if (pins.isNotEmpty) await PinsMapa.salvar(pins);
 
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(HistoricoAbastecimento.chave);
-    await prefs.remove(HistoricoServico.chave);
-    await prefs.remove(PinsMapa.chave);
-    for (final chave in ChavesKv.textos) {
-      await prefs.remove(chave);
-    }
-    await prefs.remove(FotoMoto.chave);
-
-    // Com conta, o que veio do backup precisa subir na próxima abertura.
     final token = await SessaoSegura().lerToken();
-    if (token != null && token.isNotEmpty) {
-      await FichaSyncStore().marcarPendente();
-      await ManutencaoSyncStore().marcarPendente();
+    final db = CadernetaBanco.instancia;
+    try {
+      await db.transaction(() async {
+        // Só SQLite aqui: preferências antigas só são removidas após o commit.
+        await db.gravarTextoKv(
+          ChavesKv.ficha,
+          _textoOuMapa(mapa['ficha']) as String?,
+        );
+        await db.gravarBlobKv(
+          ChavesKv.foto,
+          foto == null ? null : Uint8List.fromList(foto),
+        );
+        for (final par in {
+          ChavesKv.agenda: mapa['manutencao'],
+          ChavesKv.extra: mapa['manutencaoKm'],
+          ChavesKv.ponto: mapa['ultimoPonto'],
+          ChavesKv.precoGasolina: mapa['precoGasolina'],
+          ChavesKv.precoAlcool: mapa['precoAlcool'],
+        }.entries) {
+          await db.gravarTextoKv(par.key, _textoOuMapa(par.value) as String?);
+        }
+        await db.apagarAbastecimentos();
+        await db.apagarServicos();
+        await db.apagarPins();
+        for (final r in abastecimentos.reversed) {
+          await HistoricoAbastecimento.inserirLinha(r);
+        }
+        for (final r in servicos.reversed) {
+          await HistoricoServico.inserirLinha(r);
+        }
+        if (pins.isNotEmpty) {
+          await PinsMapa.salvar(pins);
+        }
+        if (token != null && token.isNotEmpty) {
+          await FichaSyncStore().marcarPendente();
+          await ManutencaoSyncStore().marcarPendente();
+        }
+      });
+    } catch (_) {
+      return 'Não foi possível restaurar o backup. Os dados anteriores foram preservados.';
+    }
+    for (final chave in [
+      HistoricoAbastecimento.chave,
+      HistoricoServico.chave,
+      PinsMapa.chave,
+      ...ChavesKv.textos,
+      FotoMoto.chave,
+    ]) {
+      await prefs.remove(chave);
     }
     return null;
   }
@@ -134,25 +189,38 @@ class BackupCaderneta {
   static Future<String?> restaurarDaNuvem(Map<String, dynamic> conteudo) async {
     if (conteudo['v'] != versaoNuvem) return 'Caderneta de outra versão.';
 
+    late final List<RegistroAbastecimento> abastecimentos;
+    late final List<RegistroServico> servicos;
+    late final List<PinoMapa> pins;
+    try {
+      abastecimentos = listaDeBackup(
+        conteudo['abastecimentos'],
+        RegistroAbastecimento.deJson,
+        estrita: true,
+      );
+      servicos = listaDeBackup(
+        conteudo['servicos'],
+        RegistroServico.deJson,
+        estrita: true,
+      );
+      pins = listaDeBackup(conteudo['pins'], PinoMapa.deJson, estrita: true);
+      _validarTextos(conteudo, ['extra']);
+      _validarTextos(conteudo, ['precoGasolina', 'precoAlcool'], json: false);
+    } catch (_) {
+      return 'Caderneta inválida. Nenhum dado foi alterado.';
+    }
     final db = CadernetaBanco.instancia;
     // Tudo ou nada: parar no meio deixaria o aparelho sem histórico.
     await db.transaction(() async {
       await db.apagarAbastecimentos();
       await db.apagarServicos();
       await db.apagarPins();
-      for (final r in listaDeBackup(
-        conteudo['abastecimentos'],
-        RegistroAbastecimento.deJson,
-      ).reversed) {
+      for (final r in abastecimentos.reversed) {
         await HistoricoAbastecimento.inserirLinha(r);
       }
-      for (final r in listaDeBackup(
-        conteudo['servicos'],
-        RegistroServico.deJson,
-      ).reversed) {
+      for (final r in servicos.reversed) {
         await HistoricoServico.inserirLinha(r);
       }
-      final pins = listaDeBackup(conteudo['pins'], PinoMapa.deJson);
       if (pins.isNotEmpty) await PinsMapa.salvar(pins);
 
       await _gravaKv(ChavesKv.extra, conteudo['extra']);
@@ -176,6 +244,7 @@ class BackupCaderneta {
         for (final r in listaDeBackup(
           conteudo['abastecimentos'],
           RegistroAbastecimento.deJson,
+          estrita: true,
         ))
           r.paraJson(),
       ],
@@ -239,6 +308,7 @@ class BackupCaderneta {
   }
 
   static Future<void> _gravaKv(String chave, Object? valor) async {
+    valor = _textoOuMapa(valor);
     if (valor is! String || valor.isEmpty) {
       await ArmazemKv.gravarTexto(chave, null);
       return;
@@ -246,15 +316,22 @@ class BackupCaderneta {
     await ArmazemKv.gravarTexto(chave, valor);
   }
 
-  static Future<void> _gravaFoto(Object? valor) async {
-    if (valor is! String || valor.isEmpty) {
-      await FotoMoto.apagar();
-      return;
-    }
-    try {
-      await FotoMoto.salvar(base64Decode(valor));
-    } on FormatException {
-      await FotoMoto.apagar();
+  static void _validarTextos(
+    Map<String, dynamic> mapa,
+    List<String> chaves, {
+    bool json = true,
+  }) {
+    for (final chave in chaves) {
+      final valor = mapa[chave];
+      if (valor == null || valor == '') {
+        continue;
+      }
+      if (json && valor is Map) {
+        continue;
+      }
+      if (valor is! String || (json && jsonDecode(valor) is! Map)) {
+        throw const FormatException('Campo de backup inválido.');
+      }
     }
   }
 }

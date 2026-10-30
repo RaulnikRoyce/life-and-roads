@@ -18,19 +18,25 @@ class PinoMapa {
   LatLng get ponto => LatLng(latitude, longitude);
 
   Map<String, dynamic> paraJson() => {
-        'tipo': tipo,
-        'latitude': latitude,
-        'longitude': longitude,
-      };
+    'tipo': tipo,
+    'latitude': latitude,
+    'longitude': longitude,
+  };
 
   static PinoMapa? deJson(Object? bruto) {
     if (bruto is! Map) return null;
     final mapa = Map<String, dynamic>.from(bruto);
     final tipo = '${mapa['tipo'] ?? ''}'.trim();
     if (tipo != 'posto' && tipo != 'oficina') return null;
-    final lat = (mapa['latitude'] as num?)?.toDouble();
-    final lng = (mapa['longitude'] as num?)?.toDouble();
-    if (lat == null || lng == null) return null;
+    final lat = mapa['latitude'] is num
+        ? (mapa['latitude'] as num).toDouble()
+        : null;
+    final lng = mapa['longitude'] is num
+        ? (mapa['longitude'] as num).toDouble()
+        : null;
+    if (lat == null || lng == null || !lat.isFinite || !lng.isFinite) {
+      return null;
+    }
     if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
     return PinoMapa(tipo: tipo, latitude: lat, longitude: lng);
   }
@@ -49,8 +55,9 @@ class PinsMapa {
   }
 
   static Future<List<PinoMapa>> salvar(List<PinoMapa> pins) async {
-    final lista =
-        pins.length <= max ? pins.toList() : pins.sublist(pins.length - max);
+    final lista = pins.length <= max
+        ? pins.toList()
+        : pins.sublist(pins.length - max);
     final db = CadernetaBanco.instancia;
     await db.apagarPins();
     for (final p in lista) {

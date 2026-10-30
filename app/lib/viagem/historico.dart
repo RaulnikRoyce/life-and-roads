@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:drift/drift.dart';
 import 'package:life_and_roads/core/database/caderneta_banco.dart';
 import 'package:life_and_roads/core/database/caderneta_database.dart';
 import 'package:life_and_roads/viagem/calculo.dart';
@@ -5,7 +8,7 @@ import 'package:life_and_roads/viagem/calculo.dart';
 /// Postos neste aparelho. Sem placa. Não vai na ficha da API.
 class HistoricoAbastecimento {
   static const chave = 'abastecimentos_v1';
-  static const max = 20;
+  static const max = 5000;
 
   static Future<List<RegistroAbastecimento>> carregar() async {
     final linhas = await CadernetaBanco.instancia.listarAbastecimentos();
@@ -17,12 +20,14 @@ class HistoricoAbastecimento {
   ) async {
     await inserirLinha(registro);
     await CadernetaBanco.instancia.podarMaisAntigos('abastecimentos', max);
+
     return carregar();
   }
 
   static Future<void> inserirLinha(RegistroAbastecimento r) {
     return CadernetaBanco.instancia.inserirAbastecimento(
       AbastecimentosCompanion.insert(
+        detalhes: Value(jsonEncode(r.paraJson())),
         em: r.em,
         combustivel: r.combustivel.name,
         kmPainel: r.kmPainel,
@@ -37,6 +42,16 @@ class HistoricoAbastecimento {
   }
 
   static RegistroAbastecimento _deLinha(LinhaAbastecimento l) {
+    if (l.detalhes != null) {
+      try {
+        final registro = RegistroAbastecimento.deJson(jsonDecode(l.detalhes!));
+        if (registro != null) {
+          return registro;
+        }
+      } on FormatException {
+        /* Preserva as colunas do registro antigo. */
+      }
+    }
     return RegistroAbastecimento(
       em: l.em,
       combustivel: combustivelDe(l.combustivel),

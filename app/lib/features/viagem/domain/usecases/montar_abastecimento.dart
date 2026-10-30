@@ -1,17 +1,9 @@
 import 'package:life_and_roads/features/ficha/domain/ficha_moto.dart';
 import 'package:life_and_roads/viagem/calculo.dart';
 
-/// Monta o registro do posto e a ficha atualizada. Sem persistência.
-///
-/// A referência de km é o abastecimento anterior, não a Ficha. O primeiro
-/// registro só guarda km, litros e valor; do segundo em diante, o intervalo
-/// entre um posto e o próximo dividido pelos litros que entraram agora dá o
-/// consumo (tanque cheio nos dois). O intervalo foi rodado com o combustível
-/// do abastecimento anterior, e é para ele que a média conta. A Ficha
-/// recebe a média ponderada de todos os intervalos daquele combustível.
+/// Compra e consumo têm referências distintas. Parciais não medem litros gastos.
 class MontarAbastecimento {
   const MontarAbastecimento();
-
   ({
     FichaMoto? ficha,
     RegistroAbastecimento? registro,
@@ -25,156 +17,160 @@ class MontarAbastecimento {
     required double? litros,
     required double? preco,
     required Combustivel combustivel,
+    double? valorPago,
+    bool tanqueCheio = false,
+    int? totalBarras,
+    int? barrasAntes,
+    int? barrasDepois,
   }) {
-    if (kmPainel == null || litros == null) {
-      return _erro('Informe o km do painel e os litros abastecidos.');
-    }
-    if (preco == null) {
-      return _erro(
-        combustivel == Combustivel.alcool
-            ? 'Informe o preço do litro de álcool.'
-            : 'Informe o preço do litro de gasolina.',
-      );
-    }
+    ({
+      FichaMoto? ficha,
+      RegistroAbastecimento? registro,
+      String? erro,
+      String? aviso,
+    })
+    erro(String msg) => (ficha: null, registro: null, erro: msg, aviso: null);
     if (ficha == null) {
-      return _erro(
-        'Preencha o km do painel na Ficha antes de registrar o abastecimento.',
+      return erro('Preencha a Ficha antes de registrar o abastecimento.');
+    }
+    if (valorPago != null) {
+      if (!valorPago.isFinite || valorPago <= 0) {
+        return erro('Informe um valor pago maior que zero.');
+      }
+      if (litros != null && litros.isFinite && litros > 0) {
+        preco = valorPago / litros;
+      }
+    }
+    if (kmPainel == null ||
+        !kmPainel.isFinite ||
+        kmPainel < 0 ||
+        kmPainel > 999999 ||
+        litros == null ||
+        !litros.isFinite ||
+        litros <= 0 ||
+        preco == null ||
+        !preco.isFinite ||
+        preco <= 0 ||
+        !(litros * preco).isFinite) {
+      return erro('Informe km válido, litros e preço maiores que zero.');
+    }
+    if (kmPainel < ficha.kmAtual) {
+      return erro('O km no painel não pode ser menor que o da Ficha.');
+    }
+    final anterior = historico.isEmpty ? null : historico.first;
+    if (anterior != null && kmPainel <= anterior.kmPainel) {
+      return erro(
+        'O km no painel tem que ser maior que o do último abastecimento.',
       );
     }
-    if (litros < 0.5 || litros > 40) {
-      return _erro('Litros abastecidos entre 0,5 e 40.');
+    if (totalBarras != null || barrasAntes != null || barrasDepois != null) {
+      if (totalBarras == null ||
+          totalBarras < 1 ||
+          totalBarras > 30 ||
+          barrasAntes == null ||
+          barrasDepois == null ||
+          barrasAntes < 0 ||
+          barrasDepois < barrasAntes ||
+          barrasDepois > totalBarras) {
+        return erro('Confira o total de barras e os níveis antes e depois.');
+      }
     }
-
-    final anterior = historico.isEmpty ? null : historico.first;
-    if (anterior == null) {
-      return _primeiro(ficha, kmPainel, litros, preco, combustivel);
+    // Sem medição do combustível restante, uma troca não confirma tanque puro.
+    var misturaAnterior = false;
+    Combustivel? ultimoCombustivel;
+    for (final r in historico.reversed) {
+      misturaAnterior =
+          misturaAnterior ||
+          r.misturaNoTanque == true ||
+          (ultimoCombustivel != null && ultimoCombustivel != r.combustivel);
+      ultimoCombustivel = r.combustivel;
     }
-
-    final erroIntervalo = _erroDoIntervalo(
-      kmAnterior: anterior.kmPainel,
+    final misturaDepois =
+        misturaAnterior ||
+        (anterior != null && anterior.combustivel != combustivel);
+    final distancia = anterior == null ? 0.0 : kmPainel - anterior.kmPainel;
+    final noTanque = anterior?.combustivel ?? combustivel;
+    double? media = anterior == null
+        ? null
+        : noTanque == Combustivel.alcool
+        ? ficha.kmLitroAlcool
+        : ficha.kmLitro;
+    var tipo = media == null ? 'referencia' : 'estimado';
+    double? kmMedidos, litrosMedidos, reaisMedidos;
+    Combustivel? combustivelMedido;
+    var custo = media == null ? 0.0 : preco / media;
+    if (tanqueCheio) {
+      var volume = litros;
+      var gasto = litros * preco;
+      final intermediarios = <RegistroAbastecimento>[];
+      for (final r in historico) {
+        if (r.tipoConsumo == 'legado') {
+          break;
+        }
+        if (r.tanqueCheio) {
+          kmMedidos = kmPainel - r.kmPainel;
+          litrosMedidos = volume;
+          reaisMedidos = gasto;
+          final mesmo =
+              !misturaAnterior &&
+              intermediarios.every((p) => p.combustivel == r.combustivel);
+          combustivelMedido = mesmo ? r.combustivel : null;
+          tipo = mesmo ? 'medido' : 'medidoMisto';
+          media = kmMedidos / volume;
+          custo = gasto / kmMedidos;
+          break;
+        }
+        intermediarios.add(r);
+        volume += r.litros;
+        gasto += r.reais;
+      }
+    }
+    if ((media != null && (!media.isFinite || media <= 0)) || !custo.isFinite) {
+      return erro(
+        'Confira os números do abastecimento. O resultado precisa ser finito e positivo.',
+      );
+    }
+    final registro = RegistroAbastecimento(
+      em: DateTime.now().toIso8601String(),
+      combustivel: combustivel,
       kmPainel: kmPainel,
-      litros: litros,
-    );
-    if (erroIntervalo != null) return _erro(erroIntervalo);
-
-    final consumo = consumoDoPainel(
-      kmAnterior: anterior.kmPainel,
-      kmPainel: kmPainel,
-      litros: litros,
-    )!;
-    final registro = registroDoPosto(
-      consumo: consumo,
+      kmRodados: distancia,
       litros: litros,
       precoLitro: preco,
-      kmPainel: kmPainel,
+      reais: litros * preco,
+      kmPorLitro: media ?? 0,
+      reaisPorKm: custo,
+      tipoConsumo: tipo,
+      misturaNoTanque: misturaDepois,
+      tanqueCheio: tanqueCheio,
+      kmMedidos: kmMedidos,
+      litrosMedidos: litrosMedidos,
+      reaisMedidos: reaisMedidos,
+      combustivelMedido: combustivelMedido,
+      totalBarras: totalBarras,
+      barrasAntes: barrasAntes,
+      barrasDepois: barrasDepois,
+    );
+    var atualizada = ficha.copiarCom(
+      kmAtual: kmPainel,
       combustivel: combustivel,
     );
-    if (registro == null) {
-      return _erro('Preço do litro fica entre 2 e 20 reais.');
+    if (tipo == 'medido') {
+      final medidos = [registro, ...historico.where((r) => r.medido)];
+      final ponderada = mediaKmPorLitro(medidos, combustivelMedido!)!;
+      atualizada = combustivelMedido == Combustivel.alcool
+          ? atualizada.copiarCom(kmLitroAlcool: ponderada)
+          : atualizada.copiarCom(kmLitro: ponderada);
     }
-
-    // O que rodou o intervalo é o que estava no tanque: o combustível do
-    // abastecimento anterior. A média junta todos os intervalos dele.
-    final noTanque = anterior.combustivel;
-    final media =
-        mediaKmPorLitro([registro, ...historico], noTanque) ??
-        consumo.kmPorLitro;
-    final atualizada = noTanque == Combustivel.alcool
-        ? ficha.copiarCom(
-            kmAtual: kmPainel,
-            kmLitroAlcool: media,
-            combustivel: combustivel,
-          )
-        : ficha.copiarCom(
-            kmAtual: kmPainel,
-            kmLitro: media,
-            combustivel: combustivel,
-          );
-
-    final kmTxt = _br(consumo.kmRodados, 0);
-    final lTxt = _br(litros, 1);
-    final consumoTxt = _br(consumo.kmPorLitro, 0);
-    final rodou = noTanque == combustivel
-        ? ''
-        : ' Rodados com ${rotuloCombustivel(noTanque).toLowerCase()}.';
     return (
       ficha: atualizada,
       registro: registro,
       erro: null,
-      aviso:
-          'Abastecimento registrado. $kmTxt km desde o último com $lTxt L, '
-          '$consumoTxt km com 1 L.$rodou',
+      aviso: anterior == null
+          ? 'Primeiro abastecimento registrado. A referência foi salva.'
+          : registro.medido
+          ? 'Abastecimento registrado. Consumo medido entre tanques cheios.'
+          : 'Abastecimento registrado. Consumo estimado pela média da Ficha.',
     );
   }
-
-  ({
-    FichaMoto? ficha,
-    RegistroAbastecimento? registro,
-    String? erro,
-    String? aviso,
-  })
-  _primeiro(
-    FichaMoto ficha,
-    double kmPainel,
-    double litros,
-    double preco,
-    Combustivel combustivel,
-  ) {
-    if (kmPainel < ficha.kmAtual) {
-      final kmBr = _br(ficha.kmAtual, 0);
-      return _erro('O km no painel não pode ser menor que o da Ficha ($kmBr).');
-    }
-    final registro = primeiroRegistroDoPosto(
-      litros: litros,
-      precoLitro: preco,
-      kmPainel: kmPainel,
-      combustivel: combustivel,
-    );
-    if (registro == null) {
-      return _erro('Preço do litro fica entre 2 e 20 reais.');
-    }
-    return (
-      ficha: ficha.copiarCom(kmAtual: kmPainel, combustivel: combustivel),
-      registro: registro,
-      erro: null,
-      aviso:
-          'Primeiro abastecimento registrado. A partir do próximo o app '
-          'calcula o consumo.',
-    );
-  }
-
-  String? _erroDoIntervalo({
-    required double kmAnterior,
-    required double kmPainel,
-    required double litros,
-  }) {
-    final kmRodados = kmPainel - kmAnterior;
-    final kmBr = _br(kmAnterior, 0);
-    if (kmRodados <= 0) {
-      return 'O km no painel tem que ser maior que o do último abastecimento ($kmBr).';
-    }
-    if (kmRodados > 2000) {
-      return 'Muita diferença de km desde o último abastecimento. Confira o painel.';
-    }
-    final media = kmRodados / litros;
-    if (media < 5) {
-      return 'Km rodados muito baixo para o volume abastecido. Confira o km e os litros.';
-    }
-    if (media > 80) {
-      return 'Andou demais para tão pouco combustível. Confira o km e os litros.';
-    }
-    return null;
-  }
-
-  ({
-    FichaMoto? ficha,
-    RegistroAbastecimento? registro,
-    String? erro,
-    String? aviso,
-  })
-  _erro(String mensagem) =>
-      (ficha: null, registro: null, erro: mensagem, aviso: null);
-
-  static String _br(double n, int casas) =>
-      n.toStringAsFixed(casas).replaceAll('.', ',');
 }

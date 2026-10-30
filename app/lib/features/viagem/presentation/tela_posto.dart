@@ -34,6 +34,11 @@ class _TelaPostoState extends ConsumerState<TelaPosto> {
   final _kmPainel = TextEditingController();
   final _litrosAbastecidos = TextEditingController();
   var _precosAplicados = false;
+  final _valorPago = TextEditingController();
+  final _totalBarras = TextEditingController();
+  final _barrasAntes = TextEditingController();
+  final _barrasDepois = TextEditingController();
+  bool _tanqueCheio = false, _usarBarras = false;
 
   ViagemController get _ctrl => ref.read(viagemControllerProvider.notifier);
 
@@ -59,6 +64,10 @@ class _TelaPostoState extends ConsumerState<TelaPosto> {
   void dispose() {
     _preco.removeListener(_aoMudarPreco);
     _precoAlcool.removeListener(_aoMudarPreco);
+    _valorPago.dispose();
+    _totalBarras.dispose();
+    _barrasAntes.dispose();
+    _barrasDepois.dispose();
     _preco.dispose();
     _precoAlcool.dispose();
     _kmPainel.dispose();
@@ -79,6 +88,11 @@ class _TelaPostoState extends ConsumerState<TelaPosto> {
 
   Future<void> _registrarAbastecimento() async {
     await _ctrl.registrarAbastecimento(
+      valorPago: ApiCaderneta.numero(_valorPago.text),
+      tanqueCheio: _tanqueCheio,
+      totalBarras: _usarBarras ? int.tryParse(_totalBarras.text) : null,
+      barrasAntes: _usarBarras ? int.tryParse(_barrasAntes.text) : null,
+      barrasDepois: _usarBarras ? int.tryParse(_barrasDepois.text) : null,
       kmPainel: ApiCaderneta.numero(_kmPainel.text),
       litros: ApiCaderneta.numero(_litrosAbastecidos.text),
       precos: _precosAtuais,
@@ -88,6 +102,13 @@ class _TelaPostoState extends ConsumerState<TelaPosto> {
   /// Devolve true quando gravou e limpa os campos. Com erro, a folha fica
   /// aberta e o snackbar mostra o motivo por cima dela.
   Future<bool> _confirmarAbastecimento() async {
+    if (_usarBarras &&
+        (int.tryParse(_totalBarras.text) == null ||
+            int.tryParse(_barrasAntes.text) == null ||
+            int.tryParse(_barrasDepois.text) == null)) {
+      _aviso('Informe números inteiros nos três campos do marcador.');
+      return false;
+    }
     final erroAntes = ref.read(viagemControllerProvider).erro;
     await _registrarAbastecimento();
     if (!mounted) return false;
@@ -98,6 +119,10 @@ class _TelaPostoState extends ConsumerState<TelaPosto> {
       if (erro == erroAntes) _aviso(erro);
       return false;
     }
+    _valorPago.clear();
+    _barrasAntes.clear();
+    _barrasDepois.clear();
+    _tanqueCheio = false;
     _kmPainel.clear();
     _litrosAbastecidos.clear();
     return true;
@@ -107,9 +132,7 @@ class _TelaPostoState extends ConsumerState<TelaPosto> {
     return abrirFolhaOficina(
       context,
       titulo: 'Registrar abastecimento',
-      subtitulo:
-          'Combustível, km do painel e litros. Encha o tanque, o consumo '
-          'sai da distância desde o abastecimento anterior.',
+      subtitulo: 'Registre também os parciais. Entre dois tanques cheios, o app mede o consumo do período.',
       campos: (_) => [
         // A folha é outra rota; o Consumer a redesenha quando o combustível
         // muda no controller.
@@ -122,6 +145,40 @@ class _TelaPostoState extends ConsumerState<TelaPosto> {
         DuplaCampos(
           esquerda: _campo(_kmPainel, 'Km no painel agora'),
           direita: _campo(_litrosAbastecidos, 'Litros abastecidos'),
+        ),
+        _campo(_valorPago, 'Valor pago em reais, opcional'),
+        const Text(
+          'Se informar o valor pago, o preço por litro será calculado. Caso contrário, usa o preço do dia.',
+        ),
+        StatefulBuilder(
+          builder: (context, atualizar) => Column(
+            children: [
+              SwitchListTile(
+                title: const Text('Completou o tanque?'),
+                subtitle: const Text('Use sempre o mesmo nível ao completar.'),
+                value: _tanqueCheio,
+                onChanged: (v) => atualizar(() => _tanqueCheio = v),
+              ),
+              SwitchListTile(
+                title: const Text('Registrar barrinhas do painel'),
+                subtitle: const Text(
+                  'Opcional para qualquer moto. Não representa uma medida exata em litros.',
+                ),
+                value: _usarBarras,
+                onChanged: (v) => atualizar(() => _usarBarras = v),
+              ),
+              if (_usarBarras) ...[
+                _campo(_totalBarras, 'Total de barras do painel'),
+                DuplaCampos(
+                  esquerda: _campo(_barrasAntes, 'Barras antes'),
+                  direita: _campo(_barrasDepois, 'Barras depois'),
+                ),
+                const Text(
+                  'Leia com a moto na mesma posição. Guardamos essas leituras para calibração futura.',
+                ),
+              ],
+            ],
+          ),
         ),
       ],
       acao: 'Registrar',
@@ -154,6 +211,12 @@ class _TelaPostoState extends ConsumerState<TelaPosto> {
         if (!atual.carregando && (!_precosAplicados || cargaTerminou)) {
           _preco.text = atual.precos.gasolina;
           _precoAlcool.text = atual.precos.alcool;
+          for (final r in atual.historico) {
+            if (r.totalBarras != null) {
+              _totalBarras.text = r.totalBarras.toString();
+              break;
+            }
+          }
           _precosAplicados = true;
         }
       });
@@ -165,6 +228,7 @@ class _TelaPostoState extends ConsumerState<TelaPosto> {
     }
 
     final historico = estado.historico;
+    final medidos = historico.where((r) => r.medido).toList();
     final pg = ApiCaderneta.numero(_preco.text);
     final pa = ApiCaderneta.numero(_precoAlcool.text);
     final kg = estado.kmLitroGasolina;
@@ -181,19 +245,19 @@ class _TelaPostoState extends ConsumerState<TelaPosto> {
     double? custoPorKm;
     String origem;
     // Só intervalos entre postos contam; o primeiro registro não tem.
-    final intervalos = historico.where((r) => r.temConsumo).length;
+    final intervalos = medidos.length;
     if (intervalos > 0) {
-      custoPorKm = custoMedioPorKm(historico);
+      custoPorKm = custoMedioPorKm(medidos);
       origem = intervalos == 1
-          ? 'pelo último intervalo'
-          : 'média de $intervalos intervalos';
+          ? 'medido entre tanques cheios'
+          : 'média de $intervalos períodos medidos';
     } else if (custoGas != null || custoAlcool != null) {
       custoPorKm = custoGas == null
           ? custoAlcool
           : custoAlcool == null
           ? custoGas
           : (custoAlcool < custoGas ? custoAlcool : custoGas);
-      origem = 'pela ficha e os preços de hoje';
+      origem = 'estimado pela ficha e os preços de hoje';
     } else {
       final temPreco = pg != null || pa != null;
       origem = temPreco && kg == null && ka == null
@@ -232,8 +296,7 @@ class _TelaPostoState extends ConsumerState<TelaPosto> {
             origem: origem,
             fraseVencedor: fraseVencedor,
             postos: historico.length,
-            kmComUmLitro:
-                mediaKmPorLitro(historico, Combustivel.gasolina) ?? kg,
+            kmComUmLitro: mediaKmPorLitro(medidos, Combustivel.gasolina) ?? kg,
             autonomiaKm: autonomia,
             barras: const ResumoConsumo().executar(historico).barras,
           ),
@@ -310,7 +373,7 @@ class _TelaPostoState extends ConsumerState<TelaPosto> {
             const EstadoVazio(
               icone: Icons.local_gas_station_outlined,
               titulo: 'Nenhum abastecimento ainda',
-              frase: 'Registre o primeiro para ver o consumo real da moto.',
+              frase: 'Registre todos os abastecimentos. Complete o tanque para iniciar um período de medição.',
             )
           else
             // Cascata: cada posto entra 40 ms depois do anterior (até o 8º).
@@ -371,11 +434,31 @@ class _TelaPostoState extends ConsumerState<TelaPosto> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
+                    if (r.totalBarras != null)
+                      Text(
+                        '${r.barrasAntes} → ${r.barrasDepois} de ${r.totalBarras} barras',
+                      ),
+                    Text(
+                      r.tipoConsumo == 'legado'
+                          ? 'Método anterior'
+                          : r.tanqueCheio
+                          ? 'Tanque cheio'
+                          : 'Parcial',
+                    ),
+                    if (r.tipoConsumo != 'referencia' &&
+                        r.tipoConsumo != 'legado')
+                      Text(
+                        r.medido
+                            ? (r.tipoConsumo == 'medidoMisto'
+                                  ? 'Consumo medido com mistura no período'
+                                  : 'Consumo medido no período')
+                            : 'Consumo estimado pela Ficha',
+                      ),
                     Text(
                       r.temConsumo
-                          ? '${_br(r.kmRodados, casas: 0)} km · ${_br(r.litros)} L · '
+                          ? '${_br(r.medido ? r.kmMedidos! : r.kmRodados, casas: 0)} km · ${_br(r.medido ? r.litrosMedidos! : r.litros)} L · '
                                 '${PainelPosto.km(r.kmPorLitro)} km com 1 L$rodou'
-                          : '${_br(r.litros)} L · primeiro registro',
+                          : '${_br(r.litros)} L · referência inicial',
                       textAlign: TextAlign.end,
                       style: tema.textTheme.bodyMedium,
                     ),

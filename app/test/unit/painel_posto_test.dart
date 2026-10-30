@@ -16,6 +16,10 @@ Widget _app(Widget filho) => MaterialApp(
 
 RegistroAbastecimento _posto(String em, double reaisPorKm) =>
     RegistroAbastecimento(
+      tipoConsumo: 'medido',
+      kmMedidos: 300,
+      litrosMedidos: 8,
+      reaisMedidos: reaisPorKm * 300,
       em: em,
       combustivel: Combustivel.gasolina,
       kmPainel: 1000,
@@ -59,6 +63,21 @@ void main() {
     // Custo, consumo e tanque sem valor.
     expect(find.text('-'), findsNWidgets(3));
     expect(find.text('0'), findsOneWidget);
+  });
+
+  testWidgets('com registros sem medição orienta completar o ciclo', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _app(const PainelPosto(origem: 'estimado pela ficha', postos: 2)),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('Registre o primeiro abastecimento'),
+      findsNothing,
+    );
+    expect(find.textContaining('dois registros cheios'), findsOneWidget);
+    expect(find.textContaining('incluindo os parciais'), findsOneWidget);
   });
 
   testWidgets('com números mostra custo, postos, consumo e tanque', (

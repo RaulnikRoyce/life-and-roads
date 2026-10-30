@@ -16,11 +16,11 @@ class RegistroServico {
   final double reais;
 
   Map<String, dynamic> paraJson() => {
-        'em': em,
-        'tipo': tipo,
-        'kmPainel': kmPainel,
-        'reais': reais,
-      };
+    'em': em,
+    'tipo': tipo,
+    'kmPainel': kmPainel,
+    'reais': reais,
+  };
 
   static RegistroServico? deJson(Object? bruto) {
     if (bruto is! Map) return null;
@@ -41,8 +41,10 @@ class RegistroServico {
 
   static double? _num(Object? valor) {
     if (valor == null) return null;
-    if (valor is num) return valor.toDouble();
-    return double.tryParse('$valor'.trim().replaceAll(',', '.'));
+    final n = valor is num
+        ? valor.toDouble()
+        : double.tryParse('$valor'.trim().replaceAll(',', '.'));
+    return n != null && n.isFinite ? n : null;
   }
 }
 

@@ -22,10 +22,10 @@ export const fichaSchema = z.object({
     vazioParaNulo,
     z.number().int().min(50).max(2000).nullable(),
   ),
-  kmLitro: z.number().min(5).max(80),
+  kmLitro: z.number().positive(),
   kmLitroAlcool: z.preprocess(
     vazioParaNulo,
-    z.number().min(5).max(80).nullable(),
+    z.number().positive().nullable(),
   ),
   combustivel: z.enum(['gasolina', 'alcool']).optional().default('gasolina'),
   kmAtual: z.number().min(0).max(999999),

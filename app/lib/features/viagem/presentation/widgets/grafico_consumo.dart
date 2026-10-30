@@ -11,7 +11,15 @@ import 'package:life_and_roads/tema.dart';
 /// uma vez, ao montar e quando chega posto novo. Sem histórico, a base
 /// fica pontilhada com a frase de partida no meio.
 class GraficoConsumo extends StatelessWidget {
-  const GraficoConsumo({super.key, required this.barras, required this.fundo});
+  const GraficoConsumo({
+    super.key,
+    required this.barras,
+    required this.fundo,
+    this.mensagemVazia =
+        'Registre o primeiro abastecimento para iniciar a medição.',
+  });
+
+  final String mensagemVazia;
 
   /// Barras como o histórico entrega, do mais novo ao mais antigo.
   final List<BarraConsumo> barras;
@@ -74,7 +82,7 @@ class GraficoConsumo extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Text(
-                      'Registre o primeiro abastecimento para ver o consumo real.',
+                      mensagemVazia,
                       textAlign: TextAlign.center,
                       style: tema.textTheme.bodyMedium?.copyWith(
                         color: Oficina.mute,

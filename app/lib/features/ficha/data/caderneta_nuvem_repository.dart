@@ -71,7 +71,8 @@ class CadernetaNuvemRepository {
       aparelho: resumoLocal,
       nuvem: lida == null ? null : ResumoCaderneta.de(lida.conteudo),
       mesmoCarimbo: lida != null && lida.carimbo == guardado,
-      mesmoConteudo: lida != null &&
+      mesmoConteudo:
+          lida != null &&
           BackupNuvem.assinar(BackupCaderneta.normalizarNuvem(lida.conteudo)) ==
               BackupNuvem.assinar(local),
     );
@@ -120,8 +121,18 @@ class CadernetaNuvemRepository {
   /// muda aqui, para o piloto não achar que apagou o que ficou lá.
   Future<SituacaoNuvem> desligar() async {
     final token = await _token();
-    if (token != null) await _apagar(token);
-    await _backup.desligar();
+    await _backup.pausarEnvios();
+    try {
+      if (token != null) {
+        await _apagar(token);
+      }
+      await _backup.desligar();
+    } catch (_) {
+      _backup.agendar();
+      rethrow;
+    } finally {
+      _backup.retomarEnvios();
+    }
     return SituacaoNuvem(logado: token != null, ligada: false);
   }
 
@@ -133,16 +144,24 @@ class CadernetaNuvemRepository {
   /// Conflito: fica a deste aparelho, por cima da que está na conta.
   Future<SituacaoNuvem> manterAparelho() async {
     final token = await _token();
-    if (token == null) return const SituacaoNuvem();
+    if (token == null) {
+      throw FalhaApi('Entre na conta para enviar a caderneta.');
+    }
     final lida = await _ler(token);
     if (lida != null) {
       await _estado.adotarCarimbo(lida.carimbo);
     } else {
       await _estado.limparConflito();
     }
-    final resultado = await _backup.enviarAgora();
+    final resultado = await _backup.enviarConfirmado();
     // Outro aparelho gravou de novo entre ler e mandar: pergunta outra vez.
     if (resultado == ResultadoNuvem.conflito) return verificar();
+    if (resultado != ResultadoNuvem.enviada &&
+        resultado != ResultadoNuvem.semMudanca) {
+      throw FalhaApi(
+        'A caderneta não foi confirmada na conta. Os dados continuam neste aparelho.',
+      );
+    }
     return _situacao();
   }
 

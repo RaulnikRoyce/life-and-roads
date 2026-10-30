@@ -167,6 +167,9 @@ class PainelPosto extends StatelessWidget {
             const SizedBox(height: 16),
             GraficoConsumo(
               barras: barras,
+              mensagemVazia: postos == 0
+                  ? 'Registre o primeiro abastecimento para iniciar a medição.'
+                  : 'Ainda não há um período medido. Marque quando completar o tanque; dois registros cheios permitem calcular o consumo, incluindo os parciais.',
               fundo: tema.colorScheme.surfaceContainerHighest,
             ),
           ],

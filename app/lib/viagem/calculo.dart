@@ -43,6 +43,16 @@ class RegistroAbastecimento {
     required this.reais,
     required this.kmPorLitro,
     required this.reaisPorKm,
+    this.tipoConsumo = 'legado',
+    this.misturaNoTanque,
+    this.tanqueCheio = false,
+    this.kmMedidos,
+    this.litrosMedidos,
+    this.reaisMedidos,
+    this.combustivelMedido,
+    this.totalBarras,
+    this.barrasAntes,
+    this.barrasDepois,
   });
 
   final String em;
@@ -54,6 +64,19 @@ class RegistroAbastecimento {
   final double reais;
   final double kmPorLitro;
   final double reaisPorKm;
+  final String tipoConsumo;
+  final bool? misturaNoTanque;
+  final bool tanqueCheio;
+  final double? kmMedidos, litrosMedidos, reaisMedidos;
+  final Combustivel? combustivelMedido;
+  final int? totalBarras, barrasAntes, barrasDepois;
+  bool get medido =>
+      (tipoConsumo == 'medido' || tipoConsumo == 'medidoMisto') &&
+      [
+        kmMedidos,
+        litrosMedidos,
+        reaisMedidos,
+      ].every((n) => n != null && n.isFinite && n > 0);
 
   /// O primeiro abastecimento não tem intervalo anterior: km rodados e
   /// consumo ficam em zero (as colunas do banco são obrigatórias). Só os
@@ -61,6 +84,16 @@ class RegistroAbastecimento {
   bool get temConsumo => kmRodados > 0 && kmPorLitro > 0;
 
   Map<String, dynamic> paraJson() => {
+    'tipoConsumo': tipoConsumo,
+    'misturaNoTanque': misturaNoTanque,
+    'tanqueCheio': tanqueCheio,
+    'kmMedidos': kmMedidos,
+    'litrosMedidos': litrosMedidos,
+    'reaisMedidos': reaisMedidos,
+    'combustivelMedido': combustivelMedido?.name,
+    'totalBarras': totalBarras,
+    'barrasAntes': barrasAntes,
+    'barrasDepois': barrasDepois,
     'em': em,
     'combustivel': combustivel.name,
     'kmPainel': kmPainel,
@@ -75,6 +108,31 @@ class RegistroAbastecimento {
   static RegistroAbastecimento? deJson(Object? bruto) {
     if (bruto is! Map) return null;
     final mapa = Map<String, dynamic>.from(bruto);
+    for (final chave in [
+      'litros',
+      'precoLitro',
+      'kmRodados',
+      'kmPainel',
+      'kmPorLitro',
+      'reais',
+      'reaisPorKm',
+      'kmMedidos',
+      'litrosMedidos',
+      'reaisMedidos',
+      'totalBarras',
+      'barrasAntes',
+      'barrasDepois',
+    ]) {
+      if (mapa[chave] != null && _num(mapa[chave]) == null) {
+        return null;
+      }
+    }
+    for (final chave in ['combustivel', 'combustivelMedido']) {
+      if (mapa[chave] != null &&
+          !['gasolina', 'alcool'].contains(mapa[chave])) {
+        return null;
+      }
+    }
     final litros = _num(mapa['litros']);
     final preco = _num(mapa['precoLitro']);
     final kmRodados = _num(mapa['kmRodados']);
@@ -90,8 +148,85 @@ class RegistroAbastecimento {
     final reais = _num(mapa['reais']) ?? litros * preco;
     final rpk =
         _num(mapa['reaisPorKm']) ?? (kmRodados <= 0 ? 0.0 : reais / kmRodados);
+    final tipo = mapa['tipoConsumo'] ?? 'legado';
+    if (![
+      'legado',
+      'referencia',
+      'estimado',
+      'medido',
+      'medidoMisto',
+    ].contains(tipo)) {
+      return null;
+    }
+    if (litros <= 0 ||
+        preco <= 0 ||
+        kmRodados < 0 ||
+        kmPainel < 0 ||
+        kmPainel > 999999 ||
+        kmL < 0 ||
+        !reais.isFinite ||
+        reais < 0 ||
+        !rpk.isFinite ||
+        rpk < 0) {
+      return null;
+    }
+    final kmMedidos = _num(mapa['kmMedidos']);
+    final litrosMedidos = _num(mapa['litrosMedidos']);
+    final reaisMedidos = _num(mapa['reaisMedidos']);
+    if (tipo == 'medido' || tipo == 'medidoMisto') {
+      if (kmMedidos == null ||
+          kmMedidos <= 0 ||
+          litrosMedidos == null ||
+          litrosMedidos <= 0 ||
+          reaisMedidos == null ||
+          reaisMedidos <= 0 ||
+          kmL <= 0) {
+        return null;
+      }
+      if (tipo == 'medido' &&
+          !['gasolina', 'alcool'].contains(mapa['combustivelMedido'])) {
+        return null;
+      }
+    }
+    for (final chave in ['tanqueCheio', 'misturaNoTanque']) {
+      if (mapa[chave] != null && mapa[chave] is! bool) {
+        return null;
+      }
+    }
+    final total = _num(mapa['totalBarras']);
+    final antes = _num(mapa['barrasAntes']);
+    final depois = _num(mapa['barrasDepois']);
+    if ([
+      'totalBarras',
+      'barrasAntes',
+      'barrasDepois',
+    ].any((c) => mapa[c] != null)) {
+      if (total == null ||
+          antes == null ||
+          depois == null ||
+          total < 1 ||
+          total > 30 ||
+          antes < 0 ||
+          depois < antes ||
+          depois > total ||
+          [total, antes, depois].any((n) => n != n.truncateToDouble())) {
+        return null;
+      }
+    }
     final em = '${mapa['em'] ?? ''}'.trim();
     return RegistroAbastecimento(
+      tipoConsumo: tipo as String,
+      misturaNoTanque: mapa['misturaNoTanque'] as bool?,
+      tanqueCheio: mapa['tanqueCheio'] == true,
+      kmMedidos: _num(mapa['kmMedidos']),
+      litrosMedidos: _num(mapa['litrosMedidos']),
+      reaisMedidos: _num(mapa['reaisMedidos']),
+      combustivelMedido: mapa['combustivelMedido'] == null
+          ? null
+          : combustivelDe(mapa['combustivelMedido']),
+      totalBarras: _num(mapa['totalBarras'])?.toInt(),
+      barrasAntes: _num(mapa['barrasAntes'])?.toInt(),
+      barrasDepois: _num(mapa['barrasDepois'])?.toInt(),
       em: em.isEmpty ? DateTime.now().toIso8601String() : em,
       combustivel: combustivelDe(mapa['combustivel']),
       kmPainel: kmPainel,
@@ -106,8 +241,10 @@ class RegistroAbastecimento {
 
   static double? _num(Object? valor) {
     if (valor == null) return null;
-    if (valor is num) return valor.toDouble();
-    return double.tryParse('$valor'.trim().replaceAll(',', '.'));
+    final numero = valor is num
+        ? valor.toDouble()
+        : double.tryParse('$valor'.trim().replaceAll(',', '.'));
+    return numero != null && numero.isFinite ? numero : null;
   }
 }
 
@@ -117,7 +254,7 @@ ResultadoViagem? calcularViagem({
   required double precoLitro,
 }) {
   if (km <= 0 || km > 5000) return null;
-  if (kmPorLitro < 5 || kmPorLitro > 80) return null;
+  if (!kmPorLitro.isFinite || kmPorLitro <= 0) return null;
   if (precoLitro < 2 || precoLitro > 20) return null;
 
   final litros = km / kmPorLitro;
@@ -130,7 +267,7 @@ double? autonomiaKm({
   required double kmPorLitro,
 }) {
   if (tanqueLitros < 2 || tanqueLitros > 40) return null;
-  if (kmPorLitro < 5 || kmPorLitro > 80) return null;
+  if (!kmPorLitro.isFinite || kmPorLitro <= 0) return null;
   return tanqueLitros * kmPorLitro;
 }
 
@@ -150,11 +287,11 @@ ConsumoAbastecimento? consumoDoPainel({
   required double litros,
 }) {
   final kmRodados = kmPainel - kmAnterior;
-  if (kmRodados <= 0 || kmRodados > 2000) return null;
+  if (!kmRodados.isFinite || kmRodados <= 0) return null;
   if (litros < 0.5 || litros > 40) return null;
 
   final consumo = kmRodados / litros;
-  if (consumo < 5 || consumo > 80) return null;
+  if (!consumo.isFinite || consumo <= 0) return null;
   return ConsumoAbastecimento(kmRodados: kmRodados, kmPorLitro: consumo);
 }
 
@@ -192,7 +329,7 @@ double? custoPorKmCombustivel({
   required double kmPorLitro,
 }) {
   if (precoLitro < 2 || precoLitro > 20) return null;
-  if (kmPorLitro < 5 || kmPorLitro > 80) return null;
+  if (!kmPorLitro.isFinite || kmPorLitro <= 0) return null;
   return precoLitro / kmPorLitro;
 }
 
@@ -264,9 +401,13 @@ double? custoMedioPorKm(Iterable<RegistroAbastecimento> lista) {
   var km = 0.0;
   var reais = 0.0;
   for (final r in lista) {
-    if (!r.temConsumo) continue;
-    km += r.kmRodados;
-    reais += r.reais;
+    if (r.medido) {
+      km += r.kmMedidos ?? 0;
+      reais += r.reaisMedidos ?? 0;
+    } else if (r.tipoConsumo == 'legado' && r.temConsumo) {
+      km += r.kmRodados;
+      reais += r.reais;
+    }
   }
   return reaisPorKm(reais: reais, kmRodados: km);
 }
@@ -293,7 +434,14 @@ double? mediaKmPorLitro(
   var litros = 0.0;
   for (var i = 0; i < historico.length; i++) {
     final r = historico[i];
-    if (!r.temConsumo) continue;
+    if (r.medido) {
+      if (r.combustivelMedido == noTanque && r.tipoConsumo == 'medido') {
+        km += r.kmMedidos ?? 0;
+        litros += r.litrosMedidos ?? 0;
+      }
+      continue;
+    }
+    if (r.tipoConsumo != 'legado' || !r.temConsumo) continue;
     if (combustivelDoIntervalo(historico, i) != noTanque) continue;
     km += r.kmRodados;
     litros += r.litros;

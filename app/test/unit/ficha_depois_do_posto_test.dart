@@ -40,25 +40,79 @@ void main() {
     await fecharBancoTeste();
   });
 
-  test('abastecimento no Posto troca o km da Ficha sem reabrir o app', () async {
-    await FichaLocalDatasource().gravar(
-      const FichaMoto(
-        marca: 'Yamaha',
-        modelo: 'Fazer 250',
-        kmLitro: 30,
-        kmAtual: 30000,
-      ),
-    );
-    await app.read(fichaControllerProvider.notifier).carregar();
-    expect(app.read(fichaControllerProvider).ficha!.kmAtual, 30000);
+  test(
+    'registro parcial guarda compra e bloqueia confirmacoes simultaneas',
+    () async {
+      await FichaLocalDatasource().gravar(
+        const FichaMoto(
+          marca: 'Honda',
+          modelo: 'Bros',
+          kmLitro: 35,
+          kmAtual: 1000,
+        ),
+      );
+      await app.read(fichaControllerProvider.notifier).carregar();
+      final ctrl = app.read(viagemControllerProvider.notifier);
+      await Future.wait([
+        ctrl.registrarAbastecimento(
+          kmPainel: 1000,
+          litros: 3,
+          valorPago: 19.5,
+          precos: const PrecosLitro(),
+          totalBarras: 6,
+          barrasAntes: 1,
+          barrasDepois: 3,
+        ),
+        ctrl.registrarAbastecimento(
+          kmPainel: 1000,
+          litros: 3,
+          valorPago: 19.5,
+          precos: const PrecosLitro(),
+        ),
+      ]);
+      expect(app.read(viagemControllerProvider).historico, hasLength(1));
+      expect(
+        app.read(viagemControllerProvider).historico.single.totalBarras,
+        6,
+      );
+      await ctrl.registrarAbastecimento(
+        kmPainel: 1350,
+        litros: 3,
+        valorPago: 18,
+        precos: const PrecosLitro(),
+      );
+      final r = app.read(viagemControllerProvider).historico.first;
+      expect(r.tipoConsumo, 'estimado');
+      expect(r.kmPorLitro, 35);
+      expect(app.read(fichaControllerProvider).ficha!.kmAtual, 1350);
+      expect(app.read(fichaControllerProvider).ficha!.kmLitro, 35);
+    },
+  );
 
-    await app.read(viagemControllerProvider.notifier).registrarAbastecimento(
-      kmPainel: 30780,
-      litros: 12,
-      precos: const PrecosLitro(gasolina: '6,59'),
-    );
+  test(
+    'abastecimento no Posto troca o km da Ficha sem reabrir o app',
+    () async {
+      await FichaLocalDatasource().gravar(
+        const FichaMoto(
+          marca: 'Yamaha',
+          modelo: 'Fazer 250',
+          kmLitro: 30,
+          kmAtual: 30000,
+        ),
+      );
+      await app.read(fichaControllerProvider.notifier).carregar();
+      expect(app.read(fichaControllerProvider).ficha!.kmAtual, 30000);
 
-    expect(app.read(viagemControllerProvider).erro, isNull);
-    expect(app.read(fichaControllerProvider).ficha!.kmAtual, 30780);
-  });
+      await app
+          .read(viagemControllerProvider.notifier)
+          .registrarAbastecimento(
+            kmPainel: 30780,
+            litros: 12,
+            precos: const PrecosLitro(gasolina: '6,59'),
+          );
+
+      expect(app.read(viagemControllerProvider).erro, isNull);
+      expect(app.read(fichaControllerProvider).ficha!.kmAtual, 30780);
+    },
+  );
 }

@@ -16,6 +16,7 @@ class Abastecimentos extends Table {
   RealColumn get reais => real()();
   RealColumn get kmPorLitro => real()();
   RealColumn get reaisPorKm => real()();
+  TextColumn get detalhes => text().nullable()();
 }
 
 @DataClassName('LinhaServico')
@@ -57,42 +58,43 @@ class CadernetaKv extends Table {
   Set<Column> get primaryKey => {chave};
 }
 
-@DriftDatabase(
-  tables: [Abastecimentos, Servicos, Pins, FichaSync, CadernetaKv],
-)
+@DriftDatabase(tables: [Abastecimentos, Servicos, Pins, FichaSync, CadernetaKv])
 class CadernetaDatabase extends _$CadernetaDatabase {
   CadernetaDatabase(super.e);
 
   CadernetaDatabase.arquivo()
-      : super(
-          driftDatabase(
-            name: 'caderneta',
-            web: kIsWeb
-                ? DriftWebOptions(
-                    sqlite3Wasm: Uri.parse('sqlite3.wasm'),
-                    driftWorker: Uri.parse('drift_worker.js'),
-                  )
-                : null,
-          ),
-        );
+    : super(
+        driftDatabase(
+          name: 'caderneta',
+          web: kIsWeb
+              ? DriftWebOptions(
+                  sqlite3Wasm: Uri.parse('sqlite3.wasm'),
+                  driftWorker: Uri.parse('drift_worker.js'),
+                )
+              : null,
+        ),
+      );
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onCreate: (m) async => m.createAll(),
-        onUpgrade: (m, from, to) async {
-          if (from < 2) {
-            await m.createTable(cadernetaKv);
-          }
-        },
-      );
+    onCreate: (m) async => m.createAll(),
+    onUpgrade: (m, from, to) async {
+      if (from < 3) {
+        await m.addColumn(abastecimentos, abastecimentos.detalhes);
+      }
+      if (from < 2) {
+        await m.createTable(cadernetaKv);
+      }
+    },
+  );
 
   Future<List<LinhaAbastecimento>> listarAbastecimentos() {
-    return (select(abastecimentos)
-          ..orderBy([(t) => OrderingTerm.desc(t.id)]))
-        .get();
+    return (select(
+      abastecimentos,
+    )..orderBy([(t) => OrderingTerm.desc(t.id)])).get();
   }
 
   Future<void> inserirAbastecimento(AbastecimentosCompanion linha) {
@@ -128,21 +130,22 @@ class CadernetaDatabase extends _$CadernetaDatabase {
       await into(fichaSync).insert(linha);
       return;
     }
-    await (update(fichaSync)..where((t) => t.id.equals(atual.first.id)))
-        .write(linha);
+    await (update(
+      fichaSync,
+    )..where((t) => t.id.equals(atual.first.id))).write(linha);
   }
 
   Future<String?> lerTextoKv(String chave) async {
-    final linha = await (select(cadernetaKv)
-          ..where((t) => t.chave.equals(chave)))
-        .getSingleOrNull();
+    final linha = await (select(
+      cadernetaKv,
+    )..where((t) => t.chave.equals(chave))).getSingleOrNull();
     return linha?.texto;
   }
 
   Future<Uint8List?> lerBlobKv(String chave) async {
-    final linha = await (select(cadernetaKv)
-          ..where((t) => t.chave.equals(chave)))
-        .getSingleOrNull();
+    final linha = await (select(
+      cadernetaKv,
+    )..where((t) => t.chave.equals(chave))).getSingleOrNull();
     return linha?.bytes;
   }
 
@@ -167,9 +170,8 @@ class CadernetaDatabase extends _$CadernetaDatabase {
   }
 
   Future<int> contar(String tabela) async {
-    final q = await customSelect(
-      'SELECT COUNT(*) AS c FROM $tabela',
-    ).getSingle();
+    final q = await customSelect('SELECT COUNT(*) AS c FROM $tabela')
+        .getSingle();
     return q.read<int>('c');
   }
 

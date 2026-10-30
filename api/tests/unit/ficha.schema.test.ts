@@ -59,3 +59,14 @@ test('ano aceita até o próximo ano-modelo e recusa depois', () => {
   assert.equal(fichaSchema.safeParse({ ...valida, ano: 1979 }).success, false);
 });
 
+
+for (const kmLitro of [2, 100, 600]) {
+  test('consumo positivo sem teto: ' + kmLitro, () => {
+    assert.equal(fichaSchema.safeParse({ ...valida, kmLitro, kmLitroAlcool: kmLitro }).success, true);
+  });
+}
+for (const kmLitro of [0, -1, NaN, Infinity]) {
+  test('consumo invalido recusado: ' + kmLitro, () => {
+    assert.equal(fichaSchema.safeParse({ ...valida, kmLitro }).success, false);
+  });
+}

@@ -1,3 +1,4 @@
+import 'package:life_and_roads/core/database/caderneta_banco.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_and_roads/core/backup/caderneta_mudou.dart';
 import 'package:life_and_roads/features/ficha/data/ficha_local_datasource.dart';
@@ -38,6 +39,7 @@ final montarAbastecimentoProvider = Provider<MontarAbastecimento>(
 );
 
 class ViagemController extends Notifier<ViagemEstado> {
+  bool _registrando = false;
   ViagemRepository get _viagem => ref.read(viagemRepositoryProvider);
   FichaLocalDatasource get _fichaLocal =>
       ref.read(fichaLocalDatasourceProvider);
@@ -129,40 +131,63 @@ class ViagemController extends Notifier<ViagemEstado> {
     required double? kmPainel,
     required double? litros,
     required PrecosLitro precos,
+    double? valorPago,
+    bool tanqueCheio = false,
+    int? totalBarras,
+    int? barrasAntes,
+    int? barrasDepois,
   }) async {
-    await relerFicha();
-    final preco = state.combustivelAbastecimento == Combustivel.alcool
-        ? _numero(precos.alcool)
-        : _numero(precos.gasolina);
-    final montado = _montar.executar(
-      ficha: state.ficha,
-      historico: state.historico,
-      kmPainel: kmPainel,
-      litros: litros,
-      preco: preco,
-      combustivel: state.combustivelAbastecimento,
-    );
-    if (montado.erro != null) {
-      state = state.copiarCom(erro: montado.erro, limparAviso: true);
+    if (_registrando) {
       return;
     }
+    _registrando = true;
+    try {
+      await relerFicha();
+      final preco = state.combustivelAbastecimento == Combustivel.alcool
+          ? _numero(precos.alcool)
+          : _numero(precos.gasolina);
+      final registros = await _viagem.listarAbastecimentos();
+      final montado = _montar.executar(
+        valorPago: valorPago,
+        tanqueCheio: tanqueCheio,
+        totalBarras: totalBarras,
+        barrasAntes: barrasAntes,
+        barrasDepois: barrasDepois,
+        ficha: state.ficha,
+        historico: registros,
+        kmPainel: kmPainel,
+        litros: litros,
+        preco: preco,
+        combustivel: state.combustivelAbastecimento,
+      );
+      if (montado.erro != null) {
+        state = state.copiarCom(erro: montado.erro, limparAviso: true);
+        return;
+      }
 
-    final salva = await _fichaRepo.salvar(montado.ficha!);
-    // O km do painel mudou por aqui; sem isso a Ficha mostra o antigo até
-    // reabrir o app.
-    await ref.read(fichaControllerProvider.notifier).relerDoAparelho();
-    await _viagem.gravarPrecos(precos);
-    final historico = await _viagem.acrescentarAbastecimento(montado.registro!);
-    ref.read(cadernetaMudouProvider).avisar();
-    state = state.copiarCom(
-      ficha: salva.ficha,
-      precos: precos,
-      historico: historico,
-      combustivelViagem: state.combustivelAbastecimento,
-      aviso: montado.aviso,
-      offline: salva.offline,
-      limparErro: true,
-    );
+      await CadernetaBanco.instancia.transaction(() async {
+        await _fichaLocal.gravar(montado.ficha!);
+        await _viagem.acrescentarAbastecimento(montado.registro!);
+      });
+      final salva = await _fichaRepo.salvar(montado.ficha!);
+      // O km do painel mudou por aqui; sem isso a Ficha mostra o antigo até
+      // reabrir o app.
+      await ref.read(fichaControllerProvider.notifier).relerDoAparelho();
+      await _viagem.gravarPrecos(precos);
+      final historico = await _viagem.listarAbastecimentos();
+      ref.read(cadernetaMudouProvider).avisar();
+      state = state.copiarCom(
+        ficha: salva.ficha,
+        precos: precos,
+        historico: historico,
+        combustivelViagem: montado.registro!.combustivel,
+        aviso: montado.aviso,
+        offline: salva.offline,
+        limparErro: true,
+      );
+    } finally {
+      _registrando = false;
+    }
   }
 
   double? _numero(String bruto) {

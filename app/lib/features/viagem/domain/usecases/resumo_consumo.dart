@@ -24,7 +24,7 @@ class ResumoConsumo {
     // O primeiro abastecimento não tem intervalo; fica fora do gráfico.
     final comIntervalo = [
       for (final r in historico)
-        if (r.temConsumo) r,
+        if (r.medido) r,
     ];
     if (comIntervalo.isEmpty) return const ResumoConsumoResultado();
     var max = 0.0;

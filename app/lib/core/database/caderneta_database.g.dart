@@ -115,6 +115,17 @@ class $AbastecimentosTable extends Abastecimentos
     type: DriftSqlType.double,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _detalhesMeta = const VerificationMeta(
+    'detalhes',
+  );
+  @override
+  late final GeneratedColumn<String> detalhes = GeneratedColumn<String>(
+    'detalhes',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -127,6 +138,7 @@ class $AbastecimentosTable extends Abastecimentos
     reais,
     kmPorLitro,
     reaisPorKm,
+    detalhes,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -221,6 +233,12 @@ class $AbastecimentosTable extends Abastecimentos
     } else if (isInserting) {
       context.missing(_reaisPorKmMeta);
     }
+    if (data.containsKey('detalhes')) {
+      context.handle(
+        _detalhesMeta,
+        detalhes.isAcceptableOrUnknown(data['detalhes']!, _detalhesMeta),
+      );
+    }
     return context;
   }
 
@@ -270,6 +288,10 @@ class $AbastecimentosTable extends Abastecimentos
         DriftSqlType.double,
         data['${effectivePrefix}reais_por_km'],
       )!,
+      detalhes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}detalhes'],
+      ),
     );
   }
 
@@ -291,6 +313,7 @@ class LinhaAbastecimento extends DataClass
   final double reais;
   final double kmPorLitro;
   final double reaisPorKm;
+  final String? detalhes;
   const LinhaAbastecimento({
     required this.id,
     required this.em,
@@ -302,6 +325,7 @@ class LinhaAbastecimento extends DataClass
     required this.reais,
     required this.kmPorLitro,
     required this.reaisPorKm,
+    this.detalhes,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -316,6 +340,9 @@ class LinhaAbastecimento extends DataClass
     map['reais'] = Variable<double>(reais);
     map['km_por_litro'] = Variable<double>(kmPorLitro);
     map['reais_por_km'] = Variable<double>(reaisPorKm);
+    if (!nullToAbsent || detalhes != null) {
+      map['detalhes'] = Variable<String>(detalhes);
+    }
     return map;
   }
 
@@ -331,6 +358,9 @@ class LinhaAbastecimento extends DataClass
       reais: Value(reais),
       kmPorLitro: Value(kmPorLitro),
       reaisPorKm: Value(reaisPorKm),
+      detalhes: detalhes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(detalhes),
     );
   }
 
@@ -350,6 +380,7 @@ class LinhaAbastecimento extends DataClass
       reais: serializer.fromJson<double>(json['reais']),
       kmPorLitro: serializer.fromJson<double>(json['kmPorLitro']),
       reaisPorKm: serializer.fromJson<double>(json['reaisPorKm']),
+      detalhes: serializer.fromJson<String?>(json['detalhes']),
     );
   }
   @override
@@ -366,6 +397,7 @@ class LinhaAbastecimento extends DataClass
       'reais': serializer.toJson<double>(reais),
       'kmPorLitro': serializer.toJson<double>(kmPorLitro),
       'reaisPorKm': serializer.toJson<double>(reaisPorKm),
+      'detalhes': serializer.toJson<String?>(detalhes),
     };
   }
 
@@ -380,6 +412,7 @@ class LinhaAbastecimento extends DataClass
     double? reais,
     double? kmPorLitro,
     double? reaisPorKm,
+    Value<String?> detalhes = const Value.absent(),
   }) => LinhaAbastecimento(
     id: id ?? this.id,
     em: em ?? this.em,
@@ -391,6 +424,7 @@ class LinhaAbastecimento extends DataClass
     reais: reais ?? this.reais,
     kmPorLitro: kmPorLitro ?? this.kmPorLitro,
     reaisPorKm: reaisPorKm ?? this.reaisPorKm,
+    detalhes: detalhes.present ? detalhes.value : this.detalhes,
   );
   LinhaAbastecimento copyWithCompanion(AbastecimentosCompanion data) {
     return LinhaAbastecimento(
@@ -412,6 +446,7 @@ class LinhaAbastecimento extends DataClass
       reaisPorKm: data.reaisPorKm.present
           ? data.reaisPorKm.value
           : this.reaisPorKm,
+      detalhes: data.detalhes.present ? data.detalhes.value : this.detalhes,
     );
   }
 
@@ -427,7 +462,8 @@ class LinhaAbastecimento extends DataClass
           ..write('precoLitro: $precoLitro, ')
           ..write('reais: $reais, ')
           ..write('kmPorLitro: $kmPorLitro, ')
-          ..write('reaisPorKm: $reaisPorKm')
+          ..write('reaisPorKm: $reaisPorKm, ')
+          ..write('detalhes: $detalhes')
           ..write(')'))
         .toString();
   }
@@ -444,6 +480,7 @@ class LinhaAbastecimento extends DataClass
     reais,
     kmPorLitro,
     reaisPorKm,
+    detalhes,
   );
   @override
   bool operator ==(Object other) =>
@@ -458,7 +495,8 @@ class LinhaAbastecimento extends DataClass
           other.precoLitro == this.precoLitro &&
           other.reais == this.reais &&
           other.kmPorLitro == this.kmPorLitro &&
-          other.reaisPorKm == this.reaisPorKm);
+          other.reaisPorKm == this.reaisPorKm &&
+          other.detalhes == this.detalhes);
 }
 
 class AbastecimentosCompanion extends UpdateCompanion<LinhaAbastecimento> {
@@ -472,6 +510,7 @@ class AbastecimentosCompanion extends UpdateCompanion<LinhaAbastecimento> {
   final Value<double> reais;
   final Value<double> kmPorLitro;
   final Value<double> reaisPorKm;
+  final Value<String?> detalhes;
   const AbastecimentosCompanion({
     this.id = const Value.absent(),
     this.em = const Value.absent(),
@@ -483,6 +522,7 @@ class AbastecimentosCompanion extends UpdateCompanion<LinhaAbastecimento> {
     this.reais = const Value.absent(),
     this.kmPorLitro = const Value.absent(),
     this.reaisPorKm = const Value.absent(),
+    this.detalhes = const Value.absent(),
   });
   AbastecimentosCompanion.insert({
     this.id = const Value.absent(),
@@ -495,6 +535,7 @@ class AbastecimentosCompanion extends UpdateCompanion<LinhaAbastecimento> {
     required double reais,
     required double kmPorLitro,
     required double reaisPorKm,
+    this.detalhes = const Value.absent(),
   }) : em = Value(em),
        combustivel = Value(combustivel),
        kmPainel = Value(kmPainel),
@@ -515,6 +556,7 @@ class AbastecimentosCompanion extends UpdateCompanion<LinhaAbastecimento> {
     Expression<double>? reais,
     Expression<double>? kmPorLitro,
     Expression<double>? reaisPorKm,
+    Expression<String>? detalhes,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -527,6 +569,7 @@ class AbastecimentosCompanion extends UpdateCompanion<LinhaAbastecimento> {
       if (reais != null) 'reais': reais,
       if (kmPorLitro != null) 'km_por_litro': kmPorLitro,
       if (reaisPorKm != null) 'reais_por_km': reaisPorKm,
+      if (detalhes != null) 'detalhes': detalhes,
     });
   }
 
@@ -541,6 +584,7 @@ class AbastecimentosCompanion extends UpdateCompanion<LinhaAbastecimento> {
     Value<double>? reais,
     Value<double>? kmPorLitro,
     Value<double>? reaisPorKm,
+    Value<String?>? detalhes,
   }) {
     return AbastecimentosCompanion(
       id: id ?? this.id,
@@ -553,6 +597,7 @@ class AbastecimentosCompanion extends UpdateCompanion<LinhaAbastecimento> {
       reais: reais ?? this.reais,
       kmPorLitro: kmPorLitro ?? this.kmPorLitro,
       reaisPorKm: reaisPorKm ?? this.reaisPorKm,
+      detalhes: detalhes ?? this.detalhes,
     );
   }
 
@@ -589,6 +634,9 @@ class AbastecimentosCompanion extends UpdateCompanion<LinhaAbastecimento> {
     if (reaisPorKm.present) {
       map['reais_por_km'] = Variable<double>(reaisPorKm.value);
     }
+    if (detalhes.present) {
+      map['detalhes'] = Variable<String>(detalhes.value);
+    }
     return map;
   }
 
@@ -604,7 +652,8 @@ class AbastecimentosCompanion extends UpdateCompanion<LinhaAbastecimento> {
           ..write('precoLitro: $precoLitro, ')
           ..write('reais: $reais, ')
           ..write('kmPorLitro: $kmPorLitro, ')
-          ..write('reaisPorKm: $reaisPorKm')
+          ..write('reaisPorKm: $reaisPorKm, ')
+          ..write('detalhes: $detalhes')
           ..write(')'))
         .toString();
   }
@@ -1965,6 +2014,7 @@ typedef $$AbastecimentosTableCreateCompanionBuilder =
       required double reais,
       required double kmPorLitro,
       required double reaisPorKm,
+      Value<String?> detalhes,
     });
 typedef $$AbastecimentosTableUpdateCompanionBuilder =
     AbastecimentosCompanion Function({
@@ -1978,6 +2028,7 @@ typedef $$AbastecimentosTableUpdateCompanionBuilder =
       Value<double> reais,
       Value<double> kmPorLitro,
       Value<double> reaisPorKm,
+      Value<String?> detalhes,
     });
 
 class $$AbastecimentosTableFilterComposer
@@ -2036,6 +2087,11 @@ class $$AbastecimentosTableFilterComposer
 
   ColumnFilters<double> get reaisPorKm => $composableBuilder(
     column: $table.reaisPorKm,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get detalhes => $composableBuilder(
+    column: $table.detalhes,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -2098,6 +2154,11 @@ class $$AbastecimentosTableOrderingComposer
     column: $table.reaisPorKm,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get detalhes => $composableBuilder(
+    column: $table.detalhes,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$AbastecimentosTableAnnotationComposer
@@ -2146,6 +2207,9 @@ class $$AbastecimentosTableAnnotationComposer
     column: $table.reaisPorKm,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get detalhes =>
+      $composableBuilder(column: $table.detalhes, builder: (column) => column);
 }
 
 class $$AbastecimentosTableTableManager
@@ -2195,6 +2259,7 @@ class $$AbastecimentosTableTableManager
                 Value<double> reais = const Value.absent(),
                 Value<double> kmPorLitro = const Value.absent(),
                 Value<double> reaisPorKm = const Value.absent(),
+                Value<String?> detalhes = const Value.absent(),
               }) => AbastecimentosCompanion(
                 id: id,
                 em: em,
@@ -2206,6 +2271,7 @@ class $$AbastecimentosTableTableManager
                 reais: reais,
                 kmPorLitro: kmPorLitro,
                 reaisPorKm: reaisPorKm,
+                detalhes: detalhes,
               ),
           createCompanionCallback:
               ({
@@ -2219,6 +2285,7 @@ class $$AbastecimentosTableTableManager
                 required double reais,
                 required double kmPorLitro,
                 required double reaisPorKm,
+                Value<String?> detalhes = const Value.absent(),
               }) => AbastecimentosCompanion.insert(
                 id: id,
                 em: em,
@@ -2230,6 +2297,7 @@ class $$AbastecimentosTableTableManager
                 reais: reais,
                 kmPorLitro: kmPorLitro,
                 reaisPorKm: reaisPorKm,
+                detalhes: detalhes,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

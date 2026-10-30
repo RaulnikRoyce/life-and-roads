@@ -66,14 +66,16 @@ class FichaMoto {
       ano: limparAno ? null : (ano ?? this.ano),
       cilindrada: limparCilindrada ? null : (cilindrada ?? this.cilindrada),
       kmLitro: kmLitro ?? this.kmLitro,
-      kmLitroAlcool:
-          limparAlcool ? null : (kmLitroAlcool ?? this.kmLitroAlcool),
+      kmLitroAlcool: limparAlcool
+          ? null
+          : (kmLitroAlcool ?? this.kmLitroAlcool),
       combustivel: combustivel ?? this.combustivel,
       kmAtual: kmAtual ?? this.kmAtual,
       tanqueLitros: limparTanque ? null : (tanqueLitros ?? this.tanqueLitros),
       personalizacoes: personalizacoes ?? this.personalizacoes,
-      psiDianteiro:
-          limparPsiDianteiro ? null : (psiDianteiro ?? this.psiDianteiro),
+      psiDianteiro: limparPsiDianteiro
+          ? null
+          : (psiDianteiro ?? this.psiDianteiro),
       psiTraseiro: limparPsiTraseiro ? null : (psiTraseiro ?? this.psiTraseiro),
     );
   }
@@ -87,22 +89,20 @@ class FichaMoto {
     if (cilindrada != null && (cilindrada! < 50 || cilindrada! > 2000)) {
       return 'Cilindrada em cc, entre 50 e 2000.';
     }
-    if (kmLitro < 5 || kmLitro > 80) {
-      return 'Consumo com gasolina entre 5 e 80 km por litro.';
+    if (!kmLitro.isFinite || kmLitro <= 0) {
+      return 'Consumo com gasolina maior que zero.';
     }
     if (kmLitroAlcool != null &&
-        (kmLitroAlcool! < 5 || kmLitroAlcool! > 80)) {
-      return 'Consumo com álcool entre 5 e 80 km por litro.';
+        (!kmLitroAlcool!.isFinite || kmLitroAlcool! <= 0)) {
+      return 'Consumo com álcool maior que zero.';
     }
     if (kmAtual < 0 || kmAtual > 999999) {
       return 'Km no painel agora entre 0 e 999999.';
     }
-    if (tanqueLitros != null &&
-        (tanqueLitros! < 2 || tanqueLitros! > 40)) {
+    if (tanqueLitros != null && (tanqueLitros! < 2 || tanqueLitros! > 40)) {
       return 'Tanque em litros, entre 2 e 40.';
     }
-    if (psiDianteiro != null &&
-        (psiDianteiro! < 15 || psiDianteiro! > 50)) {
+    if (psiDianteiro != null && (psiDianteiro! < 15 || psiDianteiro! > 50)) {
       return 'PSI dianteiro entre 15 e 50.';
     }
     if (psiTraseiro != null && (psiTraseiro! < 15 || psiTraseiro! > 50)) {
@@ -153,16 +153,16 @@ class FichaMoto {
     }
 
     final kmL = _decimal(kmLitro);
-    if (kmL == null || kmL < 5 || kmL > 80) {
-      return (ficha: null, erro: 'Consumo com gasolina entre 5 e 80 km por litro.');
+    if (kmL == null || !kmL.isFinite || kmL <= 0) {
+      return (ficha: null, erro: 'Consumo com gasolina maior que zero.');
     }
 
     final alcoolT = kmLitroAlcool.trim();
     double? alcoolN;
     if (alcoolT.isNotEmpty) {
       alcoolN = _decimal(alcoolT);
-      if (alcoolN == null || alcoolN < 5 || alcoolN > 80) {
-        return (ficha: null, erro: 'Consumo com álcool entre 5 e 80 km por litro.');
+      if (alcoolN == null || !alcoolN.isFinite || alcoolN <= 0) {
+        return (ficha: null, erro: 'Consumo com álcool maior que zero.');
       }
     }
 
@@ -239,17 +239,17 @@ class FichaMoto {
 
   @override
   int get hashCode => Object.hash(
-        marca,
-        modelo,
-        ano,
-        cilindrada,
-        kmLitro,
-        kmLitroAlcool,
-        combustivel,
-        kmAtual,
-        tanqueLitros,
-        personalizacoes,
-        psiDianteiro,
-        psiTraseiro,
-      );
+    marca,
+    modelo,
+    ano,
+    cilindrada,
+    kmLitro,
+    kmLitroAlcool,
+    combustivel,
+    kmAtual,
+    tanqueLitros,
+    personalizacoes,
+    psiDianteiro,
+    psiTraseiro,
+  );
 }

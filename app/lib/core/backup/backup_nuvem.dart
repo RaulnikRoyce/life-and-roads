@@ -142,6 +142,9 @@ class BackupNuvem {
 
   Timer? _timer;
   bool _enviando = false;
+  Future<ResultadoNuvem>? _envioAtual;
+  bool _pausado = false, _pendentePausado = false;
+  int _geracao = 0;
   bool _deNovo = false;
 
   /// sha256 do pacote. Mesma caderneta, mesma assinatura.
@@ -151,6 +154,10 @@ class BackupNuvem {
   /// Marca que a caderneta mudou. Várias chamadas seguidas viram uma só.
   void agendar() {
     _timer?.cancel();
+    if (_pausado) {
+      _pendentePausado = true;
+      return;
+    }
     _timer = Timer(espera, () => unawaited(enviarAgora()));
   }
 
@@ -163,7 +170,49 @@ class BackupNuvem {
     await enviarAgora();
   }
 
-  Future<ResultadoNuvem> enviarAgora() async {
+  Future<ResultadoNuvem> enviarAgora() {
+    if (_pausado) {
+      return Future.value(ResultadoNuvem.parada);
+    }
+    if (_envioAtual != null) {
+      _deNovo = true;
+      return Future.value(ResultadoNuvem.emAndamento);
+    }
+    return _envioAtual = _executarEnvios().whenComplete(
+      () => _envioAtual = null,
+    );
+  }
+
+  /// Ações explícitas aguardam a confirmação, inclusive quando já havia envio.
+  Future<ResultadoNuvem> enviarConfirmado() async {
+    final emAndamento = _envioAtual;
+    final resultado = await enviarAgora();
+    if (resultado == ResultadoNuvem.emAndamento && emAndamento != null) {
+      return await emAndamento;
+    }
+    return resultado;
+  }
+
+  /// Impede novas gravações e espera a atual antes de apagar a cópia remota.
+  Future<void> pausarEnvios() async {
+    _pausado = true;
+    _geracao++;
+    _deNovo = false;
+    _pendentePausado = _pendentePausado || pendente;
+    _timer?.cancel();
+    _timer = null;
+    await _envioAtual;
+  }
+
+  void retomarEnvios() {
+    _pausado = false;
+    if (_pendentePausado) {
+      _pendentePausado = false;
+      agendar();
+    }
+  }
+
+  Future<ResultadoNuvem> _executarEnvios() async {
     if (_enviando) {
       // Mudou de novo durante o envio. Manda outra vez ao terminar.
       _deNovo = true;
@@ -172,7 +221,7 @@ class BackupNuvem {
     _enviando = true;
     try {
       var resultado = await _enviarUmaVez();
-      while (_deNovo && resultado != ResultadoNuvem.conflito) {
+      while (_deNovo && !_pausado && resultado != ResultadoNuvem.conflito) {
         _deNovo = false;
         resultado = await _enviarUmaVez();
       }
@@ -184,6 +233,7 @@ class BackupNuvem {
   }
 
   Future<ResultadoNuvem> _enviarUmaVez() async {
+    final geracao = _geracao;
     try {
       final token = await _lerToken();
       if (token == null || token.isEmpty) return ResultadoNuvem.parada;
@@ -200,12 +250,21 @@ class BackupNuvem {
         return ResultadoNuvem.semMudanca;
       }
 
+      if (_pausado || geracao != _geracao) {
+        return ResultadoNuvem.parada;
+      }
       final carimbo = await _enviar(token, conteudo, carimboBase: base);
+      if (_pausado || geracao != _geracao) {
+        return ResultadoNuvem.parada;
+      }
       await estado.marcarIgual(carimbo: carimbo, assinatura: assinatura);
       ultimo.value = carimbo;
       conflito.value = false;
       return ResultadoNuvem.enviada;
     } on ConflitoNuvem {
+      if (_pausado || geracao != _geracao) {
+        return ResultadoNuvem.parada;
+      }
       await estado.marcarConflito();
       conflito.value = true;
       return ResultadoNuvem.conflito;
@@ -230,23 +289,31 @@ class BackupNuvem {
 
   /// Interruptor desligado. Para o que estava esperando.
   Future<void> desligar() async {
+    await pausarEnvios();
+    _pendentePausado = false;
     _timer?.cancel();
     _timer = null;
     await estado.desligar();
     ultimo.value = null;
     conflito.value = false;
+    retomarEnvios();
   }
 
   /// Saiu da conta ou apagou a conta.
   Future<void> esquecerConta() async {
+    await pausarEnvios();
+    _pendentePausado = false;
     _timer?.cancel();
     _timer = null;
     await estado.esquecerConta();
     ultimo.value = null;
     conflito.value = false;
+    retomarEnvios();
   }
 
   void descartar() {
+    _pausado = true;
+    _geracao++;
     _timer?.cancel();
     _timer = null;
     ultimo.dispose();

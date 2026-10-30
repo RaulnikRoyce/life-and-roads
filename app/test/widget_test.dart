@@ -268,6 +268,28 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Litros abastecidos'), findsOneWidget);
     expect(find.text('Km no painel agora'), findsOneWidget);
+    expect(find.text('Valor pago em reais, opcional'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Registrar barrinhas do painel'),
+      120,
+      scrollable: _scroll(),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Registrar barrinhas do painel'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Registrar barrinhas do painel'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Total de barras do painel'),
+      120,
+      scrollable: _scroll(),
+    );
+    expect(find.text('Total de barras do painel'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.widgetWithText(FilledButton, 'Registrar'),
+      150,
+      scrollable: _scroll(),
+    );
     expect(find.widgetWithText(FilledButton, 'Registrar'), findsOneWidget);
 
     // Fechar pela barreira, sem registrar.

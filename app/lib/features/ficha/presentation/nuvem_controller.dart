@@ -57,6 +57,7 @@ class CadernetaNuvemController extends Notifier<NuvemEstado> {
       ref.read(cadernetaNuvemRepositoryProvider);
 
   Future<void>? _verificando;
+  int _geracao = 0;
 
   @override
   NuvemEstado build() {
@@ -65,7 +66,9 @@ class CadernetaNuvemController extends Notifier<NuvemEstado> {
       final carimbo = backup.ultimo.value;
       final em = carimbo == null ? null : DateTime.tryParse(carimbo)?.toLocal();
       if (em == null) return;
-      state = state.copiarCom(situacao: state.situacao.copiarCom(guardadaEm: em));
+      state = state.copiarCom(
+        situacao: state.situacao.copiarCom(guardadaEm: em),
+      );
     }
 
     // Um envio por trás bateu em 409: pergunta sem esperar a próxima abertura.
@@ -85,12 +88,19 @@ class CadernetaNuvemController extends Notifier<NuvemEstado> {
   /// Chamado depois que a ficha carrega, para o PSI ter onde entrar se a
   /// caderneta vier da conta. Pedidos juntos viram um só.
   Future<void> verificar() {
-    return _verificando ??= _verificar().whenComplete(() => _verificando = null);
+    return _verificando ??= _verificar().whenComplete(
+      () => _verificando = null,
+    );
   }
 
   Future<void> _verificar() async {
     try {
-      await _aplicar(await _repo.verificar());
+      final geracao = _geracao;
+      final situacao = await _repo.verificar();
+      if (geracao != _geracao) {
+        return;
+      }
+      await _aplicar(situacao);
     } catch (_) {
       // Leitura por trás: falha fica para a próxima abertura.
     }
@@ -119,10 +129,8 @@ class CadernetaNuvemController extends Notifier<NuvemEstado> {
     falha: 'Sem resposta da API. Nada mudou.',
   );
 
-  Future<void> usarDaConta() => _acao(
-    _repo.usarDaConta,
-    falha: 'Sem resposta da API. Nada mudou.',
-  );
+  Future<void> usarDaConta() =>
+      _acao(_repo.usarDaConta, falha: 'Sem resposta da API. Nada mudou.');
 
   Future<void> _acao(
     Future<SituacaoNuvem> Function() fazer, {
@@ -130,6 +138,7 @@ class CadernetaNuvemController extends Notifier<NuvemEstado> {
     required String falha,
   }) async {
     if (state.ocupado) return;
+    _geracao++;
     state = state.copiarCom(ocupado: true, limparAviso: true, limparErro: true);
     try {
       await _aplicar(await fazer(), aviso: aviso);
@@ -145,7 +154,9 @@ class CadernetaNuvemController extends Notifier<NuvemEstado> {
       situacao: situacao,
       aviso: situacao.restaurou
           ? 'A caderneta da conta veio para este aparelho.'
-          : aviso,
+          : situacao.conflito == null
+          ? aviso
+          : null,
     );
     if (situacao.restaurou) await _relerTelas();
   }

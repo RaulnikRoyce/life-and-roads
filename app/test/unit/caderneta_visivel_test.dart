@@ -13,6 +13,10 @@ import '../helpers/banco_teste.dart';
 
 RegistroAbastecimento _posto(double reaisPorKm, {double km = 100}) {
   return RegistroAbastecimento(
+    tipoConsumo: 'medido',
+    kmMedidos: km,
+    reaisMedidos: reaisPorKm * km,
+    litrosMedidos: 5,
     em: '2026-08-01T12:00:00.000',
     combustivel: Combustivel.gasolina,
     kmPainel: 1100,

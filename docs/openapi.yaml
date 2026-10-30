@@ -486,8 +486,12 @@ components:
           nullable: true
         kmLitro:
           type: number
+          minimum: 0
+          exclusiveMinimum: true
         kmLitroAlcool:
           type: number
+          minimum: 0
+          exclusiveMinimum: true
           nullable: true
         combustivel:
           type: string

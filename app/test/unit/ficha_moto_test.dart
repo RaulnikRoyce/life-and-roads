@@ -93,10 +93,10 @@ void main() {
     final r = FichaMoto.tentar(
       marca: 'Honda',
       modelo: 'Bros',
-      kmLitro: '3',
+      kmLitro: '0',
       kmAtual: '10',
     );
-    expect(r.erro, 'Consumo com gasolina entre 5 e 80 km por litro.');
+    expect(r.erro, 'Consumo com gasolina maior que zero.');
   });
 
   test('tentar aceita vírgula decimal', () {
