@@ -10,6 +10,14 @@ class HistoricoAbastecimento {
   static const chave = 'abastecimentos_v1';
   static const max = 5000;
 
+  static Future<void> substituir(List<RegistroAbastecimento> registros) =>
+      CadernetaBanco.instancia.transaction(() async {
+        await CadernetaBanco.instancia.apagarAbastecimentos();
+        for (final r in registros.reversed) {
+          await inserirLinha(r);
+        }
+      });
+
   static Future<List<RegistroAbastecimento>> carregar() async {
     final linhas = await CadernetaBanco.instancia.listarAbastecimentos();
     return [for (final l in linhas) _deLinha(l)];

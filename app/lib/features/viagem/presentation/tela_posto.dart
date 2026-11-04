@@ -191,6 +191,92 @@ class _TelaPostoState extends ConsumerState<TelaPosto> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(texto)));
   }
 
+  Future<void> _editarAbastecimento(RegistroAbastecimento r, int indice) async {
+    final km = TextEditingController(text: '${r.kmPainel}');
+    final litros = TextEditingController(text: '${r.litros}');
+    final valor = TextEditingController(text: '${r.reais}');
+    final total = TextEditingController(text: r.totalBarras?.toString() ?? '');
+    final antes = TextEditingController(text: r.barrasAntes?.toString() ?? '');
+    final depois = TextEditingController(
+      text: r.barrasDepois?.toString() ?? '',
+    );
+    var combustivel = r.combustivel;
+    var cheio = r.tanqueCheio;
+    var barras = r.totalBarras != null;
+    try {
+      await abrirFolhaOficina(
+        context,
+        titulo: 'Editar abastecimento',
+        subtitulo: 'A data será mantida. Os consumos e custos seguintes serão recalculados. Confira o valor pago ao corrigir os litros.',
+        campos: (atualizar) => [
+          _seletor(combustivel, (v) => atualizar(() => combustivel = v)),
+          DuplaCampos(
+            esquerda: _campo(km, 'Km no painel'),
+            direita: _campo(litros, 'Litros abastecidos'),
+          ),
+          _campo(valor, 'Valor pago em reais'),
+          if (r.tipoConsumo == 'legado')
+            const Text(
+              'Este registro usa o método anterior. Ao salvar, informe se o tanque foi completado para usar o cálculo atual.',
+            ),
+          SwitchListTile(
+            title: const Text('Completou o tanque?'),
+            value: cheio,
+            onChanged: (v) => atualizar(() => cheio = v),
+          ),
+          SwitchListTile(
+            title: const Text('Registrar barrinhas do painel'),
+            value: barras,
+            onChanged: (v) => atualizar(() => barras = v),
+          ),
+          if (barras) ...[
+            _campo(total, 'Total de barras do painel'),
+            DuplaCampos(
+              esquerda: _campo(antes, 'Barras antes'),
+              direita: _campo(depois, 'Barras depois'),
+            ),
+          ],
+        ],
+        acao: 'Salvar correção',
+        aoConfirmar: () async {
+          if (barras &&
+              [total, antes, depois].any((c) => int.tryParse(c.text) == null)) {
+            _aviso('Informe números inteiros nos três campos do marcador.');
+            return false;
+          }
+          final pago = ApiCaderneta.numero(valor.text);
+          if (pago == null) {
+            _aviso('Informe o valor pago.');
+            return false;
+          }
+          final ok = await _ctrl.editarAbastecimento(
+            indice: indice,
+            original: r,
+            kmPainel: ApiCaderneta.numero(km.text),
+            litros: ApiCaderneta.numero(litros.text),
+            valorPago: pago,
+            combustivel: combustivel,
+            tanqueCheio: cheio,
+            totalBarras: barras ? int.tryParse(total.text) : null,
+            barrasAntes: barras ? int.tryParse(antes.text) : null,
+            barrasDepois: barras ? int.tryParse(depois.text) : null,
+          );
+          if (!ok && mounted) {
+            _aviso(
+              ref.read(viagemControllerProvider).erro ??
+                  'Aguarde a gravação em andamento.',
+            );
+          }
+          return ok;
+        },
+      );
+    } finally {
+      for (final c in [km, litros, valor, total, antes, depois]) {
+        c.dispose();
+      }
+    }
+  }
+
   String _br(double n, {int casas = 1}) =>
       n.toStringAsFixed(casas).replaceAll('.', ',');
 
@@ -385,6 +471,7 @@ class _TelaPostoState extends ConsumerState<TelaPosto> {
                   r,
                   divisor,
                   rodouCom: combustivelDoIntervalo(historico, i),
+                  indice: i,
                 ),
               ),
         ],
@@ -398,6 +485,7 @@ class _TelaPostoState extends ConsumerState<TelaPosto> {
     RegistroAbastecimento r,
     Color divisor, {
     required Combustivel? rodouCom,
+    required int indice,
   }) {
     final tema = Theme.of(context);
     final rodou = rodouCom == null || rodouCom == r.combustivel
@@ -434,6 +522,12 @@ class _TelaPostoState extends ConsumerState<TelaPosto> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
+                    TextButton.icon(
+                      onPressed: () => _editarAbastecimento(r, indice),
+                      icon: const Icon(Icons.edit_outlined, size: 18),
+                      label: const Text('Editar'),
+                    ),
+                    Text('${PainelPosto.milhar(r.kmPainel)} km no painel'),
                     if (r.totalBarras != null)
                       Text(
                         '${r.barrasAntes} → ${r.barrasDepois} de ${r.totalBarras} barras',

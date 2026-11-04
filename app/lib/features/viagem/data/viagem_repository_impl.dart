@@ -11,6 +11,11 @@ class ViagemRepositoryImpl implements ViagemRepository {
   final AbastecimentoLocalDatasource _abastecimentos;
 
   @override
+  Future<void> substituirAbastecimentos(
+    List<RegistroAbastecimento> registros,
+  ) => _abastecimentos.substituir(registros);
+
+  @override
   Future<PrecosLitro> lerPrecos() => _precos.ler();
 
   @override

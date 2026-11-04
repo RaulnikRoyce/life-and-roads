@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:life_and_roads/features/viagem/domain/usecases/editar_abastecimento.dart';
 import 'package:life_and_roads/core/database/caderneta_banco.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_and_roads/core/backup/caderneta_mudou.dart';
@@ -194,6 +197,79 @@ class ViagemController extends Notifier<ViagemEstado> {
     final t = bruto.trim().replaceAll(',', '.');
     if (t.isEmpty) return null;
     return double.tryParse(t);
+  }
+
+  Future<bool> editarAbastecimento({
+    required int indice,
+    required RegistroAbastecimento original,
+    required double? kmPainel,
+    required double? litros,
+    required double? valorPago,
+    required Combustivel combustivel,
+    required bool tanqueCheio,
+    int? totalBarras,
+    int? barrasAntes,
+    int? barrasDepois,
+  }) async {
+    if (_registrando) return false;
+    _registrando = true;
+    try {
+      await relerFicha();
+      final registros = await _viagem.listarAbastecimentos();
+      if (state.ficha == null ||
+          indice < 0 ||
+          indice >= registros.length ||
+          jsonEncode(registros[indice].paraJson()) !=
+              jsonEncode(original.paraJson())) {
+        state = state.copiarCom(
+          erro: 'O histórico mudou. Feche e abra a edição novamente.',
+          limparAviso: true,
+        );
+        return false;
+      }
+      final resultado = const EditarAbastecimento().executar(
+        ficha: state.ficha!,
+        historico: registros,
+        indice: indice,
+        kmPainel: kmPainel,
+        litros: litros,
+        valorPago: valorPago,
+        combustivel: combustivel,
+        tanqueCheio: tanqueCheio,
+        totalBarras: totalBarras,
+        barrasAntes: barrasAntes,
+        barrasDepois: barrasDepois,
+      );
+      if (resultado.erro != null) {
+        state = state.copiarCom(erro: resultado.erro, limparAviso: true);
+        return false;
+      }
+      await CadernetaBanco.instancia.transaction(() async {
+        await _viagem.substituirAbastecimentos(resultado.historico!);
+        await _fichaLocal.gravar(resultado.ficha!);
+      });
+      // A correção local já está salva antes de tentar sincronizar a ficha.
+      ref.read(cadernetaMudouProvider).avisar();
+      await ref.read(fichaControllerProvider.notifier).relerDoAparelho();
+      state = state.copiarCom(
+        ficha: resultado.ficha,
+        historico: resultado.historico,
+        limparResultado: true,
+        limparErro: true,
+        aviso: 'Abastecimento corrigido. Os consumos seguintes foram recalculados.',
+      );
+      final salva = await _fichaRepo.salvar(resultado.ficha!);
+      state = state.copiarCom(offline: salva.offline);
+      return true;
+    } catch (_) {
+      state = state.copiarCom(
+        erro: 'Não foi possível concluir a edição. Confira o histórico antes de tentar novamente.',
+        limparAviso: true,
+      );
+      return false;
+    } finally {
+      _registrando = false;
+    }
   }
 }
 

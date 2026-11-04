@@ -36,8 +36,13 @@ Future<void> abrirFolhaOficina(
   final tema = Theme.of(context);
   final temaFolha = temaSobreCartao(tema);
   var ocupado = false;
-  await showModalBottomSheet<void>(
-    context: context,
+  final navigator = Navigator.of(context);
+  final rota = ModalBottomSheetRoute<void>(
+    capturedThemes: InheritedTheme.capture(
+      from: context,
+      to: navigator.context,
+    ),
+    barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
     isScrollControlled: true,
     useSafeArea: true,
     builder: (ctx) => DraggableScrollableSheet(
@@ -101,4 +106,8 @@ Future<void> abrirFolhaOficina(
       ),
     ),
   );
+  await navigator.push(rota);
+  // Quem abriu a folha pode descartar os campos depois deste retorno.
+  // O Future de push termina no pop, antes da animação remover os widgets.
+  await rota.completed;
 }
