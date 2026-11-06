@@ -85,6 +85,10 @@ jobs:
         working-directory: app
       - uses: ./.github/actions/preparar-android
         id: android
+      # O wrapper não é versionado; o Flutter o gera antes de chamar Gradle.
+      - name: Gerar configuração Android sem compilar APK
+        working-directory: app
+        run: flutter build apk --debug --config-only --no-pub
       - name: Aquecer dependências do Gradle
         working-directory: app/android
         env:
