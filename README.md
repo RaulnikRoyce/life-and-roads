@@ -1,116 +1,143 @@
 # life.and.roads
 
-**Beta de testes · v1.3.0 (build 7)**
+Caderneta digital de **uma motocicleta**, com ficha, manutenção, abastecimentos e viagens. Desenvolvida a partir do uso na estrada e dos testes com pilotos.
 
-Caderneta digital de **uma motocicleta**. Ficha, manutenção, viagem e último ponto no mapa.
+**Beta aberto** · [Abrir app web](https://app.raulnikroyce.dev/) · [Baixar APK Android](https://github.com/RaulnikRoyce/life-and-roads/releases/latest/download/life-and-roads-beta-aberto.apk)
 
-Flutter (Android) neste aparelho, API Node.js opcional (Express, MySQL, porta **3001**). Sem comunidade, FIPE ou placa. O mapa é uma tela de apoio.
+## Versão publicada e desenvolvimento
 
-A caderneta funciona offline, sem conta. Com login, a ficha, as datas de manutenção e o último ponto sincronizam, e o resto da caderneta vai cifrado para a conta, menos a foto, para a troca de celular (ADR 0038). A API recusa placa, chassi, RENAVAM, foto e qualquer campo fora do schema Zod `.strict()`.
+A última release conferida é a [1.5.2](https://github.com/RaulnikRoyce/life-and-roads/releases/tag/v1.5.2), com edição de abastecimentos e recálculo dos registros seguintes. O `pubspec.yaml` está em `1.5.2+12`; nas publicações pelo CI, o número do build vem da execução do GitHub Actions.
 
-| Aba | O que guarda |
+A branch `main` já inclui melhorias que ainda aguardam uma nova release de APK e web:
+
+- Calibração das barrinhas por moto, capacidade do tanque e total de segmentos, com faixa estimada após três referências para o mesmo nível.
+- Exclusão de abastecimentos com confirmação e recálculo do histórico, das médias e da calibração.
+- Identificação do consumo medido, estimado e de períodos com mistura de combustíveis.
+- Aviso de nova versão no Android, com acesso ao APK oficial quando estiver disponível na Release.
+- Cache de Gradle e NDK e novas tentativas de instalação do NDK no CI.
+- Preservação da referência de consumo nos novos registros para restaurá-la após excluir uma medição. Históricos antigos sem essa informação não permitem recuperar o valor original.
+
+Um push comum na `main` executa as verificações e prepara o cache Android. Publicar uma tag `v*` aciona os jobs de APK e web; o app web também pode ser publicado por execução manual do workflow.
+
+## O que o app oferece
+
+| Aba | Recursos |
 |---|---|
-| **Ficha** | marca, modelo, km, tanque, média (álcool só se flex), PSI, foto, catálogo Cidade / Estrada / Esportiva |
-| **Manutenção** | óleo, pneus, revisão, corrente, IPVA, seguro, licenciamento, CNH (só a data), oficina |
-| **Posto** | custo por km real, abastecimentos e postos, preços do dia |
-| **Viagem** | GPS, último ponto, pinos, trajeto com km de estrada e cálculo da viagem |
+| **Ficha** | Marca, modelo, km, tanque, consumo, PSI, foto local e catálogo com 116 modelos nas categorias Cidade, Trail, Estrada e Esportiva. |
+| **Manutenção** | Óleo, pneus, revisão, corrente, vencimentos de documentos, data da CNH, oficina e histórico de serviços. |
+| **Posto** | Abastecimentos completos e parciais, consumo entre tanques cheios, custo por km, preços do dia e correção do histórico. |
+| **Viagem** | Mapa OpenStreetMap, GPS, pinos, trajetos, distância por estrada e estimativa de custo da viagem. |
 
-Backup fica na Ficha, em **Backup neste aparelho**: envia o arquivo pelo compartilhar do Android e restaura pelo seletor de arquivos. Fora da v1 ficam iOS, frota, PDF, navegação passo a passo e envio da foto.
+O consumo medido usa a distância e os abastecimentos de um ciclo entre dois tanques cheios. Compras parciais entram no total desse período. A consulta pelas barrinhas estima combustível restante; ela não substitui a medição de consumo.
 
-## Beta de testes
+## Android e web
 
-Esta é a versão fechada para o período de testes com pilotos. Não é release de loja.
+No Android, a caderneta funciona sem internet e sem conta. Rotas por estrada, sincronização e consulta de atualizações precisam de conexão. Há lembretes de manutenção e backup automático em `Download/life.and.roads/caderneta.json`, conforme as permissões e configurações do aparelho.
 
-| Item | Detalhe |
+A [versão web](https://app.raulnikroyce.dev/) guarda a caderneta no navegador e pode ser adicionada à tela inicial. Atualmente exige internet para abrir, não oferece notificações de manutenção do sistema nem backup automático em pasta fixa. O app nativo para iOS está planejado; ainda não há versão na App Store.
+
+Sem conta, APK e navegador mantêm cadernetas separadas. Com conta e sincronização habilitada, os dados podem acompanhar a troca de aparelho. A foto permanece local.
+
+## Conta, backup e privacidade
+
+A conta é opcional. Ficha, datas de manutenção e último ponto usam suas rotas de sincronização. Os demais dados da caderneta seguem cifrados para a conta, com AES-256-GCM no servidor, após aceite dos termos e com o interruptor de envio ligado. Conflitos entre versões recebem tratamento próprio antes de substituir os dados.
+
+O bloco **Backup neste aparelho**, na Ficha, permite exportar e restaurar a caderneta. As opções de compartilhar, baixar e copiar variam por plataforma. Guarde uma cópia fora do aparelho.
+
+Token e refresh token usam `flutter_secure_storage`. SharedPreferences guarda preferências como e-mail, tema e endereço da API. Os dados da caderneta ficam no Drift/SQLite. Placa, chassi, RENAVAM e upload de foto não fazem parte do produto; os contratos da API usam validação Zod estrita.
+
+## Stack e arquitetura
+
+| Camada | Tecnologias |
 |---|---|
-| Versão | `1.3.0+7` (`versionName` 1.3.0, `versionCode` 7) |
-| APK release | `app/build/app/outputs/flutter-apk/app-release.apk` (65 MB). Exige `android/key.properties` + keystore; sem eles o Gradle recusa o build release |
-| Plataforma | Android (APK). Chrome serve para prints e smoke test com Drift web |
-| Conta | opcional. Campo **Servidor** com `http://IP-do-PC:3001` no celular |
+| App | Flutter, Dart, Material 3 e Riverpod |
+| Armazenamento local | Drift/SQLite e armazenamento seguro para a sessão |
+| Mapa | flutter_map e OpenStreetMap |
+| API | Node.js 20+, TypeScript, Express 5, JWT, Zod e Helmet |
+| Banco da API | MySQL 8 e mysql2/promise |
+| Hospedagem | API no Render, banco na Aiven e app web no GitHub Pages |
+| Verificação | Flutter Test, análise estática, testes da API e GitHub Actions |
 
-**Como instalar no celular**
+```text
+Flutter (Ficha, Manutenção, Posto, Viagem) → SQLite no aparelho
+                      │
+                      └── conta opcional → API Express :3001 → MySQL
+```
 
-1. Gere o APK com o comando abaixo (ou use o arquivo já gerado após o build).
-2. Transfira o APK ao Android e permita instalação de fontes desconhecidas.
-3. Abra o app, preencha a ficha e teste as quatro abas sem depender da API.
+O app separa apresentação, regras de domínio e acesso aos dados. Na API, o fluxo é rota, controller, service e repository. As decisões e limitações estão nas [ADRs](docs/adr/).
 
-**Como gerar o APK**
+## Executar localmente
+
+Requer Flutter com Dart compatível com `app/pubspec.yaml` e Node.js 20+. MySQL é necessário para a API e seus testes de integração. A caderneta pode ser usada sem subir a API.
+
+**App**, a partir da raiz do repositório:
 
 ```bash
 cd app
 flutter pub get
-flutter test
-flutter build apk --release
+flutter run -d chrome
 ```
 
-O build release exige `android/key.properties` + `upload-keystore.jks` (fora do Git). Sem eles o Gradle para com erro, de propósito, para nenhum APK sair com assinatura debug por engano. Para teste interno sem keystore, use `flutter build apk --debug`.
+Para Android, conecte um aparelho ou emulador e use `flutter run`. No desenvolvimento, o campo **Servidor** aceita `http://IP-do-PC:3001`; no emulador Android, o host normalmente é `http://10.0.2.2:3001`.
 
-**O que validar nesta build (1.2.1)**
+**API**, a partir da raiz:
 
-- Abertura com a logo se desenhando e a Ficha como painel (foto, km grande, pastilhas, "Ajustar números")
-- Mapa sem a marca "API KEY REQUIRED" (tiles do OpenStreetMap), círculo de alcance, "Abrir no app de mapas", "Onde estou"
-- Backup por "Enviar backup" (compartilhar) e "Restaurar de um arquivo"
-- Linha do tempo dos vencimentos na Manutenção
-- Com conta: abrir o app depois de mais de 15 min sem cair da sessão; linha "No servidor" com hora
-- Ficha com catálogo (3 silhuetas por categoria), foto local e backup JSON
-- Manutenção com óleo, pneus, documentos e lembretes
-- Posto com custo por km real, preços do dia e registro de abastecimento
-- Viagem com rastreio, pinos, destino com km de estrada (internet) e cálculo da viagem
-- Conta opcional e conflito local versus servidor
-- Textos em português comum (sem gíria de posto)
-
-Feedback de bug pode ir por issue no repositório ou canal que o piloto já usa com o autor.
-
-## Stack
-
-| Camada | Tecnologia |
-|---|---|
-| Cliente | Flutter 3 / Dart 3, Material 3 |
-| Mapa | flutter_map + OpenStreetMap |
-| Local | Drift/SQLite; SharedPreferences (token, tema, URL) |
-| API | Node.js 20, TypeScript, Express 5, JWT (access + refresh), Zod, Helmet |
-| Banco | MySQL 8, `mysql2/promise` |
-| Testes | `flutter test` em `app/`; `npm test` em `api/` |
-
-```
-piloto → Flutter (4 abas) → SQLite (Drift)
-                 │
-                 └── conta opcional → Express :3001 → MySQL
-```
-
-Camadas da API, rotas, validação, serviço, repositório. Fórmulas, sync e o desenho completo estão em [docs/arquitetura.md](docs/arquitetura.md). Contrato em [docs/openapi.yaml](docs/openapi.yaml). Requisitos em [docs/especificacao.md](docs/especificacao.md).
-
-## Subir local
-
-Flutter SDK, Node.js 20+ e MySQL em `127.0.0.1:3306`.
+1. Copie `api/.env.example` para `api/.env` e preencha a configuração local.
+2. Prepare o MySQL com `api/database/schema.sql`, conforme as instruções da [API](api/README.md).
+3. Execute:
 
 ```bash
-# API
-cp api/.env.example api/.env
-# importe api/database/schema.sql e preencha o .env
-cd api && npm install && npm test && npm start
-# http://localhost:3001  GET /health  GET /ready
-# ou: docker compose up --build
-
-# App (a caderneta sobe sem a API)
-cd app && flutter pub get && flutter test && flutter run -d chrome
+cd api
+npm ci
+npm start
 ```
 
-No celular, a conta usa o campo **Servidor** com `http://IP-do-PC:3001` na mesma rede. `localhost` só vale no Chrome. APK de loja usa `--dart-define=ENV=production --dart-define=API_BASE=https://...`.
+A API responde na porta 3001. `GET /health` verifica o processo e `GET /ready` verifica a disponibilidade do banco. Como alternativa, consulte o `docker-compose.yml` para subir o ambiente com Docker.
 
-## Documentos
+## Testes
+
+Execute cada bloco a partir da raiz do repositório:
+
+```bash
+cd app
+flutter analyze --no-fatal-infos
+flutter test
+```
+
+```bash
+cd api
+npm run typecheck
+npm test
+```
+
+Na conferência local de 06/11/2026, passaram **359 testes do app**, a análise pelo comando `dart analyze` e o build web. O `flutter analyze` apresentou erro interno no servidor de análise do SDK local. Na API, passaram o TypeScript e 64 testes; 29 testes de integração foram pulados por falta de MySQL local. Esses resultados locais não substituem a conclusão do CI, que configura seu próprio MySQL.
+
+## APK e publicação
+
+O APK para instalar está nas [Releases](https://github.com/RaulnikRoyce/life-and-roads/releases). O beta é distribuído diretamente, sem publicação em loja.
+
+Para gerar um release local, configure `app/android/key.properties` e o keystore, ambos fora do Git. O Gradle recusa o release sem assinatura configurada. A partir de `app/`:
+
+```bash
+flutter build apk --release --dart-define=ENV=production --dart-define=API_BASE=https://api.raulnikroyce.dev
+```
+
+O arquivo é gerado em `app/build/app/outputs/flutter-apk/app-release.apk`, relativo à raiz do repositório. Para depuração sem keystore de release, use `flutter build apk --debug`.
+
+No CI, a versão vem da tag e o build da execução; o APK é assinado com os secrets configurados. O workflow também publica a versão web. Alterações na `main` não geram uma nova release automaticamente.
+
+## Documentação
 
 - [Especificação](docs/especificacao.md)
 - [Arquitetura](docs/arquitetura.md)
 - [Sincronização](docs/sincronizacao.md)
-- [OpenAPI](docs/openapi.yaml)
+- [Contrato OpenAPI](docs/openapi.yaml)
 - [Privacidade](docs/privacidade.md)
-- Decisões de implementação em [`docs/adr/`](docs/adr/)
+- [Termos de uso](docs/termos.md)
+- [Decisões de implementação](docs/adr/)
 
-## Autoria
+## Autoria e licença
 
-Ideia, recorte e primeiro código, **RaulnikRoyce**. Evolução do código com auxílio do [Cursor](https://cursor.com).
+Ideia, recorte e primeiro código de **RaulnikRoyce**. Evolução com apoio de ferramentas de IA, incluindo Cursor, Claude Code e Codex, com revisão e testes.
 
-## Licença
-
-Proprietária. Todos os direitos reservados. Ver [LICENSE](LICENSE).
+Licença proprietária. Todos os direitos reservados. Consulte [LICENSE](LICENSE).
