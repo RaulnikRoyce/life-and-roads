@@ -4,11 +4,11 @@ Caderneta digital de **uma motocicleta**, com ficha, manutenção, abastecimento
 
 **Beta aberto** · [Abrir app web](https://app.raulnikroyce.dev/) · [Baixar APK Android](https://github.com/RaulnikRoyce/life-and-roads/releases/latest/download/life-and-roads-beta-aberto.apk)
 
-## Versão publicada e desenvolvimento
+## Versão 1.5.3
 
-A última release conferida é a [1.5.2](https://github.com/RaulnikRoyce/life-and-roads/releases/tag/v1.5.2), com edição de abastecimentos e recálculo dos registros seguintes. O `pubspec.yaml` está em `1.5.2+12`; nas publicações pelo CI, o número do build vem da execução do GitHub Actions.
+O código está em `1.5.3+13` no `pubspec.yaml`. Nas publicações pelo CI, o número do build vem da execução do GitHub Actions. O APK e as notas ficam na [Release 1.5.3](https://github.com/RaulnikRoyce/life-and-roads/releases/tag/v1.5.3); a disponibilidade do arquivo e da web depende da conclusão dos jobs de publicação.
 
-A branch `main` já inclui melhorias que ainda aguardam uma nova release de APK e web:
+A versão 1.5.3 mantém a edição de abastecimentos da 1.5.2 e reúne estas melhorias:
 
 - Calibração das barrinhas por moto, capacidade do tanque e total de segmentos, com faixa estimada após três referências para o mesmo nível.
 - Exclusão de abastecimentos com confirmação e recálculo do histórico, das médias e da calibração.
