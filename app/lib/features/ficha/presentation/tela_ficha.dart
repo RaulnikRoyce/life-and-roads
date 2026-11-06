@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_and_roads/backup.dart';
+import 'package:life_and_roads/core/atualizacao/atualizacao_controller.dart';
+import 'package:life_and_roads/core/atualizacao/cartao_atualizacao.dart';
 import 'package:life_and_roads/core/database/armazem_kv.dart';
 import 'package:life_and_roads/core/database/chaves_kv.dart';
 import 'package:life_and_roads/core/backup/backup_automatico.dart';
@@ -581,6 +583,8 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
     });
 
     final estado = ref.watch(fichaControllerProvider);
+    final atualizacao = ref.watch(atualizacaoControllerProvider);
+    final suportaAtualizacao = ref.watch(atualizacaoSuportadaProvider);
     final nuvem = ref.watch(cadernetaNuvemControllerProvider);
     final conflitoNuvem = nuvem.situacao.conflito;
     if (estado.carregando) {
@@ -639,6 +643,11 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
                 aoManter: _nuvem.manterAparelho,
                 aoUsarServidor: _nuvem.usarDaConta,
               ),
+            ),
+          if (suportaAtualizacao && atualizacao.disponivel)
+            Padding(
+              padding: EdgeInsets.fromLTRB(margem.left, 8, margem.right, 12),
+              child: const CartaoAtualizacao(somenteAviso: true),
             ),
           if (fichaSalva)
             _painel()
@@ -710,6 +719,10 @@ class _TelaFichaState extends ConsumerState<TelaFicha> {
               aoMudarNuvem: _mudarNuvem,
               nuvemOcupada: nuvem.ocupado,
             ),
+            if (suportaAtualizacao) ...[
+              const SizedBox(height: 12),
+              const CartaoAtualizacao(),
+            ],
           ]),
         ],
       ),

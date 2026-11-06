@@ -37,7 +37,15 @@ Prefs (`SharedPreferences`) guardam só e-mail, tema e `api_base_v1`. Token e re
 
 Português comum, sem gíria de posto e sem fórmula na tela (`÷`, `×`, `R$/km` como explicação, "painel − ficha"). Número no card pode, e `km/l` nas pastilhas do painel também, a pedido do Raulnik em 22/09/2026; em rótulo de campo e em frase, escreva "km com 1 L". Sem travessão, sem dois-pontos anunciando conclusão, sem "não é X, é Y", sem sequência de frases curtas para dar ritmo, sem ênclise. Sem metáfora, slogan ou jargão ("ponta a ponta", "AI-First"). Comece pela informação, corte adjetivo que não descreve nada.
 
-## Estado (set/2026)
+## Continuidade neste computador (06/11/2026)
+
+Raulnik pediu para continuar as atualizações neste computador e consultar o outro quando precisar de contexto. O chat remoto de referência é `Verifique a pasta`, no DESKTOP-2EG7QU3, thread `01a18caa-31a1-7e90-b48c-1d9c74c98377`.
+
+A base local foi atualizada para `1f8f87a`, release `1.5.2+12`. Foram trazidos do outro computador 38 arquivos pendentes (16 modificados e 22 novos), conferidos individualmente por SHA256. Incluem calibração das barrinhas, exclusão de abastecimentos, identificação da origem do consumo, aviso de atualização Android e preparo de cache Gradle/NDK, documentados nas ADRs 0043 a 0047. Esta entrega reúne essas melhorias e a correção da ADR 0048. Publicar APK e web depende de uma etapa de release separada. O histórico abaixo descreve etapas anteriores e não representa a versão atual.
+
+Na conferência local de 06/11, o fluxo de dois tanques cheios sem parcial revelou que excluir a única medição deixava seu consumo na Ficha. A ADR 0048 registra a correção: novos registros guardam as referências anteriores às medições, reutilizadas na edição e exclusão. Após a correção, 359 testes do app passaram e `dart analyze` não encontrou problemas. `flutter analyze` falhou no servidor de análise do SDK local, por isso foi usado o comando Dart direto. A API passou no TypeScript e em 64 testes; 29 testes de integração foram pulados porque não havia MySQL local.
+
+## Estado histórico (set/2026)
 
 Beta aberto ao motoclube Bodes do Asfalto Mata Mineira desde 22/09/2026; antes disso era fechado, só com pilotos conhecidos. Release `1.5.0+10` (tag `v1.5.0`, 24/09/2026, ADR 0039) com a caderneta na conta, cifrada, e o aceite dos termos (ADR 0038). Antes dela, a `1.4.1+9` (tag `v1.4.1`, 22/09/2026, ADR 0035) trouxe o catálogo de 116 motos e busca, o backup automático, o convite de conta e o app web; a tag publica APK e `app.raulnikroyce.dev` no mesmo empurrão, então as duas plataformas andam juntas a partir daqui. A `1.4.0` saiu minutos antes e só diferia no empacotamento, sem nenhuma mudança de aplicativo. O APK dos convites é o link permanente `releases/latest/download/life-and-roads-beta-aberto.apk`, que só funciona porque a Release deixou de ser prerelease e o arquivo perdeu a versão do nome; o ambiente `github-pages` precisou de uma regra de tag `v*`, senão a tag publica o APK e trava o app web. Antes delas, a `1.3.0+7` (ADR 0031) e a `1.2.1+6` (18/09) ainda podem estar em alguns aparelhos. `flutter_secure_storage` fica em `^10.3.x` durante o beta (a 11 é breaking e exige passar pela 10 antes). 
 

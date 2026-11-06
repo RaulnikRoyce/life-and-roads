@@ -8,10 +8,12 @@ import 'package:life_and_roads/core/widgets/movimento.dart';
 import 'package:life_and_roads/features/manutencao/presentation/widgets/cartao_grupo.dart';
 import 'package:life_and_roads/features/viagem/domain/precos_litro.dart';
 import 'package:life_and_roads/features/viagem/domain/usecases/resumo_consumo.dart';
+import 'package:life_and_roads/features/viagem/domain/usecases/identificar_consumo.dart';
 import 'package:life_and_roads/features/viagem/presentation/viagem_controller.dart';
 import 'package:life_and_roads/features/viagem/presentation/viagem_estado.dart';
 import 'package:life_and_roads/features/viagem/presentation/widgets/grafico_consumo.dart';
 import 'package:life_and_roads/features/viagem/presentation/widgets/painel_posto.dart';
+import 'package:life_and_roads/features/viagem/presentation/widgets/painel_marcador.dart';
 import 'package:life_and_roads/tema.dart';
 import 'package:life_and_roads/viagem/calculo.dart';
 
@@ -39,6 +41,7 @@ class _TelaPostoState extends ConsumerState<TelaPosto> {
   final _barrasAntes = TextEditingController();
   final _barrasDepois = TextEditingController();
   bool _tanqueCheio = false, _usarBarras = false;
+  bool _excluindo = false;
 
   ViagemController get _ctrl => ref.read(viagemControllerProvider.notifier);
 
@@ -174,7 +177,7 @@ class _TelaPostoState extends ConsumerState<TelaPosto> {
                   direita: _campo(_barrasDepois, 'Barras depois'),
                 ),
                 const Text(
-                  'Leia com a moto na mesma posição. Guardamos essas leituras para calibração futura.',
+                  'Leia com a moto na mesma posição. Ao completar o tanque, estas leituras ajudam a calibrar o marcador.',
                 ),
               ],
             ],
@@ -189,6 +192,54 @@ class _TelaPostoState extends ConsumerState<TelaPosto> {
 
   void _aviso(String texto) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(texto)));
+  }
+
+  Future<void> _excluirAbastecimento(
+    RegistroAbastecimento r,
+    int indice,
+  ) async {
+    if (_excluindo) return;
+    _excluindo = true;
+    try {
+      final estado = ref.read(viagemControllerProvider);
+      final voltaKm =
+          indice == 0 &&
+          estado.historico.length > 1 &&
+          estado.ficha?.kmAtual == r.kmPainel;
+      final confirmar = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Excluir abastecimento?'),
+          content: Text(
+            'Remover o registro de ${GraficoConsumo.dataCurta(r.em)}, '
+            'com ${PainelPosto.milhar(r.kmPainel)} km no painel e ${_br(r.litros)} L? '
+            'Os consumos, custos e a calibração das barrinhas serão atualizados. '
+            '${voltaKm ? 'O km da Ficha voltará ao último abastecimento restante.' : 'O km atual da Ficha será mantido.'} '
+            'Esta ação não pode ser desfeita.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Excluir'),
+            ),
+          ],
+        ),
+      );
+      if (confirmar != true || !mounted) return;
+      final ok = await _ctrl.excluirAbastecimento(indice: indice, original: r);
+      if (!ok && mounted) {
+        _aviso(
+          ref.read(viagemControllerProvider).erro ??
+              'Aguarde a gravação em andamento.',
+        );
+      }
+    } finally {
+      _excluindo = false;
+    }
   }
 
   Future<void> _editarAbastecimento(RegistroAbastecimento r, int indice) async {
@@ -332,18 +383,21 @@ class _TelaPostoState extends ConsumerState<TelaPosto> {
     String origem;
     // Só intervalos entre postos contam; o primeiro registro não tem.
     final intervalos = medidos.length;
+    const identificar = IdentificarConsumo();
+    final origemMedida = identificar.custoHistorico(historico);
     if (intervalos > 0) {
       custoPorKm = custoMedioPorKm(medidos);
-      origem = intervalos == 1
-          ? 'medido entre tanques cheios'
-          : 'média de $intervalos períodos medidos';
+      origem = origemMedida!.titulo;
     } else if (custoGas != null || custoAlcool != null) {
       custoPorKm = custoGas == null
           ? custoAlcool
           : custoAlcool == null
           ? custoGas
           : (custoAlcool < custoGas ? custoAlcool : custoGas);
-      origem = 'estimado pela ficha e os preços de hoje';
+      final usandoAlcool =
+          custoAlcool != null && (custoGas == null || custoAlcool < custoGas);
+      origem =
+          'Estimado para ${usandoAlcool ? 'álcool' : 'gasolina'} pela Ficha e pelo preço de hoje';
     } else {
       final temPreco = pg != null || pa != null;
       origem = temPreco && kg == null && ka == null
@@ -380,12 +434,16 @@ class _TelaPostoState extends ConsumerState<TelaPosto> {
           PainelPosto(
             custoPorKm: custoPorKm,
             origem: origem,
+            detalheCusto: origemMedida?.explicacao,
+            origemConsumo: identificar.gasolina(historico),
             fraseVencedor: fraseVencedor,
             postos: historico.length,
             kmComUmLitro: mediaKmPorLitro(medidos, Combustivel.gasolina) ?? kg,
             autonomiaKm: autonomia,
             barras: const ResumoConsumo().executar(historico).barras,
           ),
+          const SizedBox(height: 16),
+          PainelMarcador(ficha: estado.ficha, historico: historico),
           const SizedBox(height: 16),
           _cartaoAbastecimento(estado),
         ],
@@ -488,9 +546,18 @@ class _TelaPostoState extends ConsumerState<TelaPosto> {
     required int indice,
   }) {
     final tema = Theme.of(context);
-    final rodou = rodouCom == null || rodouCom == r.combustivel
+    final identificacao = const IdentificarConsumo().registro(r);
+    final exibirConsumo =
+        r.temConsumo &&
+        identificacao.tipo != TipoOrigemConsumo.indisponivel &&
+        identificacao.tipo != TipoOrigemConsumo.referencia;
+    final combustivelPeriodo = r.medido ? r.combustivelMedido : rodouCom;
+    final rodou =
+        r.tipoConsumo == 'medidoMisto' ||
+            combustivelPeriodo == null ||
+            combustivelPeriodo == r.combustivel
         ? ''
-        : ', rodou com ${rotuloCombustivel(rodouCom).toLowerCase()}';
+        : ', rodou com ${rotuloCombustivel(combustivelPeriodo).toLowerCase()}';
     return Column(
       children: [
         Divider(height: 1, thickness: 1, color: divisor),
@@ -522,48 +589,62 @@ class _TelaPostoState extends ConsumerState<TelaPosto> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    TextButton.icon(
-                      onPressed: () => _editarAbastecimento(r, indice),
-                      icon: const Icon(Icons.edit_outlined, size: 18),
-                      label: const Text('Editar'),
+                    Wrap(
+                      alignment: WrapAlignment.end,
+                      spacing: 4,
+                      children: [
+                        TextButton.icon(
+                          onPressed: () => _editarAbastecimento(r, indice),
+                          icon: const Icon(Icons.edit_outlined, size: 18),
+                          label: const Text('Editar'),
+                        ),
+                        TextButton.icon(
+                          onPressed: () => _excluirAbastecimento(r, indice),
+                          icon: const Icon(Icons.delete_outline, size: 18),
+                          label: const Text('Excluir'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: tema.colorScheme.error,
+                          ),
+                        ),
+                      ],
                     ),
                     Text('${PainelPosto.milhar(r.kmPainel)} km no painel'),
                     if (r.totalBarras != null)
                       Text(
                         '${r.barrasAntes} → ${r.barrasDepois} de ${r.totalBarras} barras',
                       ),
-                    Text(
-                      r.tipoConsumo == 'legado'
-                          ? 'Método anterior'
-                          : r.tanqueCheio
-                          ? 'Tanque cheio'
-                          : 'Parcial',
+                    if (r.tipoConsumo != 'legado')
+                      Text(r.tanqueCheio ? 'Tanque cheio' : 'Parcial'),
+                    Tooltip(
+                      message: identificacao.explicacao,
+                      child: Text(identificacao.titulo),
                     ),
-                    if (r.tipoConsumo != 'referencia' &&
-                        r.tipoConsumo != 'legado')
+                    Text(
+                      'Compra de ${_br(r.litros)} L · R\$ ${_br(r.reais, casas: 2)}',
+                      textAlign: TextAlign.end,
+                      style: tema.textTheme.bodyMedium,
+                    ),
+                    if (exibirConsumo)
                       Text(
                         r.medido
-                            ? (r.tipoConsumo == 'medidoMisto'
-                                  ? 'Consumo medido com mistura no período'
-                                  : 'Consumo medido no período')
-                            : 'Consumo estimado pela Ficha',
+                            ? '${_br(r.kmMedidos!, casas: 0)} km · ${_br(r.litrosMedidos!)} L no período'
+                            : '${_br(r.kmRodados, casas: 0)} km desde o anterior',
+                        textAlign: TextAlign.end,
                       ),
-                    Text(
-                      r.temConsumo
-                          ? '${_br(r.medido ? r.kmMedidos! : r.kmRodados, casas: 0)} km · ${_br(r.medido ? r.litrosMedidos! : r.litros)} L · '
-                                '${PainelPosto.km(r.kmPorLitro)} km com 1 L$rodou'
-                          : '${_br(r.litros)} L · referência inicial',
-                      textAlign: TextAlign.end,
-                      style: tema.textTheme.bodyMedium,
-                    ),
-                    Text(
-                      r.temConsumo
-                          ? 'R\$ ${_br(r.reais, casas: 2)} · '
-                                'R\$ ${_br(r.reaisPorKm, casas: 2)} por km'
-                          : 'R\$ ${_br(r.reais, casas: 2)}',
-                      textAlign: TextAlign.end,
-                      style: tema.textTheme.bodyMedium,
-                    ),
+                    if (exibirConsumo)
+                      Text(
+                        '${PainelPosto.km(r.kmPorLitro)} km com 1 L$rodou',
+                        textAlign: TextAlign.end,
+                      ),
+                    if (exibirConsumo)
+                      Text(
+                        r.medido
+                            ? 'Custo do período R\$ ${_br(r.reaisMedidos!, casas: 2)} · R\$ ${_br(r.reaisPorKm, casas: 2)} por km'
+                            : 'R\$ ${_br(r.reaisPorKm, casas: 2)} por km'
+                                  '${r.tipoConsumo == 'legado' ? ' pelo método anterior' : ' estimados'}',
+                        textAlign: TextAlign.end,
+                        style: tema.textTheme.bodyMedium,
+                      ),
                   ],
                 ),
               ),

@@ -53,6 +53,9 @@ class RegistroAbastecimento {
     this.totalBarras,
     this.barrasAntes,
     this.barrasDepois,
+    this.referenciaMarcador,
+    this.referenciaGasolina,
+    this.referenciaAlcool,
   });
 
   final String em;
@@ -70,6 +73,8 @@ class RegistroAbastecimento {
   final double? kmMedidos, litrosMedidos, reaisMedidos;
   final Combustivel? combustivelMedido;
   final int? totalBarras, barrasAntes, barrasDepois;
+  final String? referenciaMarcador;
+  final double? referenciaGasolina, referenciaAlcool;
   bool get medido =>
       (tipoConsumo == 'medido' || tipoConsumo == 'medidoMisto') &&
       [
@@ -94,6 +99,9 @@ class RegistroAbastecimento {
     'totalBarras': totalBarras,
     'barrasAntes': barrasAntes,
     'barrasDepois': barrasDepois,
+    'referenciaMarcador': referenciaMarcador,
+    'referenciaGasolina': referenciaGasolina,
+    'referenciaAlcool': referenciaAlcool,
     'em': em,
     'combustivel': combustivel.name,
     'kmPainel': kmPainel,
@@ -108,6 +116,13 @@ class RegistroAbastecimento {
   static RegistroAbastecimento? deJson(Object? bruto) {
     if (bruto is! Map) return null;
     final mapa = Map<String, dynamic>.from(bruto);
+    final referencia = mapa['referenciaMarcador'];
+    if (referencia != null &&
+        (referencia is! String ||
+            referencia.trim().isEmpty ||
+            referencia.length > 1024)) {
+      return null;
+    }
     for (final chave in [
       'litros',
       'precoLitro',
@@ -122,6 +137,8 @@ class RegistroAbastecimento {
       'totalBarras',
       'barrasAntes',
       'barrasDepois',
+      'referenciaGasolina',
+      'referenciaAlcool',
     ]) {
       if (mapa[chave] != null && _num(mapa[chave]) == null) {
         return null;
@@ -214,7 +231,12 @@ class RegistroAbastecimento {
       }
     }
     final em = '${mapa['em'] ?? ''}'.trim();
+    for (final chave in ['referenciaGasolina', 'referenciaAlcool']) {
+      if (mapa[chave] != null && _num(mapa[chave])! <= 0) return null;
+    }
     return RegistroAbastecimento(
+      referenciaGasolina: _num(mapa['referenciaGasolina']),
+      referenciaAlcool: _num(mapa['referenciaAlcool']),
       tipoConsumo: tipo as String,
       misturaNoTanque: mapa['misturaNoTanque'] as bool?,
       tanqueCheio: mapa['tanqueCheio'] == true,
@@ -227,6 +249,7 @@ class RegistroAbastecimento {
       totalBarras: _num(mapa['totalBarras'])?.toInt(),
       barrasAntes: _num(mapa['barrasAntes'])?.toInt(),
       barrasDepois: _num(mapa['barrasDepois'])?.toInt(),
+      referenciaMarcador: referencia as String?,
       em: em.isEmpty ? DateTime.now().toIso8601String() : em,
       combustivel: combustivelDe(mapa['combustivel']),
       kmPainel: kmPainel,
@@ -421,6 +444,28 @@ Combustivel? combustivelDoIntervalo(
 ) {
   if (indice < 0 || indice + 1 >= historico.length) return null;
   return historico[indice + 1].combustivel;
+}
+
+/// Referência anterior às medições, preservada mesmo após apagar um ciclo.
+double? referenciaConsumo(
+  List<RegistroAbastecimento> historico,
+  Combustivel combustivel,
+) {
+  for (var i = historico.length - 1; i >= 0; i--) {
+    final r = historico[i];
+    final referencia = combustivel == Combustivel.gasolina
+        ? r.referenciaGasolina
+        : r.referenciaAlcool;
+    if (referencia != null && referencia.isFinite && referencia > 0) {
+      return referencia;
+    }
+    if (r.tipoConsumo == 'estimado' &&
+        r.kmPorLitro > 0 &&
+        combustivelDoIntervalo(historico, i) == combustivel) {
+      return r.kmPorLitro;
+    }
+  }
+  return null;
 }
 
 /// Média ponderada do consumo com [noTanque]: soma dos km dividida pela

@@ -268,7 +268,11 @@ void main() {
       find.widgetWithText(TextField, 'Senha (mín. 8)'),
       'senha1234',
     );
+    await tester.ensureVisible(find.text(BlocoConta.rotuloAceite));
+    await tester.pumpAndSettle();
     await tester.tap(find.text(BlocoConta.rotuloAceite));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.widgetWithText(OutlinedButton, 'Cadastrar'));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(OutlinedButton, 'Cadastrar'));
     await tester.pumpAndSettle();

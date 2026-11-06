@@ -261,7 +261,7 @@ class _CartaoViagemState extends ConsumerState<CartaoViagem> {
                   children: [
                     if (widget.temPonto && autonomia != null)
                       Text(
-                        'Alcance com tanque cheio: '
+                        'Alcance estimado com tanque cheio: '
                         '${autonomia.toStringAsFixed(0)} km em linha reta.',
                         style: tema.textTheme.bodyMedium,
                       ),

@@ -12,6 +12,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_and_roads/api.dart';
+import 'package:life_and_roads/core/atualizacao/atualizacao_controller.dart';
 import 'package:life_and_roads/core/backup/caderneta_mudou.dart';
 import 'package:life_and_roads/core/database/caderneta_banco.dart';
 import 'package:life_and_roads/core/database/migracao_prefs.dart';
@@ -145,6 +146,11 @@ class _TelaPrincipalState extends ConsumerState<TelaPrincipal>
     );
     Future<void>.microtask(() {
       if (mounted) {
+        unawaited(
+          ref
+              .read(atualizacaoControllerProvider.notifier)
+              .verificar(automatico: true),
+        );
         ref
             .read(avisosControllerProvider.notifier)
             .recarregar(dispararSistema: true);

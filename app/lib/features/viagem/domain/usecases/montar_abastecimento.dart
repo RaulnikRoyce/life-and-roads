@@ -23,6 +23,7 @@ class MontarAbastecimento {
     int? barrasAntes,
     int? barrasDepois,
     String? em,
+    String? referenciaMarcador,
   }) {
     ({
       FichaMoto? ficha,
@@ -132,7 +133,13 @@ class MontarAbastecimento {
       );
     }
     final registro = RegistroAbastecimento(
+      referenciaGasolina:
+          referenciaConsumo(historico, Combustivel.gasolina) ?? ficha.kmLitro,
+      referenciaAlcool:
+          referenciaConsumo(historico, Combustivel.alcool) ??
+          ficha.kmLitroAlcool,
       em: em ?? DateTime.now().toIso8601String(),
+      referenciaMarcador: referenciaMarcador,
       combustivel: combustivel,
       kmPainel: kmPainel,
       kmRodados: distancia,

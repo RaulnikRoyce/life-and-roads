@@ -1,5 +1,9 @@
 import 'dart:convert';
 
+import 'package:life_and_roads/features/viagem/domain/usecases/excluir_abastecimento.dart';
+
+import 'package:life_and_roads/features/viagem/domain/usecases/calibrar_marcador.dart';
+
 import 'package:life_and_roads/features/viagem/domain/usecases/editar_abastecimento.dart';
 import 'package:life_and_roads/core/database/caderneta_banco.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -151,6 +155,7 @@ class ViagemController extends Notifier<ViagemEstado> {
           : _numero(precos.gasolina);
       final registros = await _viagem.listarAbastecimentos();
       final montado = _montar.executar(
+        referenciaMarcador: referenciaMarcadorDaFicha(state.ficha),
         valorPago: valorPago,
         tanqueCheio: tanqueCheio,
         totalBarras: totalBarras,
@@ -264,6 +269,72 @@ class ViagemController extends Notifier<ViagemEstado> {
     } catch (_) {
       state = state.copiarCom(
         erro: 'Não foi possível concluir a edição. Confira o histórico antes de tentar novamente.',
+        limparAviso: true,
+      );
+      return false;
+    } finally {
+      _registrando = false;
+    }
+  }
+
+  Future<bool> excluirAbastecimento({
+    required int indice,
+    required RegistroAbastecimento original,
+  }) async {
+    if (_registrando) return false;
+    _registrando = true;
+    try {
+      final resultado = await CadernetaBanco.instancia.transaction(() async {
+        final ficha = await _fichaLocal.ler(recarregar: true);
+        final registros = await _viagem.listarAbastecimentos();
+        if (ficha == null ||
+            indice < 0 ||
+            indice >= registros.length ||
+            jsonEncode(registros[indice].paraJson()) !=
+                jsonEncode(original.paraJson())) {
+          return (
+            ficha: null,
+            historico: null,
+            erro: 'O histórico mudou. Feche e abra a confirmação novamente.',
+          );
+        }
+        final r = const ExcluirAbastecimento().executar(
+          ficha: ficha,
+          historico: registros,
+          indice: indice,
+        );
+        if (r.erro == null) {
+          await _viagem.substituirAbastecimentos(r.historico!);
+          await _fichaLocal.gravar(r.ficha!);
+        }
+        return r;
+      });
+      if (resultado.erro != null) {
+        state = state.copiarCom(erro: resultado.erro, limparAviso: true);
+        return false;
+      }
+      state = state.copiarCom(
+        ficha: resultado.ficha,
+        historico: resultado.historico,
+        limparResultado: true,
+        limparErro: true,
+        aviso: 'Abastecimento excluído. O histórico foi recalculado.',
+      );
+      ref.read(cadernetaMudouProvider).avisar();
+      await ref.read(fichaControllerProvider.notifier).relerDoAparelho();
+      try {
+        final salva = await _fichaRepo.salvar(resultado.ficha!);
+        state = state.copiarCom(offline: salva.offline);
+      } catch (_) {
+        state = state.copiarCom(
+          offline: true,
+          aviso: 'Abastecimento excluído neste aparelho. A sincronização está pendente.',
+        );
+      }
+      return true;
+    } catch (_) {
+      state = state.copiarCom(
+        erro: 'Não foi possível excluir o abastecimento. Tente novamente.',
         limparAviso: true,
       );
       return false;

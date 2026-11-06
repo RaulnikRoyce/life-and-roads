@@ -88,6 +88,12 @@ class BilheteViagem extends StatelessWidget {
                     textAlign: TextAlign.center,
                     style: tema.textTheme.titleMedium?.copyWith(fontSize: 22),
                   ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Estimativa de litros e valor pela referência da Ficha e pelos preços do Posto.',
+                    textAlign: TextAlign.center,
+                    style: tema.textTheme.bodySmall,
+                  ),
                   if (avisoTanque != null) ...[
                     const SizedBox(height: 12),
                     SizedBox(

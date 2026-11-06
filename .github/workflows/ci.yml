@@ -69,10 +69,38 @@ jobs:
       - run: flutter analyze --no-fatal-infos
       - run: flutter test
 
+  # Caches criados só numa tag não atendem às outras tags. A main prepara
+  # dependências públicas em paralelo aos testes, sem APK e sem keystore.
+  android-tools:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+        working-directory: app
+      - uses: ./.github/actions/preparar-android
+        id: android
+      - name: Aquecer dependências do Gradle
+        working-directory: app/android
+        env:
+          SDK_RAIZ: ${{ steps.android.outputs.sdk_root }}
+        run: |
+          printf 'sdk.dir=%s\nflutter.sdk=%s\n' "$SDK_RAIZ" "$FLUTTER_ROOT" > local.properties
+          if ! bash ./gradlew :app:dependencies --console=plain > "$RUNNER_TEMP/gradle-dependencies.log" 2>&1; then
+            tail -n 80 "$RUNNER_TEMP/gradle-dependencies.log"
+            exit 1
+          fi
+
   apk:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [api, app]
     runs-on: ubuntu-24.04
+    timeout-minutes: 25
     # Para criar a Release da tag e anexar o APK.
     permissions:
       contents: write
@@ -81,14 +109,12 @@ jobs:
         working-directory: app
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: '17'
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
+      - run: flutter pub get
+      - uses: ./.github/actions/preparar-android
       - name: Keystore só no CI
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -104,7 +130,6 @@ jobs:
           keyAlias=$ANDROID_KEY_ALIAS
           storeFile=../upload-keystore.jks
           EOF
-      - run: flutter pub get
       # Secret API_BASE: HTTPS da API. Vazio = localhost; caderneta local segue.
       - name: APK assinado
         env:

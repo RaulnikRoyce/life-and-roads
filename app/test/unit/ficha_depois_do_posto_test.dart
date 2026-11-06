@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:life_and_roads/tema.dart';
 import 'package:life_and_roads/features/viagem/presentation/tela_posto.dart';
+import 'package:life_and_roads/features/viagem/domain/usecases/calibrar_marcador.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_and_roads/core/backup/backup_automatico.dart';
 import 'package:life_and_roads/core/backup/backup_nuvem.dart';
@@ -89,6 +90,9 @@ void main() {
         250,
         scrollable: find.byType(Scrollable).first,
       );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Editar'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Editar'));
       await tester.pumpAndSettle();
       expect(find.text('Editar abastecimento'), findsOneWidget);
@@ -249,6 +253,83 @@ void main() {
         isFalse,
       );
       expect((await HistoricoAbastecimento.carregar()).first.kmPainel, 1190);
+    },
+  );
+
+  test(
+    'leituras novas aprendem a moto e edição recalibra preservando referência',
+    () async {
+      const ficha = FichaMoto(
+        marca: 'Honda',
+        modelo: 'Bros',
+        ano: 2023,
+        kmLitro: 35,
+        kmAtual: 1000,
+        tanqueLitros: 12,
+      );
+      await FichaLocalDatasource().gravar(ficha);
+      final ctrl = app.read(viagemControllerProvider.notifier);
+      for (final km in [1000.0, 1300.0, 1600.0]) {
+        await ctrl.registrarAbastecimento(
+          kmPainel: km,
+          litros: 9,
+          valorPago: 54,
+          precos: const PrecosLitro(),
+          tanqueCheio: true,
+          totalBarras: 6,
+          barrasAntes: 1,
+          barrasDepois: 6,
+        );
+      }
+      final registros = await HistoricoAbastecimento.carregar();
+      expect(
+        registros.every(
+          (r) => r.referenciaMarcador == referenciaMarcadorDaFicha(ficha),
+        ),
+        isTrue,
+      );
+      expect(
+        const CalibrarMarcador()
+            .executar(ficha: ficha, historico: registros, totalBarras: 6)
+            .consultar(1)!
+            .minimo,
+        3,
+      );
+      expect(
+        await ctrl.editarAbastecimento(
+          indice: 1,
+          original: registros[1],
+          kmPainel: 1300,
+          litros: 8,
+          valorPago: 48,
+          combustivel: Combustivel.gasolina,
+          tanqueCheio: true,
+          totalBarras: 6,
+          barrasAntes: 1,
+          barrasDepois: 6,
+        ),
+        isTrue,
+      );
+      final corrigidos = await HistoricoAbastecimento.carregar();
+      final faixa = const CalibrarMarcador()
+          .executar(ficha: ficha, historico: corrigidos, totalBarras: 6)
+          .consultar(1)!;
+      expect(faixa.minimo, 3);
+      expect(faixa.maximo, 4);
+      expect(
+        corrigidos.map((r) => r.referenciaMarcador),
+        registros.map((r) => r.referenciaMarcador),
+      );
+      expect(
+        const CalibrarMarcador()
+            .executar(
+              ficha: ficha.copiarCom(modelo: 'Outra'),
+              historico: corrigidos,
+              totalBarras: 6,
+            )
+            .consultar(1),
+        isNull,
+      );
     },
   );
 }

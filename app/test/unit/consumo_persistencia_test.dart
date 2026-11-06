@@ -16,6 +16,7 @@ void main() {
   });
   tearDown(fecharBancoTeste);
   const registro = RegistroAbastecimento(
+    referenciaMarcador: '["honda","bros",2023,160,12.0]',
     em: '2026-10-30T20:00:00',
     combustivel: Combustivel.gasolina,
     kmPainel: 1350,

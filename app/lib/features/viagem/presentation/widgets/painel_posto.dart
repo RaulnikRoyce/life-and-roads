@@ -17,6 +17,8 @@ class PainelPosto extends StatelessWidget {
     this.kmComUmLitro,
     this.autonomiaKm,
     this.barras = const [],
+    this.detalheCusto,
+    this.origemConsumo,
   });
 
   /// Reais por km. Média dos postos ou, sem histórico, pela ficha e os
@@ -25,6 +27,7 @@ class PainelPosto extends StatelessWidget {
 
   /// De onde veio o número ("média de 5 postos").
   final String origem;
+  final String? detalheCusto, origemConsumo;
 
   /// "Hoje o álcool custa menos." quando dá para comparar as duas bombas.
   final String? fraseVencedor;
@@ -98,6 +101,8 @@ class PainelPosto extends StatelessWidget {
           origem,
           style: tema.textTheme.bodyMedium?.copyWith(color: Oficina.mute),
         ),
+        if (detalheCusto != null)
+          Text(detalheCusto!, style: tema.textTheme.bodySmall),
       ],
     );
 
@@ -141,6 +146,15 @@ class PainelPosto extends StatelessWidget {
                   const SizedBox(width: 12),
                   Expanded(child: pastilhas),
                 ],
+              ),
+            if (origemConsumo != null) ...[
+              const SizedBox(height: 8),
+              Text(origemConsumo!, style: tema.textTheme.bodySmall),
+            ],
+            if (autonomiaKm != null)
+              Text(
+                'Alcance estimado para um tanque cheio, usando a Ficha.',
+                style: tema.textTheme.bodySmall,
               ),
             if (fraseVencedor != null) ...[
               const SizedBox(height: 14),

@@ -36,27 +36,14 @@ class EditarAbastecimento {
       return erro('O km deve ser menor que o do abastecimento seguinte.');
     }
     final refeitos = historico.skip(indice + 1).toList();
-    // Usa estimativas anteriores à primeira medição quando disponíveis.
-    double? base(Combustivel c) {
-      for (var i = historico.length - 1; i >= 0; i--) {
-        final r = historico[i];
-        if (r.tipoConsumo == 'estimado' &&
-            r.kmPorLitro > 0 &&
-            combustivelDoIntervalo(historico, i) == c) {
-          return r.kmPorLitro;
-        }
-      }
-      return null;
-    }
-
     var atual = ficha.copiarCom(
       kmAtual: refeitos.isEmpty ? 0 : refeitos.first.kmPainel,
       kmLitro:
           mediaKmPorLitro(refeitos, Combustivel.gasolina) ??
-          base(Combustivel.gasolina),
+          referenciaConsumo(historico, Combustivel.gasolina),
       kmLitroAlcool:
           mediaKmPorLitro(refeitos, Combustivel.alcool) ??
-          base(Combustivel.alcool),
+          referenciaConsumo(historico, Combustivel.alcool),
     );
     for (var i = indice; i >= 0; i--) {
       final antigo = historico[i];
@@ -65,6 +52,7 @@ class EditarAbastecimento {
         ficha: atual,
         historico: refeitos,
         em: antigo.em,
+        referenciaMarcador: antigo.referenciaMarcador,
         kmPainel: editado ? kmPainel : antigo.kmPainel,
         litros: editado ? litros : antigo.litros,
         preco: antigo.precoLitro,

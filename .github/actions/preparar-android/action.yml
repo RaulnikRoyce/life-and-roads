@@ -1,0 +1,30 @@
+name: Preparar ferramentas Android
+description: Reutiliza Gradle e NDK, validando o pacote antes do build.
+outputs:
+  sdk_root:
+    description: Raiz física do SDK Android usado pelo runner.
+    value: ${{ steps.ndk.outputs.sdk_root }}
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-java@v6
+      with:
+        distribution: temurin
+        java-version: '17'
+        cache: gradle
+        cache-dependency-path: |
+          app/android/**/*.gradle*
+          app/android/gradle/wrapper/gradle-wrapper.properties
+          app/pubspec.lock
+    - name: Identificar NDK do Flutter
+      id: ndk
+      shell: bash
+      run: bash "${{ github.action_path }}/../../scripts/preparar-ndk.sh" resolver
+    - name: Cache do NDK
+      uses: actions/cache@v6
+      with:
+        path: ${{ steps.ndk.outputs.path }}
+        key: android-ndk-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.ndk.outputs.version }}
+    - name: Instalar ou validar NDK
+      shell: bash
+      run: bash "${{ github.action_path }}/../../scripts/preparar-ndk.sh"
