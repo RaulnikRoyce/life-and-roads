@@ -11,5 +11,5 @@ export const obter = async (usuarioId: number): Promise<ManutencaoLida> => {
   return manutencao;
 };
 
-export const salvar = (usuarioId: number, dados: ManutencaoDto) =>
-  manutencaoRepository.salvar(usuarioId, dados);
+export const salvar = (usuarioId: number, dados: ManutencaoDto, base?: number | null) =>
+  manutencaoRepository.salvar(usuarioId, dados, base);

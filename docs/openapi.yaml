@@ -266,6 +266,14 @@ paths:
     put:
       security:
         - bearerAuth: []
+      parameters:
+        - in: header
+          name: X-Base-Atualizado-Em
+          required: false
+          description: 'Carimbo ISO UTC completo conhecido pelo aparelho, ou a string null se ainda não há registro. Ausência mantém gravação legada sem conferência.'
+          schema:
+            type: string
+            example: '2026-11-06T12:00:00.123Z'
       requestBody:
         required: true
         content:
@@ -279,6 +287,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FichaLida'
+        '400':
+          description: corpo ou versão inválida
+        '409':
+          description: versão desatualizada; nada foi gravado e detalhes.atualizadoEm traz a versão atual
   /manutencao:
     get:
       security:
@@ -295,6 +307,14 @@ paths:
     put:
       security:
         - bearerAuth: []
+      parameters:
+        - in: header
+          name: X-Base-Atualizado-Em
+          required: false
+          description: 'Carimbo ISO UTC completo conhecido pelo aparelho, ou a string null se ainda não há registro. Ausência mantém gravação legada sem conferência.'
+          schema:
+            type: string
+            example: '2026-11-06T12:00:00.123Z'
       requestBody:
         required: true
         content:
@@ -308,6 +328,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ManutencaoLida'
+        '400':
+          description: corpo ou versão inválida
+        '409':
+          description: versão desatualizada; nada foi gravado e detalhes.atualizadoEm traz a versão atual
   /localizacao:
     get:
       security:
@@ -527,7 +551,7 @@ components:
               format: date-time
               nullable: true
               readOnly: true
-              description: Quando o servidor gravou pela última vez (UTC). O app compara com o valor guardado para saber se outro aparelho mexeu.
+              description: Versão monotônica em formato ISO UTC, com milissegundos. Avança a cada gravação e pode avançar além do relógio para manter unicidade; deve ser tratada como identificador de versão.
     ManutencaoLida:
       allOf:
         - $ref: '#/components/schemas/Manutencao'

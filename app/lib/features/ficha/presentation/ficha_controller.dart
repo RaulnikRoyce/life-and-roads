@@ -126,15 +126,20 @@ class FichaController extends Notifier<FichaEstado> {
   }
 
   Future<void> salvar(FichaMoto ficha, {bool silencioso = false}) async {
-    _geracao++;
+    final geracao = ++_geracao;
     final resultado = await _ficha.salvar(ficha);
     ref.read(cadernetaMudouProvider).avisar();
+    final remoto = resultado.sync.emConflito
+        ? (await _ficha.carregarLocal()).remoto
+        : null;
+    if (geracao != _geracao) return;
     state = state.copiarCom(
       ficha: resultado.ficha,
       aviso: silencioso ? null : resultado.mensagem,
       limparAviso: silencioso,
       offline: resultado.offline,
       sync: resultado.sync,
+      remoto: remoto,
       limparErro: true,
     );
   }

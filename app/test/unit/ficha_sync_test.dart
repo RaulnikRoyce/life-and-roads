@@ -38,7 +38,7 @@ class _RemotoFake implements FichaRemoteDatasource {
   }
 
   @override
-  Future<DateTime?> salvar(String token, FichaMoto ficha) async {
+  Future<DateTime?> salvar(String token, FichaMoto ficha, {String? baseAtualizadoEm}) async {
     if (falhar) {
       throw FalhaApi('API fora do ar. A ficha ficou só neste aparelho.');
     }

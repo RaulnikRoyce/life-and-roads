@@ -1,7 +1,7 @@
+import { gravarVersionado } from '../../shared/database/gravar-versionado';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { getPool } from '../../shared/database/pool';
 import type { ManutencaoDto } from './manutencao.schema';
-import { carimboIso } from '../ficha/ficha.repository';
 
 export type ManutencaoLida = ManutencaoDto & { atualizadoEm: string | null };
 
@@ -14,7 +14,7 @@ type Linha = RowDataPacket & {
   ipva_proxima: string | null;
   seguro_proxima: string | null;
   licenciamento_proxima: string | null;
-  atualizado_em_unix: number | string | null;
+  atualizado_em_ms: number | string | null;
 };
 
 const SELECT = `SELECT
@@ -26,13 +26,13 @@ const SELECT = `SELECT
   DATE_FORMAT(ipva_proxima, '%Y-%m-%d') AS ipva_proxima,
   DATE_FORMAT(seguro_proxima, '%Y-%m-%d') AS seguro_proxima,
   DATE_FORMAT(licenciamento_proxima, '%Y-%m-%d') AS licenciamento_proxima,
-  UNIX_TIMESTAMP(atualizado_em) AS atualizado_em_unix
+  COALESCE(atualizado_em_ms, UNIX_TIMESTAMP(atualizado_em) * 1000) AS atualizado_em_ms
  FROM manutencoes WHERE usuario_id = ?`;
 
 const paraJson = (linha: Linha | undefined): ManutencaoLida | null => {
   if (!linha) return null;
   return {
-    atualizadoEm: carimboIso(linha.atualizado_em_unix),
+    atualizadoEm: new Date(Number(linha.atualizado_em_ms)).toISOString(),
     oleoUltima: linha.oleo_ultima,
     oleoProxima: linha.oleo_proxima,
     revisaoUltima: linha.revisao_ultima,
@@ -52,6 +52,7 @@ export async function buscarPorUsuario(usuarioId: number): Promise<ManutencaoLid
 export async function salvar(
   usuarioId: number,
   dados: ManutencaoDto,
+  base?: number | null,
 ): Promise<ManutencaoLida> {
   const params = [
     usuarioId,
@@ -65,7 +66,8 @@ export async function salvar(
     dados.licenciamentoProxima,
   ];
 
-  await getPool().execute<ResultSetHeader>(
+  const atualizadoEm = await gravarVersionado(
+    'manutencoes', usuarioId, base, (conn) => conn.execute<ResultSetHeader>(
     `INSERT INTO manutencoes
         (usuario_id, oleo_ultima, oleo_proxima, revisao_ultima, pneus_ultima, pneus_proxima,
          ipva_proxima, seguro_proxima, licenciamento_proxima)
@@ -80,10 +82,7 @@ export async function salvar(
         seguro_proxima = novo.seguro_proxima,
         licenciamento_proxima = novo.licenciamento_proxima`,
     params,
+  ),
   );
-  const [rows] = await getPool().execute<Linha[]>(
-    'SELECT UNIX_TIMESTAMP(atualizado_em) AS atualizado_em_unix FROM manutencoes WHERE usuario_id = ?',
-    [usuarioId],
-  );
-  return { ...dados, atualizadoEm: carimboIso(rows[0]?.atualizado_em_unix) };
+  return { ...dados, atualizadoEm };
 }

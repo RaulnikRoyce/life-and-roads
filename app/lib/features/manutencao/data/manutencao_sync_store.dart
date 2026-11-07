@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:life_and_roads/core/database/caderneta_banco.dart';
+
 import 'package:life_and_roads/core/database/armazem_kv.dart';
 import 'package:life_and_roads/core/database/chaves_kv.dart';
 import 'package:life_and_roads/core/sync/status_sync.dart';
@@ -37,21 +39,31 @@ class ManutencaoSyncStore {
 
   /// [carimbo] é o `atualizadoEm` do servidor. Sem ele, guarda a hora local,
   /// que nunca bate com o servidor e por isso força a pergunta de conflito.
-  Future<void> marcarSincronizado({DateTime? carimbo}) {
+  Future<void> marcarSincronizado({DateTime? carimbo, DateTime? seLocalEm}) {
     return _gravar(
       StatusSync.synced,
       remotoAgora: true,
       carimbo: carimbo,
       zerarTentativas: true,
+      seLocalEm: seLocalEm,
     );
   }
 
-  Future<void> marcarFalhou(String erro) {
-    return _gravar(StatusSync.failed, erro: erro, somarTentativa: true);
+  Future<void> marcarFalhou(String erro, {DateTime? seLocalEm}) {
+    return _gravar(
+      StatusSync.failed,
+      erro: erro,
+      somarTentativa: true,
+      seLocalEm: seLocalEm,
+    );
   }
 
-  Future<void> marcarConflito() {
-    return _gravar(StatusSync.conflict, erro: 'Divergiu do servidor.');
+  Future<void> marcarConflito({DateTime? seLocalEm}) {
+    return _gravar(
+      StatusSync.conflict,
+      erro: 'Divergiu do servidor.',
+      seLocalEm: seLocalEm,
+    );
   }
 
   Future<void> _gravar(
@@ -62,16 +74,24 @@ class ManutencaoSyncStore {
     DateTime? carimbo,
     bool somarTentativa = false,
     bool zerarTentativas = false,
-  }) async {
+    DateTime? seLocalEm,
+  }) => CadernetaBanco.instancia.transaction(() async {
     final agora = DateTime.now().toUtc();
     final atual = await ler();
+    if (seLocalEm != null && atual.localUpdatedAt != seLocalEm) return;
     final tentativas = zerarTentativas
         ? 0
         : somarTentativa
-            ? atual.tentativas + 1
-            : atual.tentativas;
-    final local = tocarLocal ? agora : (atual.localUpdatedAt ?? agora);
-    final remoto = remotoAgora ? (carimbo?.toUtc() ?? agora) : atual.remoteUpdatedAt;
+        ? atual.tentativas + 1
+        : atual.tentativas;
+    final anterior = atual.localUpdatedAt;
+    final proximo = anterior != null && !agora.isAfter(anterior)
+        ? anterior.add(const Duration(microseconds: 1))
+        : agora;
+    final local = tocarLocal ? proximo : (anterior ?? agora);
+    final remoto = remotoAgora
+        ? (carimbo?.toUtc() ?? agora)
+        : atual.remoteUpdatedAt;
     await ArmazemKv.gravarTexto(
       chave,
       jsonEncode({
@@ -82,5 +102,5 @@ class ManutencaoSyncStore {
         'tentativas': tentativas,
       }),
     );
-  }
+  });
 }

@@ -1,3 +1,4 @@
+import { lerBaseVersao } from '../../shared/database/gravar-versionado';
 import { asyncHandler } from '../../shared/errors';
 import { ok } from '../../shared/http/resposta';
 import * as manutencaoService from './manutencao.service';
@@ -8,5 +9,5 @@ export const obter = asyncHandler(async (req, res) => {
 });
 
 export const salvar = asyncHandler(async (req, res) => {
-  ok(res, await manutencaoService.salvar(req.usuario!.id, req.body as ManutencaoDto));
+  ok(res, await manutencaoService.salvar(req.usuario!.id, req.body as ManutencaoDto, lerBaseVersao(req.get('X-Base-Atualizado-Em'))));
 });

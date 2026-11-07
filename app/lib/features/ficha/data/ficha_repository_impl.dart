@@ -1,3 +1,4 @@
+import 'package:life_and_roads/core/database/caderneta_banco.dart';
 import 'package:life_and_roads/api.dart';
 import 'package:life_and_roads/core/sync/ficha_sync_store.dart';
 import 'package:life_and_roads/core/sync/lido_do_servidor.dart';
@@ -139,8 +140,12 @@ class FichaRepositoryImpl implements FichaRepository {
 
   @override
   Future<FichaSalva> salvar(FichaMoto ficha) async {
-    await _local.gravar(ficha);
     final sessao = await _auth.carregar();
+    final versao = await CadernetaBanco.instancia.transaction(() async {
+      await _local.gravar(ficha);
+      if (sessao.logado) await _sync.marcarPendente();
+      return (await _sync.ler()).localUpdatedAt;
+    });
     if (!sessao.logado) {
       return FichaSalva(
         ficha: ficha,
@@ -149,11 +154,9 @@ class FichaRepositoryImpl implements FichaRepository {
       );
     }
 
-    await _sync.marcarPendente();
-    final envio = await _enviar(sessao.token!, ficha);
+    final envio = await _enviar(sessao.token!, ficha, localEm: versao);
     final meta = await _sync.ler();
     if (envio.ok) {
-      await _conflito.limpar();
       return FichaSalva(
         ficha: ficha,
         sincronizada: true,
@@ -164,7 +167,7 @@ class FichaRepositoryImpl implements FichaRepository {
     }
     return FichaSalva(
       ficha: ficha,
-      offline: true,
+      offline: envio.offline,
       mensagem: envio.mensagem,
       sync: meta,
     );
@@ -180,8 +183,7 @@ class FichaRepositoryImpl implements FichaRepository {
       await _sync.marcarSincronizado();
       return carregar();
     }
-    final envio = await _enviar(sessao.token!, ficha);
-    if (envio.ok) await _conflito.limpar();
+    final envio = await _enviar(sessao.token!, ficha, substituir: true);
     return FichaCarregada(
       sessao: sessao,
       ficha: ficha,
@@ -222,18 +224,44 @@ class FichaRepositoryImpl implements FichaRepository {
 
   Future<({bool ok, bool offline, String mensagem})> _enviar(
     String token,
-    FichaMoto ficha,
-  ) async {
+    FichaMoto ficha, {
+    DateTime? localEm,
+    bool substituir = false,
+  }) async {
+    final versao = localEm ?? (await _sync.ler()).localUpdatedAt;
     try {
-      final carimbo = await _remoto.salvar(token, ficha);
-      await _sync.marcarSincronizado(carimbo: carimbo);
-      return (ok: true, offline: false, mensagem: '');
+      final base = substituir
+          ? (await _remoto.buscar(token))?.atualizadoEm
+          : (await _sync.ler()).remoteUpdatedAt;
+      final carimbo = await _remoto.salvar(
+        token,
+        ficha,
+        baseAtualizadoEm: base?.toUtc().toIso8601String() ?? 'null',
+      );
+      final confirmou = await CadernetaBanco.instancia.transaction(() async {
+        if ((await _sync.ler()).localUpdatedAt != versao) return false;
+        await _sync.marcarSincronizado(carimbo: carimbo, seLocalEm: versao);
+        await _conflito.limpar();
+        return true;
+      });
+      return (ok: confirmou, offline: false, mensagem: '');
+    } on ConflitoSync catch (e) {
+      LidoDoServidor<FichaMoto>? remoto;
+      try {
+        remoto = await _remoto.buscar(token);
+      } catch (_) {}
+      await CadernetaBanco.instancia.transaction(() async {
+        if ((await _sync.ler()).localUpdatedAt != versao) return;
+        if (remoto != null) await _conflito.gravar(remoto.dado);
+        await _sync.marcarConflito(seLocalEm: versao);
+      });
+      return (ok: false, offline: false, mensagem: e.mensagem);
     } on FalhaApi catch (e) {
-      await _sync.marcarFalhou(e.mensagem);
+      await _sync.marcarFalhou(e.mensagem, seLocalEm: versao);
       return (ok: false, offline: true, mensagem: e.mensagem);
     } catch (_) {
       const msg = 'API fora do ar. A ficha ficou só neste aparelho.';
-      await _sync.marcarFalhou(msg);
+      await _sync.marcarFalhou(msg, seLocalEm: versao);
       return (ok: false, offline: true, mensagem: msg);
     }
   }

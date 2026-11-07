@@ -18,8 +18,16 @@ class ClienteOpenApi {
   }
 
   /// Devolve o carimbo novo do servidor.
-  Future<DateTime?> salvarFicha(String token, FichaDto ficha) async {
-    final corpo = await ApiCaderneta.salvarFicha(token, ficha.toJson());
+  Future<DateTime?> salvarFicha(
+    String token,
+    FichaDto ficha, {
+    String? baseAtualizadoEm,
+  }) async {
+    final corpo = await ApiCaderneta.salvarFicha(
+      token,
+      ficha.toJson(),
+      baseAtualizadoEm: baseAtualizadoEm,
+    );
     return LidoDoServidor.carimbo(corpo['atualizadoEm']);
   }
 
@@ -32,8 +40,16 @@ class ClienteOpenApi {
     );
   }
 
-  Future<DateTime?> salvarManutencao(String token, ManutencaoDto agenda) async {
-    final corpo = await ApiCaderneta.salvarManutencao(token, agenda.toJson());
+  Future<DateTime?> salvarManutencao(
+    String token,
+    ManutencaoDto agenda, {
+    String? baseAtualizadoEm,
+  }) async {
+    final corpo = await ApiCaderneta.salvarManutencao(
+      token,
+      agenda.toJson(),
+      baseAtualizadoEm: baseAtualizadoEm,
+    );
     return LidoDoServidor.carimbo(corpo['atualizadoEm']);
   }
 

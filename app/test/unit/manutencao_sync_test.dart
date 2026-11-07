@@ -38,7 +38,7 @@ class _RemotoFake implements ManutencaoRemoteDatasource {
   }
 
   @override
-  Future<DateTime?> salvar(String token, AgendaManutencao agenda) async {
+  Future<DateTime?> salvar(String token, AgendaManutencao agenda, {String? baseAtualizadoEm}) async {
     if (falhar) {
       throw FalhaApi('API fora do ar. Ficou só neste aparelho.');
     }

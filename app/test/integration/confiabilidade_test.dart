@@ -39,7 +39,7 @@ class _FichaRemotaFake implements FichaRemoteDatasource {
   }
 
   @override
-  Future<DateTime?> salvar(String token, FichaMoto ficha) async {
+  Future<DateTime?> salvar(String token, FichaMoto ficha, {String? baseAtualizadoEm}) async {
     if (falhar) throw FalhaApi('API fora do ar.');
     remota = ficha;
     return DateTime.utc(2026, 9, 17);

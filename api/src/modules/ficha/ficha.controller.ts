@@ -1,3 +1,4 @@
+import { lerBaseVersao } from '../../shared/database/gravar-versionado';
 import { asyncHandler } from '../../shared/errors';
 import { ok } from '../../shared/http/resposta';
 import * as fichaService from './ficha.service';
@@ -8,5 +9,5 @@ export const obter = asyncHandler(async (req, res) => {
 });
 
 export const salvar = asyncHandler(async (req, res) => {
-  ok(res, await fichaService.salvar(req.usuario!.id, req.body as FichaDto), 200);
+  ok(res, await fichaService.salvar(req.usuario!.id, req.body as FichaDto, lerBaseVersao(req.get('X-Base-Atualizado-Em'))), 200);
 });

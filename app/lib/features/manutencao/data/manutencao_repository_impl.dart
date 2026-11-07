@@ -1,3 +1,4 @@
+import 'package:life_and_roads/core/database/caderneta_banco.dart';
 import 'package:life_and_roads/api.dart';
 import 'package:life_and_roads/core/sync/lido_do_servidor.dart';
 import 'package:life_and_roads/features/auth/domain/auth_repository.dart';
@@ -141,10 +142,13 @@ class ManutencaoRepositoryImpl implements ManutencaoRepository {
   ) async {
     final normal = agenda.normalizarAnuais();
     final extraNorm = _normalizarCnh(extra);
-    await _local.gravarAgenda(normal);
-    await _local.gravarExtra(extraNorm);
-
     final sessao = await _auth.carregar();
+    final versao = await CadernetaBanco.instancia.transaction(() async {
+      await _local.gravarAgenda(normal);
+      await _local.gravarExtra(extraNorm);
+      if (sessao.logado) await _sync.marcarPendente();
+      return (await _sync.ler()).localUpdatedAt;
+    });
     if (!sessao.logado) {
       return ManutencaoSalva(
         agenda: normal,
@@ -154,11 +158,9 @@ class ManutencaoRepositoryImpl implements ManutencaoRepository {
       );
     }
 
-    await _sync.marcarPendente();
-    final envio = await _enviar(sessao.token!, normal);
+    final envio = await _enviar(sessao.token!, normal, localEm: versao);
     final meta = await _sync.ler();
     if (envio.ok) {
-      await _conflito.limpar();
       return ManutencaoSalva(
         agenda: normal,
         extra: extraNorm,
@@ -171,7 +173,7 @@ class ManutencaoRepositoryImpl implements ManutencaoRepository {
     return ManutencaoSalva(
       agenda: normal,
       extra: extraNorm,
-      offline: true,
+      offline: envio.offline,
       mensagem: envio.mensagem,
       sync: meta,
     );
@@ -192,8 +194,7 @@ class ManutencaoRepositoryImpl implements ManutencaoRepository {
       await _sync.marcarSincronizado();
       return _base(agenda: agenda, extra: extra);
     }
-    final envio = await _enviar(sessao.token!, agenda);
-    if (envio.ok) await _conflito.limpar();
+    final envio = await _enviar(sessao.token!, agenda, substituir: true);
     return _base(agenda: agenda, extra: extra, offline: envio.offline);
   }
 
@@ -231,18 +232,44 @@ class ManutencaoRepositoryImpl implements ManutencaoRepository {
 
   Future<({bool ok, bool offline, String mensagem})> _enviar(
     String token,
-    AgendaManutencao agenda,
-  ) async {
+    AgendaManutencao agenda, {
+    DateTime? localEm,
+    bool substituir = false,
+  }) async {
+    final versao = localEm ?? (await _sync.ler()).localUpdatedAt;
     try {
-      final carimbo = await _remoto.salvar(token, agenda);
-      await _sync.marcarSincronizado(carimbo: carimbo);
-      return (ok: true, offline: false, mensagem: '');
+      final base = substituir
+          ? (await _remoto.buscar(token))?.atualizadoEm
+          : (await _sync.ler()).remoteUpdatedAt;
+      final carimbo = await _remoto.salvar(
+        token,
+        agenda,
+        baseAtualizadoEm: base?.toUtc().toIso8601String() ?? 'null',
+      );
+      final confirmou = await CadernetaBanco.instancia.transaction(() async {
+        if ((await _sync.ler()).localUpdatedAt != versao) return false;
+        await _sync.marcarSincronizado(carimbo: carimbo, seLocalEm: versao);
+        await _conflito.limpar();
+        return true;
+      });
+      return (ok: confirmou, offline: false, mensagem: '');
+    } on ConflitoSync catch (e) {
+      LidoDoServidor<AgendaManutencao>? remoto;
+      try {
+        remoto = await _remoto.buscar(token);
+      } catch (_) {}
+      await CadernetaBanco.instancia.transaction(() async {
+        if ((await _sync.ler()).localUpdatedAt != versao) return;
+        if (remoto != null) await _conflito.gravar(remoto.dado);
+        await _sync.marcarConflito(seLocalEm: versao);
+      });
+      return (ok: false, offline: false, mensagem: e.mensagem);
     } on FalhaApi catch (e) {
-      await _sync.marcarFalhou(e.mensagem);
+      await _sync.marcarFalhou(e.mensagem, seLocalEm: versao);
       return (ok: false, offline: true, mensagem: e.mensagem);
     } catch (_) {
       const msg = 'API fora do ar. Ficou só neste aparelho.';
-      await _sync.marcarFalhou(msg);
+      await _sync.marcarFalhou(msg, seLocalEm: versao);
       return (ok: false, offline: true, mensagem: msg);
     }
   }

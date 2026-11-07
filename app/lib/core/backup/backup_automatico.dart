@@ -38,9 +38,12 @@ class BackupAutomatico {
 
   Timer? _timer;
   bool _gravando = false;
+  bool _deNovo = false, _descartado = false;
 
   /// Marca que a caderneta mudou. Várias chamadas seguidas viram uma só.
   void agendar() {
+    if (_descartado) return;
+    if (_gravando) _deNovo = true;
     _timer?.cancel();
     _timer = Timer(espera, () => unawaited(gravarAgora()));
   }
@@ -57,14 +60,18 @@ class BackupAutomatico {
 
   /// Grava na hora. Devolve o caminho, ou null quando não deu.
   Future<String?> gravarAgora() async {
-    if (_gravando) return null;
+    if (_descartado) return null;
+    if (_gravando) {
+      _deNovo = true;
+      return null;
+    }
     _gravando = true;
     try {
       final caminho = await pasta.salvar(
         nome: nomeArquivo,
         conteudo: await _exportar(),
       );
-      if (caminho != null) {
+      if (caminho != null && !_descartado) {
         final agora = DateTime.now();
         ultimo.value = agora;
         // O carimbo é só para a tela dizer "salvo há 5 min". Falhar aqui
@@ -81,6 +88,12 @@ class BackupAutomatico {
       return null;
     } finally {
       _gravando = false;
+      if (_deNovo && !_descartado) {
+        _deNovo = false;
+        _timer?.cancel();
+        _timer = null;
+        unawaited(gravarAgora());
+      }
     }
   }
 
@@ -91,6 +104,8 @@ class BackupAutomatico {
   }
 
   void descartar() {
+    _descartado = true;
+    _deNovo = false;
     _timer?.cancel();
     _timer = null;
     ultimo.dispose();

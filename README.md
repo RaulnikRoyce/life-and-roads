@@ -4,9 +4,11 @@ Caderneta digital de **uma motocicleta**, com ficha, manutenção, abastecimento
 
 **Beta aberto** · [Abrir app web](https://app.raulnikroyce.dev/) · [Baixar APK Android](https://github.com/RaulnikRoyce/life-and-roads/releases/latest/download/life-and-roads-beta-aberto.apk)
 
-## Versão 1.5.3
+## Versão 1.5.4
 
-O código está em `1.5.3+13` no `pubspec.yaml`. Nas publicações pelo CI, o número do build vem da execução do GitHub Actions. O APK e as notas ficam na [Release 1.5.3](https://github.com/RaulnikRoyce/life-and-roads/releases/tag/v1.5.3); a disponibilidade do arquivo e da web depende da conclusão dos jobs de publicação.
+O código está em `1.5.4+14` no `pubspec.yaml`. Nas publicações pelo CI, o número do build vem da execução do GitHub Actions. O APK e as notas ficam na [Release 1.5.4](https://github.com/RaulnikRoyce/life-and-roads/releases/tag/v1.5.4); a disponibilidade do arquivo e da web depende da conclusão dos jobs de publicação.
+
+A versão 1.5.4 corrige confirmação de sincronização fora de ordem, conflitos de versão entre aparelhos, backup durante gravação lenta e persistência do consumo, conforme a ADR 0050. A API deve ser publicada antes do app; clientes antigos continuam aceitos durante a transição. A verificação local passou em 369 testes do app e 100 da API com MySQL descartável, além de TypeScript e análise Dart direta.
 
 A versão 1.5.3 mantém a edição de abastecimentos da 1.5.2 e reúne estas melhorias:
 

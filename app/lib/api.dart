@@ -15,6 +15,11 @@ class FalhaApi implements Exception {
   String toString() => mensagem;
 }
 
+/// Conflito da ficha ou das datas com a versão conhecida pelo aparelho.
+class ConflitoSync extends FalhaApi {
+  ConflitoSync(super.mensagem);
+}
+
 /// A caderneta na nuvem mudou em outro aparelho desde o último envio deste
 /// (409). Nada foi gravado; quem chamou precisa perguntar qual fica.
 class ConflitoNuvem extends FalhaApi {
@@ -260,16 +265,25 @@ class ApiCaderneta {
   /// Devolve o corpo da resposta (ficha + `atualizadoEm` do servidor).
   static Future<Map<String, dynamic>> salvarFicha(
     String token,
-    Map<String, dynamic> ficha,
-  ) async {
+    Map<String, dynamic> ficha, {
+    String? baseAtualizadoEm,
+  }) async {
     final r = await _comAuth(
       token,
       (t) => _cliente.put(
         Uri.parse('$base/ficha'),
-        headers: _cabecalhos(token: t),
+        headers: {
+          ..._cabecalhos(token: t),
+          'X-Base-Atualizado-Em': ?baseAtualizadoEm,
+        },
         body: jsonEncode(ficha),
       ),
     );
+    if (r.statusCode == 409) {
+      throw ConflitoSync(
+        'Os dados mudaram em outro aparelho. Escolha qual versão manter.',
+      );
+    }
     if (r.statusCode != 200) throw _erro(r);
     return _corpo(r);
   }
@@ -290,16 +304,25 @@ class ApiCaderneta {
   /// Devolve o corpo da resposta (datas + `atualizadoEm` do servidor).
   static Future<Map<String, dynamic>> salvarManutencao(
     String token,
-    Map<String, dynamic> manutencao,
-  ) async {
+    Map<String, dynamic> manutencao, {
+    String? baseAtualizadoEm,
+  }) async {
     final r = await _comAuth(
       token,
       (t) => _cliente.put(
         Uri.parse('$base/manutencao'),
-        headers: _cabecalhos(token: t),
+        headers: {
+          ..._cabecalhos(token: t),
+          'X-Base-Atualizado-Em': ?baseAtualizadoEm,
+        },
         body: jsonEncode(manutencao),
       ),
     );
+    if (r.statusCode == 409) {
+      throw ConflitoSync(
+        'Os dados mudaram em outro aparelho. Escolha qual versão manter.',
+      );
+    }
     if (r.statusCode != 200) throw _erro(r);
     return _corpo(r);
   }
@@ -371,8 +394,11 @@ class ApiCaderneta {
       final corpo = _corpo(r);
       final detalhes = corpo['detalhes'];
       throw ConflitoNuvem(
-        corpo['erro'] as String? ?? 'A caderneta na nuvem mudou em outro aparelho.',
-        atualizadoEm: detalhes is Map ? detalhes['atualizadoEm'] as String? : null,
+        corpo['erro'] as String? ??
+            'A caderneta na nuvem mudou em outro aparelho.',
+        atualizadoEm: detalhes is Map
+            ? detalhes['atualizadoEm'] as String?
+            : null,
       );
     }
     if (r.statusCode != 200) throw _erro(r);

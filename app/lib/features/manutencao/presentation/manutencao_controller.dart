@@ -90,7 +90,7 @@ class ManutencaoController extends Notifier<ManutencaoEstado> {
   }
 
   Future<void> salvar(AgendaManutencao agenda, ManutencaoExtra extra) async {
-    _geracao++;
+    final geracao = ++_geracao;
     final erro = agenda.tentar();
     if (erro != null) {
       state = state.copiarCom(erro: erro, limparAviso: true);
@@ -98,12 +98,17 @@ class ManutencaoController extends Notifier<ManutencaoEstado> {
     }
     final resultado = await _repo.salvar(agenda, extra);
     ref.read(cadernetaMudouProvider).avisar();
+    final remoto = resultado.sync.emConflito
+        ? (await _repo.carregarLocal()).remoto
+        : null;
+    if (geracao != _geracao) return;
     state = state.copiarCom(
       agenda: resultado.agenda,
       extra: resultado.extra,
       aviso: resultado.mensagem,
       offline: resultado.offline,
       sync: resultado.sync,
+      remoto: remoto,
       limparErro: true,
     );
   }

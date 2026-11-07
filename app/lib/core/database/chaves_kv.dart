@@ -1,6 +1,7 @@
 /// Chaves da tabela KV (antes SharedPreferences, salvo token/tema/URL).
 class ChavesKv {
   static const ficha = 'ficha_moto_v1';
+  static const fichaCarimbo = 'ficha_carimbo_iso_v1';
   static const agenda = 'manutencao_v1';
   static const extra = 'manutencao_km_v1';
   static const foto = 'foto_moto_v1';

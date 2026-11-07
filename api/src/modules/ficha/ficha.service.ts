@@ -11,5 +11,5 @@ export const obter = async (usuarioId: number): Promise<FichaLida> => {
   return ficha;
 };
 
-export const salvar = (usuarioId: number, dados: FichaDto) =>
-  fichaRepository.salvar(usuarioId, dados);
+export const salvar = (usuarioId: number, dados: FichaDto, base?: number | null) =>
+  fichaRepository.salvar(usuarioId, dados, base);

@@ -6,7 +6,7 @@ import 'package:life_and_roads/features/ficha/domain/ficha_moto.dart';
 
 class FichaRemoteDatasource {
   FichaRemoteDatasource({ClienteOpenApi? cliente})
-      : _cliente = cliente ?? ClienteOpenApi();
+    : _cliente = cliente ?? ClienteOpenApi();
 
   final ClienteOpenApi _cliente;
 
@@ -20,10 +20,15 @@ class FichaRemoteDatasource {
   }
 
   /// Carimbo do servidor depois de gravar.
-  Future<DateTime?> salvar(String token, FichaMoto ficha) {
+  Future<DateTime?> salvar(
+    String token,
+    FichaMoto ficha, {
+    String? baseAtualizadoEm,
+  }) {
     return _cliente.salvarFicha(
       token,
       FichaDto.fromJson(FichaMotoModel.toApiJson(ficha)),
+      baseAtualizadoEm: baseAtualizadoEm,
     );
   }
 }

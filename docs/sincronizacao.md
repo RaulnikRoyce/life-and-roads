@@ -13,15 +13,15 @@ A caderneta funciona **neste aparelho**. A API é um cofre opcional da ficha, da
 
 Metadados da ficha no SQLite (`ficha_sync`). Metadados da agenda no SQLite (`caderneta_kv`, chave `manutencao_sync_v1`). Campos: `local_updated_at`, `remote_updated_at`, `sync_status`, `last_sync_error`, `tentativas`.
 
-`remote_updated_at` guarda o `atualizadoEm` que o servidor devolveu no último GET ou PUT (é o `atualizado_em` da linha no MySQL). É esse carimbo que diz se outro aparelho mexeu.
+`remote_updated_at` guarda a versão `atualizadoEm` recebida da API. Desde a ADR 0050, o servidor gera versões monotônicas em milissegundos, mesmo com relógio parado. Na ficha, o valor completo também fica na chave `ficha_carimbo_iso_v1`, pois a coluna DateTime existente do Drift guarda segundos. Na agenda, o JSON dos metadados preserva a precisão. Linhas antigas no servidor usam o timestamp anterior até a primeira gravação.
 
 ## Política v1. Última alteração local vence, com pergunta se divergir
 
 1. Grava local sempre.
-2. Com conta, tenta o PUT.
+2. Com conta, tenta o PUT com o header `X-Base-Atualizado-Em`, contendo a versão conhecida ou `null` quando não há registro conhecido. A API confere a versão e grava na mesma transação; diferença retorna 409 e pede escolha.
 3. Se a rede falhar: `pending` ou `failed`. Nada some do aparelho.
 4. No próximo `carregar()`, se local e remoto forem **iguais** e houver fila, o app reenvia o local.
-5. Se forem **diferentes**, o app olha o carimbo. Se há fila local **e** o `atualizadoEm` do servidor é o mesmo que o app guardou, ninguém mexeu no servidor, foi só este aparelho; reenvia o local sem perguntar. Em qualquer outro caso (servidor mudou, ou não há carimbo guardado), marca `conflict` e pergunta se fica neste aparelho ou se usa a do servidor. PSI, km de troca e CNH não sobem. Ao usar o servidor, esses extras locais permanecem. (ADR 0018)
+5. Se forem **diferentes**, o app olha o carimbo. Se há fila local **e** o `atualizadoEm` do servidor é o mesmo que o app guardou, ninguém mexeu no servidor, foi só este aparelho; reenvia o local sem perguntar. Em qualquer outro caso (servidor mudou, ou não há carimbo guardado), marca `conflict` e pergunta se fica neste aparelho ou se usa a do servidor. PSI, km de troca e CNH ficam fora desta rota e sobem apenas na caderneta cifrada. Ao usar esta rota do servidor, esses extras locais permanecem. (ADR 0018)
 6. Sem ficha/agenda local, o GET preenche.
 
 O abastecimento na aba Viagem atualiza a ficha pelo `FichaRepository`. Se a conta existir e o PUT falhar, a ficha fica `pending`/`failed`.
@@ -40,3 +40,12 @@ Fluxo separado do da ficha e da agenda, com carimbo próprio (`atualizado_em_ms`
 Foto e arquivo de backup. Restaurar um JSON local marca ficha **e** agenda como pendentes se houver token, e avisa a caderneta na nuvem.
 
 Retry: cada abertura da Ficha ou da Manutenção (e o login). Access JWT ~15 min; o app troca o refresh no 401. Sem fila em segundo plano.
+
+
+## Respostas fora de ordem e atualização de clientes
+
+A gravação local e a marcação de pendência ficam na mesma transação SQLite. A confirmação ou falha de um envio só altera os metadados se a versão local ainda for a enviada. O controller também ignora o resultado de um salvamento anterior. A pendência persistida sobrevive à reabertura do app.
+
+Clientes anteriores que não enviam o header continuam aceitos; suas escritas não recebem a proteção contra versão desatualizada. A API deve ser atualizada antes do app. O novo app não deve ser publicado antes da API, pois a API antiga ignora o header. No app atualizado, escolher manter o aparelho relê a versão remota e tenta a substituição com essa base, sujeita a novo conflito se outro escritor chegar antes.
+
+O backup automático mantém um escritor por vez. Se a caderneta mudar durante uma gravação, ele exporta novamente ao terminar, inclusive após uma falha. Descartar o serviço impede novos envios e notificações ao objeto descartado.

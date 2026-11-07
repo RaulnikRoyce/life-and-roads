@@ -61,7 +61,7 @@ class _FichaSemServidor implements FichaRemoteDatasource {
   Future<LidoDoServidor<FichaMoto>?> buscar(String token) async => null;
 
   @override
-  Future<DateTime?> salvar(String token, FichaMoto ficha) async {
+  Future<DateTime?> salvar(String token, FichaMoto ficha, {String? baseAtualizadoEm}) async {
     salvas.add(ficha);
     return DateTime.utc(2026, 9, 24);
   }

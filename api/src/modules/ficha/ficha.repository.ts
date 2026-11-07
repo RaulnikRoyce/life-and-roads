@@ -1,3 +1,4 @@
+import { gravarVersionado } from '../../shared/database/gravar-versionado';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { getPool } from '../../shared/database/pool';
 import type { FichaDto } from './ficha.schema';
@@ -13,23 +14,16 @@ type FichaRow = RowDataPacket & {
   km_atual: string | number;
   tanque_litros: string | number | null;
   personalizacoes: string | null;
-  atualizado_em_unix: number | string | null;
+  atualizado_em_ms: number | string | null;
 };
 
 /** Ficha como sai no GET/PUT: o contrato mais o carimbo do servidor. */
 export type FichaLida = FichaDto & { atualizadoEm: string | null };
 
-/** UNIX_TIMESTAMP() não depende do fuso da sessão; ISO em UTC para o app. */
-export const carimboIso = (unix: number | string | null | undefined): string | null => {
-  const n = Number(unix);
-  if (!Number.isFinite(n) || n <= 0) return null;
-  return new Date(n * 1000).toISOString();
-};
-
 const paraJson = (linha: FichaRow | undefined): FichaLida | null => {
   if (!linha) return null;
   return {
-    atualizadoEm: carimboIso(linha.atualizado_em_unix),
+    atualizadoEm: new Date(Number(linha.atualizado_em_ms)).toISOString(),
     marca: linha.marca,
     modelo: linha.modelo,
     ano: linha.ano,
@@ -47,14 +41,14 @@ export async function buscarPorUsuario(usuarioId: number): Promise<FichaLida | n
   const [rows] = await getPool().execute<FichaRow[]>(
     `SELECT marca, modelo, ano, cilindrada, km_litro, km_litro_alcool, combustivel,
             km_atual, tanque_litros, personalizacoes,
-            UNIX_TIMESTAMP(atualizado_em) AS atualizado_em_unix
+            COALESCE(atualizado_em_ms, UNIX_TIMESTAMP(atualizado_em) * 1000) AS atualizado_em_ms
        FROM fichas WHERE usuario_id = ?`,
     [usuarioId],
   );
   return paraJson(rows[0]);
 }
 
-export async function salvar(usuarioId: number, dados: FichaDto): Promise<FichaLida> {
+export async function salvar(usuarioId: number, dados: FichaDto, base?: number | null): Promise<FichaLida> {
   const params = [
     usuarioId,
     dados.marca,
@@ -69,7 +63,8 @@ export async function salvar(usuarioId: number, dados: FichaDto): Promise<FichaL
     dados.personalizacoes || '',
   ];
 
-  await getPool().execute<ResultSetHeader>(
+  const atualizadoEm = await gravarVersionado(
+    'fichas', usuarioId, base, (conn) => conn.execute<ResultSetHeader>(
     `INSERT INTO fichas
         (usuario_id, marca, modelo, ano, cilindrada, km_litro, km_litro_alcool,
          combustivel, km_atual, tanque_litros, personalizacoes)
@@ -86,10 +81,7 @@ export async function salvar(usuarioId: number, dados: FichaDto): Promise<FichaL
         tanque_litros = novo.tanque_litros,
         personalizacoes = novo.personalizacoes`,
     params,
+  ),
   );
-  const [rows] = await getPool().execute<FichaRow[]>(
-    'SELECT UNIX_TIMESTAMP(atualizado_em) AS atualizado_em_unix FROM fichas WHERE usuario_id = ?',
-    [usuarioId],
-  );
-  return { ...dados, atualizadoEm: carimboIso(rows[0]?.atualizado_em_unix) };
+  return { ...dados, atualizadoEm };
 }

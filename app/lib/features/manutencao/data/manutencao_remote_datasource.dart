@@ -6,7 +6,7 @@ import 'package:life_and_roads/features/manutencao/domain/agenda_manutencao.dart
 
 class ManutencaoRemoteDatasource {
   ManutencaoRemoteDatasource({ClienteOpenApi? cliente})
-      : _cliente = cliente ?? ClienteOpenApi();
+    : _cliente = cliente ?? ClienteOpenApi();
 
   final ClienteOpenApi _cliente;
 
@@ -20,10 +20,15 @@ class ManutencaoRemoteDatasource {
   }
 
   /// Carimbo do servidor depois de gravar.
-  Future<DateTime?> salvar(String token, AgendaManutencao agenda) {
+  Future<DateTime?> salvar(
+    String token,
+    AgendaManutencao agenda, {
+    String? baseAtualizadoEm,
+  }) {
     return _cliente.salvarManutencao(
       token,
       ManutencaoDto.fromJson(AgendaManutencaoModel.toApiJson(agenda)),
+      baseAtualizadoEm: baseAtualizadoEm,
     );
   }
 }
