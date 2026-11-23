@@ -74,7 +74,7 @@ jobs:
           # Nada em texto aberto pode sobrar para o upload.
           ! ls *.sql.gz 2>/dev/null
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: backup-mysql-${{ github.run_id }}
           path: '*.sql.gz.gpg'
